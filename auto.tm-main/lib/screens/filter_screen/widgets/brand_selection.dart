@@ -11,15 +11,19 @@ import 'package:get/get.dart';
 
 class BrandSelection extends StatelessWidget {
   final FilterController controller = Get.find<FilterController>();
-  final BrandController brandController = Get.put(BrandController());
+  // Use find if already registered, else put.
+  final BrandController brandController =
+      Get.isRegistered<BrandController>()
+          ? Get.find<BrandController>()
+          : Get.put(BrandController());
 
-  // --- PERFORMANCE FIX ---
-  // Data fetching is moved to the constructor to ensure it runs only ONCE
-  // when the widget is created, not on every rebuild.
-  // The best practice is to place these in your controller's onInit method.
   BrandSelection({super.key}) {
-    controller.fetchBrands();
-    brandController.fetchBrandHistory();
+    // Load brands only if list empty to prevent refetch loops when returning
+    if (controller.brands.isEmpty) {
+      controller.fetchBrands();
+    }
+    // Ensure local history is loaded and then fetch details for those brands
+    brandController.refreshData();
   }
 
   @override

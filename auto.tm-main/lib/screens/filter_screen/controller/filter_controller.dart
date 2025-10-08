@@ -19,6 +19,7 @@ class FilterController extends GetxController {
   var offset = 0;
   final int limit = 20;
 
+  // Country selection (defaults to 'Local')
   var selectedCountry = 'Local'.obs;
   var condition = 'All'.obs;
   var brands = <Map<String, dynamic>>[].obs;
@@ -27,12 +28,17 @@ class FilterController extends GetxController {
   var selectedModel = ''.obs;
   var selectedBrandUuid = ''.obs;
   var selectedModelUuid = ''.obs;
-  var location = 'Ashgabat'.obs;
+  // Specific location city (blank means any)
+  var location = ''.obs;
   var transmission = ''.obs;
   var enginePower = ''.obs;
   var selectedColor = ''.obs;
-  final selectedMinDate = DateTime.now().obs;
-  final selectedMaxDate = DateTime.now().obs;
+  // Year filters (allow empty). Using strings so they can be blank until user selects.
+  final RxString minYear = ''.obs;
+  final RxString maxYear = ''.obs;
+  // Legacy date objects kept temporarily for compatibility; will be removed once UI updated.
+  final selectedMinDate = DateTime.now().obs; // TODO: remove
+  final selectedMaxDate = DateTime.now().obs; // TODO: remove
 
   var milleage = ''.obs;
   var isLoading = false.obs;
@@ -98,7 +104,8 @@ class FilterController extends GetxController {
               initialDate: DateTime.now(),
               selectedDate: selectedMinDate.value,
               onChanged: (DateTime dateTime) {
-                selectedMinDate.value = dateTime;
+                selectedMinDate.value = dateTime; // legacy
+                minYear.value = dateTime.year.toString();
                 NavigationUtils.closeGlobal();
               },
             ),
@@ -123,7 +130,8 @@ class FilterController extends GetxController {
               initialDate: DateTime.now(),
               selectedDate: selectedMaxDate.value,
               onChanged: (DateTime dateTime) {
-                selectedMaxDate.value = dateTime;
+                selectedMaxDate.value = dateTime; // legacy
+                maxYear.value = dateTime.year.toString();
                 NavigationUtils.closeGlobal();
               },
             ),
@@ -135,6 +143,25 @@ class FilterController extends GetxController {
 
   String get selectedMinYear => "${selectedMinDate.value.year}";
   String get selectedMaxYear => "${selectedMaxDate.value.year}";
+  // Accessors for new year state (prefer these going forward)
+  String get effectiveMinYear => minYear.value.isNotEmpty ? minYear.value : '';
+  String get effectiveMaxYear => maxYear.value.isNotEmpty ? maxYear.value : '';
+
+  void clearFilters() {
+    // Preserve brand & model selections only.
+    transmission.value = '';
+    enginepowerController.clear();
+    milleageController.clear();
+    selectedColor.value = '';
+    condition.value = 'All';
+    exchange.value = false;
+    credit.value = false;
+    premium.clear();
+    minYear.value = '';
+    maxYear.value = '';
+  location.value = '';
+  selectedCountry.value = 'Local';
+  }
 
   Map<String, String> _parseSortOption(String option) {
     if (option.contains('_')) {
@@ -193,11 +220,12 @@ class FilterController extends GetxController {
     if (selectedBrandUuid.value.isNotEmpty) {
       queryParams['brandFilter'] = selectedBrandUuid.value;
     }
+    // Location / country logic: 'Local' means use city (if chosen) but do not send 'Local' as value
     if (selectedCountry.value == 'Local') {
       if (location.value.isNotEmpty) {
         queryParams['location'] = location.value;
       }
-    } else {
+    } else if (selectedCountry.value.isNotEmpty) {
       queryParams['location'] = selectedCountry.value;
     }
     if (selectedModelUuid.value.isNotEmpty) {
@@ -220,26 +248,18 @@ class FilterController extends GetxController {
     if (condition.value.isNotEmpty && condition.value != 'All') {
       queryParams['condition'] = condition.value;
     }
-    if (selectedMinYear != '' && selectedMaxYear != '') {
-      int minYear = int.tryParse(selectedMinYear) ?? 0;
-      int maxYear = int.tryParse(selectedMaxYear) ?? 0;
-
-      // Swap if min is greater than max
-      if (minYear > maxYear) {
-        final temp = minYear;
-        minYear = maxYear;
-        maxYear = temp;
+    // Year filters (use new minYear/maxYear; include only if set)
+    if (minYear.value.isNotEmpty && maxYear.value.isNotEmpty) {
+      int minY = int.tryParse(minYear.value) ?? 0;
+      int maxY = int.tryParse(maxYear.value) ?? 0;
+      if (minY > maxY) {
+        final t = minY; minY = maxY; maxY = t;
       }
-
-      queryParams['minYear'] = minYear.toString();
-      queryParams['maxYear'] = maxYear.toString();
+      queryParams['minYear'] = minY.toString();
+      queryParams['maxYear'] = maxY.toString();
     } else {
-      if (selectedMinYear != '') {
-        queryParams['minYear'] = selectedMinYear;
-      }
-      if (selectedMaxYear != '') {
-        queryParams['maxYear'] = selectedMaxYear;
-      }
+      if (minYear.value.isNotEmpty) queryParams['minYear'] = minYear.value;
+      if (maxYear.value.isNotEmpty) queryParams['maxYear'] = maxYear.value;
     }
 
     return queryParams.entries

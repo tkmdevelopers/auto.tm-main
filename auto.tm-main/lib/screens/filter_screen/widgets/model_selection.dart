@@ -158,7 +158,9 @@ class _ModelSelectionState extends State<ModelSelection> {
                 isSelected
                     ? Icons.radio_button_checked
                     : Icons.radio_button_unchecked,
-                color: isSelected ? AppColors.primaryColor : Colors.grey,
+                color: isSelected
+                    ? theme.colorScheme.onSurface
+                    : Colors.grey,
               ),
               onTap: () {
                 controller.selectedBrandUuid.value = widget.brandUuid;

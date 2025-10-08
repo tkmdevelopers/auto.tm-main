@@ -22,9 +22,9 @@ class FilterResultPicker extends StatelessWidget {
       () => Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: theme.colorScheme.primaryContainer,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.textTertiaryColor, width: 0.4),
+          border: Border.all(color: AppColors.textTertiaryColor, width: 0.5),
         ),
         padding: const EdgeInsets.all(2),
         child: Row(
@@ -45,14 +45,18 @@ class FilterResultPicker extends StatelessWidget {
                 width: MediaQuery.of(context).size.width * 0.28,
                 padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
                 decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFC4C4C4) : Colors.transparent, 
+                  color: isSelected
+                      ? theme.colorScheme.onSurface.withOpacity(0.08)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   translationKey.tr, 
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: isSelected ? AppColors.textSecondaryColor : theme.colorScheme.primary,
+                    color: isSelected
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurface.withOpacity(0.60),
                     fontWeight: FontWeight.w500,
                   ),
                 ),

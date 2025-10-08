@@ -32,7 +32,10 @@ class FilterResultPage extends StatelessWidget {
         automaticallyImplyLeading: true,
         title: Text(
           'Filter Results'.tr,
-          style: TextStyle(color: theme.colorScheme.primary),
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         actions: [
           Padding(
@@ -42,10 +45,9 @@ class FilterResultPage extends StatelessWidget {
               child: SvgPicture.asset(
                 AppImages.sort,
                 colorFilter: ColorFilter.mode(
-                  theme.colorScheme.primary,
+                  theme.colorScheme.onSurface,
                   BlendMode.srcIn,
                 ),
-                // color: theme.colorScheme.primary,
               ),
             ),
           ),
@@ -74,7 +76,7 @@ class FilterResultPage extends StatelessWidget {
                         ? AppImages.car
                         : AppImages.subscribe,
                     colorFilter: ColorFilter.mode(
-                      theme.colorScheme.primary,
+                      theme.colorScheme.onSurface,
                       BlendMode.srcIn,
                     ),
                     // color: theme.colorScheme.primary,
@@ -203,12 +205,12 @@ class FilterResultPage extends StatelessWidget {
             curve: Curves.easeOut,
           );
         },
-        foregroundColor: theme.colorScheme.tertiaryContainer,
-        backgroundColor: theme.colorScheme.tertiaryContainer,
+  foregroundColor: theme.colorScheme.surface,
+  backgroundColor: theme.colorScheme.surface,
         shape: const CircleBorder(),
         child: Icon(
           Icons.arrow_upward_outlined,
-          color: theme.colorScheme.primary,
+          color: theme.colorScheme.onSurface,
         ),
       ),
     );

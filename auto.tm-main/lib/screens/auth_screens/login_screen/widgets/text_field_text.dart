@@ -45,11 +45,11 @@ class STextField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderSide: BorderSide(
-            color: AppColors.primaryColor,
+            color: theme.colorScheme.onSurface,
           ),
           borderRadius: BorderRadius.circular(12),
         ),
-        fillColor: theme.colorScheme.primaryContainer,
+        fillColor: theme.colorScheme.surface,
         filled: true,
         hintText: hintText,
         hintStyle: const TextStyle(

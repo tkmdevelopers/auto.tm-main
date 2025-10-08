@@ -283,20 +283,14 @@ class SLocations extends StatelessWidget {
         surfaceTintColor: theme.appBarTheme.backgroundColor,
         title: Text(
           "Location".tr,
-          style: TextStyle(color: theme.colorScheme.primary),
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         centerTitle: false,
-        actions: [
-          TextButton(
-            onPressed: () {
-              locationController.resetSearch();
-            },
-            child: Text(
-              "Reset",
-              style: TextStyle(color: theme.primaryColor),
-            ),
-          ),
-        ],
+        // Removed explicit Reset action per new requirement (search bar clear can still reset by emptying input)
+        actions: const [],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -305,14 +299,14 @@ class SLocations extends StatelessWidget {
             // Search Bar
             Container(
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
+                color: theme.colorScheme.surface,
                 border:
                     Border.all(color: AppColors.textTertiaryColor, width: 0.5),
                 borderRadius: BorderRadius.circular(12.0),
               ),
               child: TextField(
                 onChanged: locationController.filterLocations,
-                style: TextStyle(color: theme.colorScheme.primary),
+                style: TextStyle(color: theme.colorScheme.onSurface),
                 decoration: InputDecoration(
                   prefixIcon:
                       Icon(Icons.search, color: AppColors.textTertiaryColor),
@@ -345,24 +339,27 @@ class SLocations extends StatelessWidget {
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.primaryContainer,
+                              color: theme.colorScheme.surface,
                               borderRadius: BorderRadius.circular(6.0),
                               border: Border.all(
-                                color: isSelected
-                                    ? theme.primaryColor
-                                    : AppColors.textTertiaryColor,
+                color: isSelected
+                  ? theme.colorScheme.onSurface
+                  : AppColors.textTertiaryColor,
                                 width: isSelected ? 2 : 1,
                               ),
                             ),
                             child: ListTile(
                               title: Text(
                                 location,
-                                style:
-                                    TextStyle(color: theme.colorScheme.primary),
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                ),
                               ),
                               leading: isSelected
-                                  ? Icon(Icons.radio_button_checked,
-                                      color: theme.primaryColor)
+                                  ? Icon(
+                                      Icons.radio_button_checked,
+                                      color: theme.colorScheme.onSurface,
+                                    )
                                   : const Icon(Icons.radio_button_off,
                                       color: AppColors.textTertiaryColor),
                               onTap: () {

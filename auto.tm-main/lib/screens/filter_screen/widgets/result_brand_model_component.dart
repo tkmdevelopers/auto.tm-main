@@ -19,9 +19,9 @@ class ResultBrandModelComponent extends StatelessWidget {
     borderRadius: BorderRadius.circular(12),
     border: Border.all(
       color: AppColors.textTertiaryColor,
-      width: 0.3,
+      width: 0.5,
     ),
-    color: theme.colorScheme.secondaryContainer,
+    color: theme.colorScheme.surface,
   ),
   height: 124, // Ensure container has enough height for expansion
   child: Column(
@@ -46,16 +46,16 @@ class ResultBrandModelComponent extends StatelessWidget {
                         fontWeight: controller.selectedBrand.value != ''
                             ? FontWeight.w400
                             : FontWeight.w500,
-                        color: controller.selectedBrand.value != ''
-                            ? AppColors.textTertiaryColor
-                            : theme.colorScheme.primary,
+            color: controller.selectedBrand.value != ''
+              ? AppColors.textTertiaryColor
+              : theme.colorScheme.onSurface,
                       ),
                     ),
                     if (controller.selectedBrand.value != '')
                       Text(
                         controller.selectedBrand.value,
                         style: TextStyle(
-                          color: theme.colorScheme.primary,
+                          color: theme.colorScheme.onSurface,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -124,16 +124,16 @@ class ResultBrandModelComponent extends StatelessWidget {
                         fontWeight: controller.selectedModel.value != ''
                             ? FontWeight.w400
                             : FontWeight.w500,
-                        color: controller.selectedModel.value != ''
-                            ? AppColors.textTertiaryColor
-                            : theme.colorScheme.primary,
+            color: controller.selectedModel.value != ''
+              ? AppColors.textTertiaryColor
+              : theme.colorScheme.onSurface,
                       ),
                     ),
                     if (controller.selectedModel.value != '')
                       Text(
                         controller.selectedModel.value,
                         style: TextStyle(
-                          color: theme.colorScheme.primary,
+                          color: theme.colorScheme.onSurface,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),

@@ -38,17 +38,32 @@ class FilterScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () {
+              controller.clearFilters();
+            },
+            child: Text(
+              "Clear".tr,
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withOpacity(0.8),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
               controller.searchProducts();
               Get.off(() => FilterResultPage());
             },
             child: Text(
               "Done".tr,
-              style: TextStyle(color: AppColors.brandColor),
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
             ), // Red for accent
           ),
         ],
       ),
-      backgroundColor: theme.colorScheme.tertiary,
+      backgroundColor: theme.colorScheme.surface,
       body: Obx(
         () => ListView(
           padding: const EdgeInsets.all(16),
@@ -89,7 +104,7 @@ class FilterScreen extends StatelessWidget {
                               Text(
                                 controller.selectedBrand.value,
                                 style: TextStyle(
-                                  color: theme.colorScheme.primary,
+                                  color: theme.colorScheme.onSurface,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -140,7 +155,7 @@ class FilterScreen extends StatelessWidget {
                               Text(
                                 controller.selectedModel.value,
                                 style: TextStyle(
-                                  color: theme.colorScheme.primary,
+                                  color: theme.colorScheme.onSurface,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -166,21 +181,33 @@ class FilterScreen extends StatelessWidget {
             ),
             Divider(height: 0.5, color: AppColors.textTertiaryColor),
             const SizedBox(height: 16),
-            if (controller.selectedCountry.value == 'Local')
-              _buildSelectorTile(
-                "Location".tr,
-                controller.location.value,
-                () => Get.to(() => SLocations()),
-                context,
-              ),
+            _buildSelectorTile(
+              "Location".tr,
+              controller.location.value.isEmpty
+                  ? (controller.selectedCountry.value.isEmpty
+                      ? 'Any'.tr
+                      : controller.selectedCountry.value)
+                  : controller.location.value,
+              () => Get.to(() => SLocations()),
+              context,
+            ),
             _buildSelectorTile(
               "Transmission".tr,
-              "${controller.transmission}",
+              controller.transmission.value.isEmpty
+                  ? 'Select transmission'.tr
+                  : controller.transmission.value,
               () {
-                showOptionsBottomSheet(context, "Transmission".tr, [
-                  "Automatic".tr,
-                  "Manual".tr,
-                ], controller.transmission);
+                showOptionsBottomSheet(
+                  context,
+                  "Transmission".tr,
+                  [
+                    'Automatic'.tr,
+                    'Manual'.tr,
+                    'CVT'.tr,
+                    'Dual-clutch'.tr,
+                  ],
+                  controller.transmission,
+                );
               },
               context,
             ),
@@ -194,7 +221,7 @@ class FilterScreen extends StatelessWidget {
                         'Engine power'.tr,
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: theme.colorScheme.primary,
+                          color: theme.colorScheme.onSurface,
                           fontSize: 16,
                         ),
                       ),
@@ -225,7 +252,7 @@ class FilterScreen extends StatelessWidget {
                         'Milleage'.tr,
                         style: TextStyle(
                           fontWeight: FontWeight.w500,
-                          color: theme.colorScheme.primary,
+                          color: theme.colorScheme.onSurface,
                           fontSize: 16,
                         ),
                       ),
@@ -257,7 +284,7 @@ class FilterScreen extends StatelessWidget {
                       'Min year'.tr,
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
-                        color: theme.colorScheme.primary,
+                        color: theme.colorScheme.onSurface,
                         fontSize: 16,
                       ),
                     ),
@@ -271,19 +298,22 @@ class FilterScreen extends StatelessWidget {
                           border: Border.all(
                             color: AppColors.textFieldBorderColor,
                           ),
-                          color: theme.colorScheme.primaryContainer,
+                          color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Obx(
-                          () => Text(
-                            controller.selectedMinDate.value.year.toString(),
+                        child: Obx(() {
+                          final value = controller.minYear.value;
+                          return Text(
+                            value.isEmpty ? 'Any'.tr : value,
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: theme.colorScheme.primary,
+                              color: value.isEmpty
+                                  ? AppColors.textTertiaryColor
+                                  : theme.colorScheme.onSurface,
                             ),
-                          ),
-                        ),
+                          );
+                        }),
                       ),
                     ),
                     SizedBox(height: 14),
@@ -292,7 +322,7 @@ class FilterScreen extends StatelessWidget {
                 Text(
                   '-',
                   style: TextStyle(
-                    color: theme.colorScheme.primary,
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
                     fontSize: 40,
                   ),
                 ),
@@ -303,7 +333,7 @@ class FilterScreen extends StatelessWidget {
                       'Max year'.tr,
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
-                        color: theme.colorScheme.primary,
+                        color: theme.colorScheme.onSurface,
                         fontSize: 16,
                       ),
                     ),
@@ -317,19 +347,22 @@ class FilterScreen extends StatelessWidget {
                           border: Border.all(
                             color: AppColors.textFieldBorderColor,
                           ),
-                          color: theme.colorScheme.primaryContainer,
+                          color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Obx(
-                          () => Text(
-                            controller.selectedMaxDate.value.year.toString(),
+                        child: Obx(() {
+                          final value = controller.maxYear.value;
+                          return Text(
+                            value.isEmpty ? 'Any'.tr : value,
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: theme.colorScheme.primary,
+                              color: value.isEmpty
+                                  ? AppColors.textTertiaryColor
+                                  : theme.colorScheme.onSurface,
                             ),
-                          ),
-                        ),
+                          );
+                        }),
                       ),
                     ),
                     SizedBox(height: 14),
@@ -343,14 +376,14 @@ class FilterScreen extends StatelessWidget {
                   child: _buildCheckbox(
                     "Exchange".tr,
                     controller.exchange,
-                    theme.colorScheme.primary,
+                    theme.colorScheme.onSurface,
                   ),
                 ),
                 Expanded(
                   child: _buildCheckbox(
                     "Credit".tr,
                     controller.credit,
-                    theme.colorScheme.primary,
+                    theme.colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -381,16 +414,14 @@ class FilterScreen extends StatelessWidget {
                             border: Border.all(
                               color:
                                   isSelected
-                                      ? AppColors.primaryColor
+                                      ? theme.colorScheme.onSurface
                                       : AppColors.textTertiaryColor,
                               width: 0.3,
                             ),
                             borderRadius: BorderRadius.circular(12),
                             color:
                                 isSelected
-                                    ? AppColors.primaryColor.withAlpha(
-                                      (0.1 * 255).round(),
-                                    )
+                                    ? theme.colorScheme.onSurface.withOpacity(0.07)
                                     : theme.colorScheme.secondaryContainer,
                           ),
                           child: Row(
@@ -411,7 +442,7 @@ class FilterScreen extends StatelessWidget {
                                   controller.togglePremium(option.uuid);
                                   controller.searchProducts();
                                 },
-                                activeColor: AppColors.primaryColor,
+                                activeColor: theme.colorScheme.onSurface,
                                 checkColor: Colors.white,
                                 materialTapTargetSize:
                                     MaterialTapTargetSize.shrinkWrap,
@@ -446,7 +477,7 @@ class FilterScreen extends StatelessWidget {
               title,
               style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: theme.colorScheme.primary,
+                color: theme.colorScheme.onSurface,
                 fontSize: 16,
               ),
             ),
@@ -472,7 +503,7 @@ class FilterScreen extends StatelessWidget {
             title,
             style: TextStyle(
               fontWeight: FontWeight.w500,
-              color: theme.colorScheme.primary,
+              color: theme.colorScheme.onSurface,
               fontSize: 16,
             ),
           ),
@@ -504,7 +535,7 @@ class FilterScreen extends StatelessWidget {
           title,
           style: TextStyle(
             fontWeight: FontWeight.w400,
-            color: color,
+                      color: color.withOpacity(0.9),
             fontSize: 14,
           ),
         ),
@@ -524,36 +555,125 @@ class FilterScreen extends StatelessWidget {
   ) {
     final theme = Theme.of(context);
     Get.bottomSheet(
-      Container(
-        height: 220,
-        padding: EdgeInsets.all(10),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(
-                      options[index],
-                      style: TextStyle(color: theme.colorScheme.primary),
-                    ),
-                    onTap: () {
-                      selectedValue.value = options[index];
-                      Get.back();
-                    },
-                  );
-                },
+      SafeArea(
+        top: false,
+        child: Material(
+          color: theme.colorScheme.surface,
+          elevation: 12,
+          shadowColor: Colors.black.withOpacity(0.25),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 42,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.textTertiaryColor.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(3),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.close,
+                        color: AppColors.textTertiaryColor,
+                        size: 20,
+                      ),
+                      onPressed: () => Get.back(),
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: options.length,
+                  separatorBuilder: (_, __) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Divider(
+                      height: 1,
+                      thickness: 0.5,
+                      color: AppColors.textTertiaryColor.withOpacity(0.6),
+                    ),
+                  ),
+                  itemBuilder: (context, index) {
+                    final opt = options[index];
+                    return Obx(() {
+                      final bool selected = selectedValue.value == opt;
+                      return InkWell(
+                        onTap: () {
+                          selectedValue.value = opt;
+                          Get.back();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          color: selected
+                              ? theme.colorScheme.onSurface.withOpacity(0.05)
+                              : Colors.transparent,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  opt,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: selected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              Radio<String>(
+                                value: opt,
+                                groupValue: selectedValue.value,
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    selectedValue.value = val;
+                                    Get.back();
+                                  }
+                                },
+                                activeColor: theme.colorScheme.onSurface,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    });
+                  },
+                ),
+              ),
+              SizedBox(height: MediaQuery.of(context).padding.bottom + 4),
+            ],
+          ),
         ),
       ),
-      backgroundColor: theme.colorScheme.secondaryContainer,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withOpacity(0.35),
+      isScrollControlled: true,
     );
   }
 }

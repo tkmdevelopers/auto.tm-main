@@ -39,10 +39,10 @@ class ResultPremiumSelection extends StatelessWidget {
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: AppColors.textTertiaryColor,
-                    width: 0.3,
+                    width: 0.4,
                   ),
                   borderRadius: BorderRadius.circular(12),
-                  color: theme.colorScheme.secondaryContainer,
+                  color: theme.colorScheme.surface,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -51,7 +51,10 @@ class ResultPremiumSelection extends StatelessWidget {
                       AppImages.filter,
                       width: 16,
                       height: 16,
-                      colorFilter: ColorFilter.mode(theme.colorScheme.primary, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        theme.colorScheme.onSurface,
+                        BlendMode.srcIn,
+                      ),
                       // color: theme.colorScheme.primary,
                     ),
                     SizedBox(
@@ -62,7 +65,7 @@ class ResultPremiumSelection extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: theme.colorScheme.primary,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   ],
@@ -128,19 +131,15 @@ class ResultPremiumSelection extends StatelessWidget {
                           const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: 
-                          isSelected ? 
-                          AppColors.primaryColor
-                              : AppColors
-                                  .textTertiaryColor,
+              color: isSelected
+                ? theme.colorScheme.onSurface
+                : AppColors.textTertiaryColor,
                           width: 0.3,
                         ),
                         borderRadius: BorderRadius.circular(12),
-                        color: isSelected
-                            ? AppColors.primaryColor
-                                .withAlpha((0.1 * 255).round()) // Light fill when selected
-                            : theme.colorScheme
-                                .secondaryContainer, // Default background
+            color: isSelected
+              ? theme.colorScheme.onSurface.withOpacity(0.07)
+              : theme.colorScheme.secondaryContainer,
                         // color: AppColors.primaryColor,
                       ),
                       child: Row(
@@ -164,7 +163,7 @@ class ResultPremiumSelection extends StatelessWidget {
                               controller.togglePremium(option.uuid);
                               controller.searchProducts();
                             },
-                            activeColor: AppColors.primaryColor,
+                            activeColor: theme.colorScheme.onSurface,
                             checkColor: Colors.white,
                             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             visualDensity: VisualDensity.compact,
@@ -202,14 +201,14 @@ class ResultPremiumSelection extends StatelessWidget {
                   width: 0.3,
                 ),
                 borderRadius: BorderRadius.circular(12),
-                color: theme.colorScheme.secondaryContainer,
+                color: theme.colorScheme.surface,
               ),
               child: Text(
                 'Location'.tr,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: theme.colorScheme.primary,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ),
