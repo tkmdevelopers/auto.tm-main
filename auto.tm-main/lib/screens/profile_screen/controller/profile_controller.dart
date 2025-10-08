@@ -17,6 +17,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class ProfileController extends GetxController {
+  // Application-wide default location for newly registered users
+  static const String defaultLocation = 'Aşgabat';
   /// Singleton accessor to avoid accidental duplicate Get.put() calls scattered in UI.
   static ProfileController ensure() {
     if (Get.isRegistered<ProfileController>()) {
@@ -78,6 +80,11 @@ class ProfileController extends GetxController {
     name.value = box.read('user_name') ?? '';
     phone.value = box.read('user_phone') ?? '993';
     location.value = box.read('user_location') ?? '';
+    if (location.value.isEmpty) {
+      // Apply default if nothing stored yet
+      location.value = defaultLocation;
+      box.write('user_location', defaultLocation);
+    }
     locationController.text = location.value;
 
     // Test API configuration
@@ -391,6 +398,13 @@ class ProfileController extends GetxController {
       if (profileData.location != null && profileData.location!.isNotEmpty) {
         location.value = profileData.location!;
         locationController.text = profileData.location!;
+      } else {
+        // Backend returned empty / null location, enforce default
+        if (location.value.isEmpty) {
+          location.value = defaultLocation;
+          locationController.text = defaultLocation;
+          box.write('user_location', defaultLocation);
+        }
       }
 
       // Set phone if it exists
@@ -432,6 +446,10 @@ class ProfileController extends GetxController {
       existingLocation = location.value;
     } else {
       existingLocation = box.read('user_location') ?? '';
+      if (existingLocation.isEmpty) {
+        existingLocation = defaultLocation;
+        box.write('user_location', defaultLocation);
+      }
     }
 
     if (existingName.isNotEmpty && nameController.text.isEmpty) {

@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
-import 'package:auto_tm/ui_components/colors.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -81,25 +80,17 @@ class SLocationSelectionProfile extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        elevation: 4,
+        elevation: 2,
         surfaceTintColor: theme.appBarTheme.backgroundColor,
         backgroundColor: theme.appBarTheme.backgroundColor,
         title: Text(
           "Location".tr,
-          style: TextStyle(color: theme.colorScheme.primary),
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         centerTitle: false,
-        actions: [
-          TextButton(
-            onPressed: () {
-              locationController.resetSearch();
-            },
-            child: Text(
-              "Reset".tr,
-              style: TextStyle(color: theme.primaryColor),
-            ),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -108,23 +99,37 @@ class SLocationSelectionProfile extends StatelessWidget {
             // Search Bar
             Container(
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
+                color: theme.colorScheme.surface,
                 border: Border.all(
-                  color: AppColors.textTertiaryColor,
-                  width: 0.5,
+                  color: theme.colorScheme.outline.withOpacity(0.15),
+                  width: 0.8,
                 ),
-                borderRadius: BorderRadius.circular(12.0),
+                borderRadius: BorderRadius.circular(14.0),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               child: TextField(
                 onChanged: locationController.filterLocations,
-                style: TextStyle(color: theme.colorScheme.primary),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
                 decoration: InputDecoration(
                   prefixIcon: Icon(
                     Icons.search,
-                    color: AppColors.textTertiaryColor,
+                    color: theme.colorScheme.onSurface.withOpacity(0.55),
                   ),
                   hintText: "Search".tr,
-                  hintStyle: TextStyle(color: AppColors.textTertiaryColor),
+                  hintStyle: TextStyle(
+                    color: theme.colorScheme.onSurface.withOpacity(0.45),
+                    fontSize: 14,
+                  ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
                     vertical: 10.0,
@@ -150,34 +155,53 @@ class SLocationSelectionProfile extends StatelessWidget {
                             locationController.selectedLocation.value ==
                             location;
                         return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          padding: const EdgeInsets.symmetric(vertical: 6.0),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(6.0),
+                color: isSelected
+                  ? theme.colorScheme.surface.withOpacity(0.08)
+                  : theme.colorScheme.surface,
+                              borderRadius: BorderRadius.circular(14.0),
                               border: Border.all(
                                 color: isSelected
-                                    ? theme.primaryColor
-                                    : AppColors.textTertiaryColor,
-                                width: isSelected ? 2 : 1,
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.outline.withOpacity(0.15),
+                                width: isSelected ? 1.4 : 0.9,
                               ),
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: theme.colorScheme.primary.withOpacity(0.12),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
+                                  : [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.03),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
                             ),
                             child: ListTile(
                               title: Text(
                                 location,
                                 style: TextStyle(
-                                  color: theme.colorScheme.primary,
+                                  color: theme.colorScheme.onSurface,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                  fontSize: 14,
                                 ),
                               ),
                               leading: isSelected
                                   ? Icon(
-                                      Icons.radio_button_checked,
-                                      color: theme.primaryColor,
+                                      Icons.check_circle,
+                                      color: theme.colorScheme.primary,
                                     )
                                   : const Icon(
-                                      Icons.radio_button_off,
-                                      color: AppColors.textTertiaryColor,
+                                      Icons.radio_button_unchecked,
+                                      color: Color(0xFF9E9E9E),
                                     ),
                               onTap: () {
                                 locationController.selectLocation(location);

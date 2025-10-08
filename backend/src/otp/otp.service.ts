@@ -5,6 +5,7 @@ import { User } from 'src/auth/auth.entity';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { OtpTemp } from './otp.entity';
+import { v4 as uuidv4 } from 'uuid';
 import { ChatGateway } from 'src/chat/chat.gateway';
 @Injectable()
 export class OtpService {
@@ -40,13 +41,28 @@ export class OtpService {
           HttpStatus.BAD_REQUEST,
         );
       const formattedPhone = this.normalizePhone(phone);
-      const existingUser = await this.user.findOne({ where: { phone: formattedPhone }, attributes: ['uuid', 'phone'] });
+      let existingUser = await this.user.findOne({ where: { phone: formattedPhone }, attributes: ['uuid', 'phone'] });
+      // Strategy A: Eagerly create user if not present; preserve otp_temp for other legacy flows
+      if (!existingUser) {
+        // Generate lightweight random username: user_<5 chars of uuid>
+        const shortId = Math.random().toString(36).slice(2, 7);
+        // Use same default location as elsewhere in app (Aşgabat)
+        const created = await this.user.create({
+          uuid: uuidv4(),
+          phone: formattedPhone,
+          name: `user_${shortId}`,
+          location: 'Aşgabat',
+          status: false,
+        } as any);
+        existingUser = created as any;
+      }
       const socketId: string | undefined = (this.chatGateway as any)?.['socketId'];
-      const result = await this.chatGateway.issueOtp(socketId, formattedPhone, !!existingUser);
+      // Force registered=true so issueOtp writes directly to users.otp now that user exists
+      const result = await this.chatGateway.issueOtp(socketId, formattedPhone, true);
       return res.status(HttpStatus.OK).json({
         message: `OTP processed for ${formattedPhone}`,
         phone: result.phone,
-        registered: !!existingUser,
+        registered: true,
         emitted: result.emitted,
         target: result.target,
         via: 'gateway'
