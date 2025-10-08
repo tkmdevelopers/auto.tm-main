@@ -577,130 +577,56 @@ class PostDetailsScreen extends StatelessWidget {
                           height: 0.5,
                         ),
                         SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 1,
-                              child: _buildCharacteristics(
-                                AppImages.brand,
-                                'Brand'.tr,
-                                post.value?.brand ?? '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            // if(post.value?.enginePower != 0)
-                            Expanded(
-                              child: _buildCharacteristics(
-                                AppImages.enginePower,
-                                'Engine power'.tr,
-                                post.value?.enginePower != null ||
-                                        post.value?.enginePower != 0
-                                    ? post.value!.enginePower.toStringAsFixed(0)
-                                    : '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 1,
-                              child: _buildCharacteristics(
-                                AppImages.car,
-                                'Model'.tr,
-                                post.value?.model ?? '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            // if(post.value?.transmission != '')
-                            Expanded(
-                              child: _buildCharacteristics(
-                                AppImages.transmission,
-                                'Transmission'.tr,
-                                post.value?.transmission.isNotEmpty == true
-                                    ? post.value!.transmission.tr
-                                    : '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildCharacteristics(
-                                AppImages.year,
-                                'Year'.tr,
-                                post.value?.year != null
-                                    ? '${post.value!.year.toStringAsFixed(0)} y.'
-                                    : '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            // if(post.value?.milleage != 0)
-                            Expanded(
-                              child: _buildCharacteristics(
-                                AppImages.milleage,
-                                'Milleage'.tr,
-                                post.value?.milleage != null
-                                    ? '${post.value!.milleage.toStringAsFixed(0)} km'
-                                    : '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                        // if(post.value?.milleage != 0 || post.value?.engineType != '')
-                        SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildCharacteristics(
-                                AppImages.carCondition,
-                                'Car condition'.tr,
-                                post.value?.condition.isNotEmpty == true
-                                    ? post.value!.condition.tr
-                                    : '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            // if(post.value?.engineType != '')
-                            Expanded(
-                              child: _buildCharacteristics(
-                                AppImages.engineType,
-                                'Engine type'.tr,
-                                post.value?.engineType.isNotEmpty == true
-                                    ? post.value!.engineType.tr
-                                    : '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                        // if(post.value?.vinCode != '')
-                        SizedBox(height: 10),
-                        // if(post.value?.vinCode != '')
-                        _buildCharacteristics(
-                          AppImages.vin,
-                          'VIN',
-                          post.value?.vinCode.isNotEmpty == true
-                              ? post.value!.vinCode.tr
-                              : '-',
-                          theme.colorScheme.onSurfaceVariant,
-                        ),
-                        // if(post.value?.location != '')
-                        SizedBox(height: 10),
-                        // if(post.value?.location != '')
-                        _buildCharacteristics(
-                          AppImages.location,
-                          'Location'.tr,
-                          post.value?.location.isNotEmpty == true
-                              ? post.value!.location.tr
-                              : '-',
-                          theme.colorScheme.onSurfaceVariant,
+                        Builder(
+                          builder: (context) {
+                            final characteristics = <Map<String, String>>[];
+
+                            String? enginePowerText;
+                            if (post.value?.enginePower != null && post.value!.enginePower != 0) {
+                              enginePowerText = post.value!.enginePower.toStringAsFixed(0);
+                            }
+
+                            void add(String icon, String label, String? raw) {
+                              if (raw == null) return;
+                              final v = raw.trim();
+                              if (v.isEmpty || v == '-' || v == '--' || v.toLowerCase() == 'null') return;
+                              // brand & model excluded per requirement (handled earlier in _buildCharacteristics but skip here too for layout)
+                              final lower = label.toLowerCase();
+                              if (lower.contains('brand') || lower.contains('model')) return;
+                              characteristics.add({'icon': icon, 'key': label, 'value': v});
+                            }
+
+                            add(AppImages.enginePower, 'Engine power'.tr, enginePowerText);
+                            add(AppImages.transmission, 'Transmission'.tr, post.value?.transmission);
+                            add(AppImages.year, 'Year'.tr, post.value?.year != null ? post.value!.year.toStringAsFixed(0) + ' y.' : null);
+                            add(AppImages.milleage, 'Milleage'.tr, post.value?.milleage != null ? post.value!.milleage.toStringAsFixed(0) + ' km' : null);
+                            add(AppImages.carCondition, 'Car condition'.tr, post.value?.condition);
+                            add(AppImages.engineType, 'Engine type'.tr, post.value?.engineType);
+                            add(AppImages.vin, 'VIN', post.value?.vinCode);
+                            add(AppImages.location, 'Location'.tr, post.value?.location);
+
+                            if (characteristics.isEmpty) {
+                              return Text(
+                                'No details'.tr,
+                                style: AppStyles.f14w4.copyWith(
+                                  color: theme.colorScheme.onSurface.withOpacity(0.5),
+                                ),
+                              );
+                            }
+
+                            return Column(
+                              children: [
+                                for (var i = 0; i < characteristics.length; i++) ...[
+                                  _buildCharacteristics(
+                                    characteristics[i]['icon']!,
+                                    characteristics[i]['key']!,
+                                    characteristics[i]['value']!,
+                                    theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ],
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -932,33 +858,74 @@ class PostDetailsScreen extends StatelessWidget {
     String value,
     Color color,
   ) {
-    return Row(
-      children: [
-        SvgPicture.asset(
-          icon,
-          width: 28,
-          height: 28,
-          colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-          // color: color,
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "$key:",
-                style: AppStyles.f16w6.copyWith(
-                  color: color,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                maxLines: 2,
-              ),
-              Text(value, style: AppStyles.f14w4.copyWith(color: color)),
-            ],
+    // Normalize inputs
+    final k = key.trim();
+    final v = (value).trim();
+
+    // 1. Remove brand & model rows entirely
+    final lower = k.toLowerCase();
+    if (lower.contains('brand') || lower.contains('model')) {
+      return const SizedBox.shrink();
+    }
+
+    // 2. Skip empty / placeholder / null-ish values
+    if (v.isEmpty || v.toLowerCase() == 'null' || v == '-' || v == '--') {
+      return const SizedBox.shrink();
+    }
+
+    // 3. Pull colors from theme surface / onSurface for Apple-like subtle contrast
+    final theme = Get.context?.theme;
+    final onSurface = theme?.colorScheme.onSurface ?? AppColors.textPrimaryColor;
+    final primaryTextColor = onSurface.withOpacity(0.92);
+    final secondaryTextColor = onSurface.withOpacity(0.60);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            icon,
+            width: 20,
+            height: 20,
+            colorFilter: ColorFilter.mode(onSurface, BlendMode.srcIn), // full onSurface per request
           ),
-        ),
-      ],
+          const SizedBox(width: 10),
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    flex: 5,
+                    child: Text(
+                      "$k:",
+                      style: AppStyles.f14w5.copyWith(
+                        color: primaryTextColor,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
+                        letterSpacing: -0.15,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      maxLines: 1,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    flex: 7,
+                    child: Text(
+                      v,
+                      style: AppStyles.f14w4.copyWith(
+                        color: secondaryTextColor,
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

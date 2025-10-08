@@ -26,9 +26,10 @@ class _CommentsPageState extends State<CommentsPage> {
         title: Text(
           'Comments'.tr,
           style: TextStyle(
-            color: theme.colorScheme.primary,
+            color: theme.colorScheme.onSurface, // updated to onSurface per request
             fontSize: 20,
             fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
           ),
         ),
         backgroundColor: theme.appBarTheme.backgroundColor,

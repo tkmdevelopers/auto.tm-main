@@ -35,21 +35,33 @@ class SearchScreen extends StatelessWidget {
           children: [
             // Top Search Bar
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-              child: SearchField(
-                hintText: 'Search'.tr,
-                controller: controller.searchTextController,
-                focusNode: controller.searchTextFocus,
-                onChanged: (text) {
-                  controller.debouncedSearch(text);
-                },
-                suffixIcon: IconButton(
-                  icon: Icon(Icons.close_rounded, color: AppColors.textTertiaryColor),
-                  onPressed: () {
-                    controller.searchTextController.clear();
-                    controller.hints.clear();
-                  },
-                ),
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: theme.colorScheme.primary, size: 20),
+                    onPressed: () => Get.back(),
+                    splashRadius: 22,
+                  ),
+                  Expanded(
+                    child: SearchField(
+                      hintText: 'Search'.tr,
+                      controller: controller.searchTextController,
+                      focusNode: controller.searchTextFocus,
+                      onChanged: (text) {
+                        controller.debouncedSearch(text);
+                      },
+                      suffixIcon: IconButton(
+                        icon: Icon(Icons.close_rounded, color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                        onPressed: () {
+                          controller.searchTextController.clear();
+                          controller.hints.clear();
+                        },
+                        splashRadius: 18,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -58,9 +70,27 @@ class SearchScreen extends StatelessWidget {
               child: Obx(() {
                 final showInitialHint = controller.searchTextController.text.isEmpty;
                 final isLoading = controller.isLoading.value;
+                final building = controller.indexBuilding.value && !controller.indexReady.value;
 
                 if (showInitialHint) {
-                  return Center(child: Text('Type to search'.tr));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Type to search'.tr),
+                        if (building) ...[
+                          const SizedBox(height: 12),
+                          const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                          const SizedBox(height: 6),
+                          Text('Optimizing suggestions...'.tr, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                        ],
+                      ],
+                    ),
+                  );
                 }
 
                 if (controller.hints.isEmpty && isLoading) {
@@ -76,6 +106,8 @@ class SearchScreen extends StatelessWidget {
                     }
 
                     final hint = controller.hints[index];
+                    final brand = hint.brandLabel;
+                    final model = hint.modelLabel;
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -95,23 +127,27 @@ class SearchScreen extends StatelessWidget {
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
-                                hint.modelLabel,
+                                model,
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
-                                  color: theme.colorScheme.primary,
+                                  color: theme.colorScheme.onSurface,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             SizedBox(height: 4),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
-                                hint.brandLabel,
+                                brand,
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: AppColors.textTertiaryColor,
+                                  color: theme.colorScheme.onSurface.withOpacity(0.55),
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             SizedBox(height: 8),
