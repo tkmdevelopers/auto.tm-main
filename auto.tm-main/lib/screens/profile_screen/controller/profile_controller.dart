@@ -49,6 +49,9 @@ class ProfileController extends GetxController {
 
   var profile = Rxn<ProfileModel>();
 
+  // Tracks whether we've already initialized the form field controllers with existing data
+  final RxBool fieldsInitialized = false.obs;
+
   // Guard flags to prevent duplicate concurrent / repeated fetches
   final RxBool isFetchingProfile =
       false.obs; // true while fetchProfile in-flight
@@ -404,6 +407,43 @@ class ProfileController extends GetxController {
     }
   }
 
+  /// Ensure form text controllers are prefilled with the latest known values.
+  /// This is idempotent and will only run once per screen lifecycle unless
+  /// [force] is true. It prefers freshly fetched profile data, then reactive
+  /// fallback values, then persistent storage.
+  void ensureFormFieldPrefill({bool force = false}) {
+    if (fieldsInitialized.value && !force) return;
+
+    // Resolve best-known name
+    String existingName = '';
+    if (profile.value?.name.isNotEmpty == true) {
+      existingName = profile.value!.name;
+    } else if (name.value.isNotEmpty) {
+      existingName = name.value;
+    } else {
+      existingName = box.read('user_name') ?? '';
+    }
+
+    // Resolve best-known location
+    String existingLocation = '';
+    if (profile.value?.location != null && profile.value!.location!.isNotEmpty) {
+      existingLocation = profile.value!.location!;
+    } else if (location.value.isNotEmpty) {
+      existingLocation = location.value;
+    } else {
+      existingLocation = box.read('user_location') ?? '';
+    }
+
+    if (existingName.isNotEmpty && nameController.text.isEmpty) {
+      nameController.text = existingName;
+    }
+    if (existingLocation.isNotEmpty && locationController.text.isEmpty) {
+      locationController.text = existingLocation;
+    }
+
+    fieldsInitialized.value = true;
+  }
+
   Future<bool> requestGalleryPermission() async {
     var status = await Permission.photos.request(); // For iOS
     if (status.isGranted) {
@@ -474,8 +514,10 @@ class ProfileController extends GetxController {
     // Fire a silent background refresh without blocking navigation
     Future.microtask(() => fetchProfile());
 
-    // Get.back(); // Navigate back only if everything succeeded
-    Get.offAllNamed('/navView');
+    // Navigate back to the profile screen (stay in profile context)
+    if (Get.currentRoute != '/profile') {
+      Get.back();
+    }
     Get.rawSnackbar(
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: AppColors.whiteColor,
@@ -496,7 +538,7 @@ class ProfileController extends GetxController {
           Icon(Icons.check_circle_outline, color: AppColors.notificationColor),
           SizedBox(width: 8),
           Text(
-            'Post created successfully!',
+            'Profile edited successfully!',
             style: TextStyle(
               color: AppColors.textPrimaryColor,
               fontSize: 16,

@@ -104,14 +104,14 @@ class PostItem extends StatelessWidget {
             errorBuilder: (context, error, stackTrace) => Container(
               height: 200,
               width: double.infinity,
-              color: theme.colorScheme.primaryContainer,
+              color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
               child: Center(
                 child: SvgPicture.asset(
                   AppImages.defaultImageSvg,
-                  height: 60,
-                  width: 60,
+                  height: 40,
+                  width: 40,
                   colorFilter: ColorFilter.mode(
-                    theme.colorScheme.primary.withOpacity(0.3),
+                    theme.colorScheme.onSurface.withValues(alpha: 0.3),
                     BlendMode.srcIn,
                   ),
                 ),

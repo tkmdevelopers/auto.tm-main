@@ -121,13 +121,21 @@ class ProfileScreen extends StatelessWidget {
                       top: 16,
                       right: 16,
                       child: TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.onSurface,
+                          backgroundColor: theme.colorScheme.surface.withOpacity(0.6),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                         onPressed: () => Get.to(() => EditProfileScreen()),
                         child: Text(
                           'Edit'.tr,
                           style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            color: theme.primaryColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
                       ),
@@ -150,8 +158,8 @@ class ProfileScreen extends StatelessWidget {
                   user?.name ?? '',
                   style: TextStyle(
                     fontSize: 20,
-                    fontWeight: FontWeight.w500,
-                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
                 Text(
@@ -161,39 +169,17 @@ class ProfileScreen extends StatelessWidget {
                     color: Color(0xFF727272),
                   ),
                 ),
-                if (user?.location != null)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SvgPicture.asset(
-                        AppImages.location,
-                        width: 18,
-                        height: 18,
-                        colorFilter: ColorFilter.mode(
-                          theme.primaryColor,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        user!.location!,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textTertiaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
+                // Location now shown inside the details container below; external row removed to prevent duplication
                 const SizedBox(height: 12),
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      width: 0.5,
-                      color: AppColors.textFieldBorderColor,
+                      width: 0.6,
+                      color: theme.colorScheme.outline.withOpacity(0.15),
                     ),
                   ),
                   child: Column(
@@ -203,42 +189,76 @@ class ProfileScreen extends StatelessWidget {
                         children: [
                           Text(
                             'Username'.tr,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textTertiaryColor,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: theme.colorScheme.onSurface.withOpacity(0.55),
                             ),
                           ),
                           Text(
                             user?.name ?? '',
                             style: TextStyle(
                               fontSize: 14,
-                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      const Divider(color: AppColors.textTertiaryColor),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
+                      Divider(color: theme.colorScheme.outline.withOpacity(0.15), height: 1),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             'Phone number'.tr,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textTertiaryColor,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: theme.colorScheme.onSurface.withOpacity(0.55),
                             ),
                           ),
                           Text(
                             user?.phone ?? '',
                             style: TextStyle(
                               fontSize: 14,
-                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                         ],
                       ),
+                      if (user?.location != null && (user!.location ?? '').isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Divider(color: theme.colorScheme.outline.withOpacity(0.15), height: 1),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Location'.tr,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: theme.colorScheme.onSurface.withOpacity(0.55),
+                              ),
+                            ),
+                            Flexible(
+                              child: Text(
+                                user.location!,
+                                textAlign: TextAlign.right,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -247,11 +267,11 @@ class ProfileScreen extends StatelessWidget {
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      width: 0.5,
-                      color: AppColors.textFieldBorderColor,
+                      width: 0.6,
+                      color: theme.colorScheme.outline.withOpacity(0.15),
                     ),
                   ),
                   child: Column(
@@ -260,55 +280,67 @@ class ProfileScreen extends StatelessWidget {
                       Text(
                         'Additional'.tr,
                         style: TextStyle(
-                          fontWeight: FontWeight.w500,
-                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
                           fontSize: 16,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: const [
+                        children: [
                           Text(
-                            'Support',
+                            'Support'.tr,
                             style: TextStyle(
-                              color: AppColors.textPrimaryColor,
+                              color: theme.colorScheme.onSurface,
                               fontSize: 14,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                           Text(
                             'alphamotors@gmail.com',
                             style: TextStyle(
                               fontSize: 14,
-                              color: AppColors.textTertiaryColor,
+                              color: theme.colorScheme.onSurface.withOpacity(0.55),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       Text(
                         'Terms of service'.tr,
                         style: TextStyle(
-                          color: theme.colorScheme.primary,
+                          color: theme.colorScheme.onSurface.withOpacity(0.8),
                           fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       Text(
                         'Privacy Policy'.tr,
                         style: TextStyle(
-                          color: theme.colorScheme.primary,
+                          color: theme.colorScheme.onSurface.withOpacity(0.8),
                           fontSize: 14,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       TextButton(
                         onPressed: () => controller.logout(),
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.onSurface,
+                          backgroundColor: theme.colorScheme.surface.withOpacity(0.6),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                         child: Text(
                           'Log out'.tr,
                           style: TextStyle(
                             fontSize: 14,
-                            color: theme.primaryColor,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
                       ),

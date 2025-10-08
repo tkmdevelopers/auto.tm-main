@@ -12,13 +12,14 @@ class BlogController extends GetxController {
   var blogs = <Blog>[].obs;
   var isLoading = false.obs;
 
-  // @override
-  // void onInit() {
-  //   fetchBlogs();
-  //   super.onInit();
-  // }
+  @override
+  void onInit() {
+    super.onInit();
+    fetchBlogs();
+  }
 
   void fetchBlogs() async {
+    if (isLoading.value) return; // prevent concurrent fetches
     isLoading.value = true;
     try {
       final response = await http.get(
@@ -32,7 +33,18 @@ class BlogController extends GetxController {
 
       if (response.statusCode == 200) {
         final List data = jsonResponse['data'];
-        blogs.value = data.map((json) => Blog.fromJson(json)).toList();
+        // Dedupe by uuid in case backend returns duplicates (e.g., join or pagination overlap)
+        final map = <String, Blog>{};
+        for (final item in data) {
+          try {
+            final blog = Blog.fromJson(item);
+            map[blog.uuid] = blog; // last wins (or only) ensures uniqueness
+          } catch (_) {
+            // skip malformed item silently
+          }
+        }
+        blogs.value = map.values.toList()
+          ..sort((a, b) => b.date.compareTo(a.date)); // keep newest first
       } 
       if (response.statusCode == 406) {
         final refreshed = await refreshAccessToken();
