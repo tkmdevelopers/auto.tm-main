@@ -1,0 +1,42 @@
+import { ApiProperty } from '@nestjs/swagger';
+import {
+  Table,
+  Column,
+  Model,
+  DataType,
+  ForeignKey,
+  BelongsTo,
+  BelongsToMany,
+} from 'sequelize-typescript';
+import { User } from 'src/auth/auth.entity';
+import { Brands } from 'src/brands/brands.entity';
+import { Categories } from 'src/categories/categories.entity';
+import { PhotoPosts } from 'src/junction/photo_posts';
+import { Models } from 'src/models/models.entity';
+import { Photo } from 'src/photo/photo.entity';
+import { Posts } from 'src/post/post.entity';
+
+@Table({ tableName: 'comments' })
+export class Comments extends Model {
+  @ApiProperty()
+  @Column({ primaryKey: true })
+  uuid: string;
+  @ApiProperty()
+  @Column({ allowNull: false })
+  message: string;
+  @Column({ allowNull: true })
+  status: boolean;
+  @ForeignKey(() => User)
+  @Column({ type: DataType.STRING, allowNull: true })
+  userId: string;
+  @BelongsTo(() => User)
+  user: User;
+  @ApiProperty()
+  @Column
+  sender: string;
+  @ForeignKey(() => Posts)
+  @Column({ type: DataType.STRING, allowNull: true })
+  postId: string;
+  @BelongsTo(() => Posts)
+  post: Posts;
+}

@@ -1,0 +1,151 @@
+import 'dart:convert';
+import 'package:auto_tm/utils/key.dart';
+import 'package:flutter/widgets.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:http/http.dart' as http;
+
+class CommentsController extends GetxController {
+  final TextEditingController commentTextController = TextEditingController();
+  final box = GetStorage();
+  var comments = <Map<String, dynamic>>[].obs;
+  var isLoading = false.obs;
+  var userId = "".obs;
+
+  var replyToComment = Rxn<Map<String, dynamic>>(); // Stores selected comment for reply
+
+
+  // Fetch comments for a specific post
+  Future<void> fetchComments(String postId) async {
+    // isLoading.value = true;
+    try {
+      final response = await http.get(
+        Uri.parse("${ApiKey.getCommentsKey}?postId=$postId"),
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+        },
+      );
+      if (response.statusCode == 200) {
+        final decodedData = json.decode(response.body);
+        comments.value = List<Map<String, dynamic>>.from(decodedData);
+        Future.delayed(Duration.zero, () { // Schedule for next frame
+        isLoading.value = false;
+      });
+      } if (response.statusCode == 406) {
+        await refreshAccessToken();
+        // if (refreshed) {
+        //   return fetchBlogs(); // Call fetchBlogs again only if refresh was successful
+        // } else {
+        //   // Handle the case where token refresh failed (e.g., show an error)
+        //   ('Error', 'Failed to refresh access token. Please log in again.', snackPosition: SnackPosition.BOTTOM);
+        //   // Optionally navigate to the login screen if refresh consistently fails
+        //   // Get.offAllNamed('/login');
+        // }
+      } else {
+Future.delayed(Duration.zero, () { // Schedule for next frame
+        isLoading.value = false;
+      });
+      // isLoading.value = false;
+      }
+    } catch (e) {
+      Future.delayed(Duration.zero, () { // Schedule for next frame
+      isLoading.value = false;
+    });
+    } finally {
+      // isLoading.value = false;
+    }
+  }
+
+  // Send a comment or reply
+  Future<void> sendComment(String postId, String message) async {
+    // if (userId.value.isEmpty || userId.value == '') {
+    //   Get.toNamed('/profile'); // Navigate to Profile Screen if user is not logged in
+    //   return;
+    // }
+    if (message.isEmpty) return;
+
+    final commentData = {
+      "postId": postId,
+      "message": message,
+    };
+
+    // If replying, attach `replyTo` UUID
+    if (replyToComment.value != null) {
+      commentData["replyTo"] = replyToComment.value!["uuid"];
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse(ApiKey.postCommentsKey),
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+        },
+        body: jsonEncode(commentData),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final newComment = jsonDecode(response.body);
+        comments.add(newComment); // Add new comment to list
+        replyToComment.value = null; // Clear reply after sending
+      } if (response.statusCode == 406) {
+        await refreshAccessToken();
+        // if (refreshed) {
+        //   return fetchBlogs(); // Call fetchBlogs again only if refresh was successful
+        // } else {
+        //   // Handle the case where token refresh failed (e.g., show an error)
+        //   ('Error', 'Failed to refresh access token. Please log in again.', snackPosition: SnackPosition.BOTTOM);
+        //   // Optionally navigate to the login screen if refresh consistently fails
+        //   // Get.offAllNamed('/login');
+        // }
+      } else {
+      }
+    } catch (e) {
+      return;
+    }
+  }
+
+  Future<bool> refreshAccessToken() async {
+    try {
+      final refreshToken = box.read('REFRESH_TOKEN');
+
+      final response = await http.get(
+        Uri.parse(ApiKey.refreshTokenKey),
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': 'Bearer $refreshToken'
+        },
+      );
+
+      if (response.statusCode == 200 && response.body.isNotEmpty) {
+        final data = jsonDecode(response.body);
+        final newAccessToken = data['accessToken'];
+        if (newAccessToken != null) {
+          box.remove('ACCESS_TOKEN');
+          box.write('ACCESS_TOKEN', newAccessToken);
+          return true; // Indicate successful refresh
+        } else {
+          return false; // Indicate failed refresh
+        }
+      } if (response.statusCode == 406) {
+        Get.offAllNamed('/login');
+        return false; // Indicate failed refresh
+      } else {
+        return false; // Indicate failed refresh
+      }
+    } catch (e) {
+      return false; // Indicate failed refresh
+    }
+  }
+
+  // Set a comment as the one being replied to
+  void setReplyTo(Map<String, dynamic> comment) {
+    replyToComment.value = comment;
+  }
+
+  // Clear reply
+  void clearReply() {
+    replyToComment.value = null;
+  }
+}
