@@ -63,7 +63,7 @@ class ColorController extends GetxController {
 // Screen
 class SFilterColors extends StatelessWidget {
   final ColorController colorController = Get.put(ColorController());
-  final FilterController filterController = Get.put(FilterController());
+  final FilterController filterController = Get.find<FilterController>();
 
   SFilterColors({super.key});
 

@@ -38,8 +38,6 @@ export class BrandsController {
   ) {
     return this.brandsService.listOfBrands(req, res, body);
   }
-  @ApiSecurity('token')
-  @UseGuards(AuthGuard)
   @Get()
   async findAll(
     @Query() query: FindALlBrands,
@@ -59,8 +57,6 @@ export class BrandsController {
   ) {
     return this.brandsService.create(body, req, res);
   }
-  @ApiSecurity('token')
-  @UseGuards(AuthGuard)
   @Get('/search')
   async search(
     @Query() query: Search,

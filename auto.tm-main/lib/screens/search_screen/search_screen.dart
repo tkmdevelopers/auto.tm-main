@@ -9,7 +9,7 @@ import 'package:shimmer/shimmer.dart';
 
 class SearchScreen extends StatelessWidget {
   final SearchScreenController controller = Get.put(SearchScreenController());
-  final FilterController filterController = Get.put(FilterController());
+  final FilterController filterController = Get.find<FilterController>();
 
   SearchScreen({super.key});
 

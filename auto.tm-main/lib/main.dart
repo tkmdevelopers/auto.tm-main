@@ -10,6 +10,7 @@ import 'package:auto_tm/screens/filter_screen/filter_screen.dart';
 import 'package:auto_tm/screens/home_screen/home_screen.dart';
 import 'package:auto_tm/screens/profile_screen/profile_screen.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
+import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 import 'package:auto_tm/screens/search_screen/search_screen.dart';
 import 'package:auto_tm/screens/post_screen/controller/upload_manager.dart';
 import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
@@ -90,6 +91,9 @@ Future<void> initServices() async {
   // Register ProfileController globally so UI never creates duplicates.
   if (!Get.isRegistered<ProfileController>()) {
     Get.put(ProfileController(), permanent: true);
+  }
+  if (!Get.isRegistered<FilterController>()) {
+    Get.put(FilterController(), permanent: true);
   }
 }
 

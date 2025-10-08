@@ -33,6 +33,7 @@ export class PostController {
   constructor(private postService: PostService) {}
   // @ApiSecurity('token')
   // @UseGuards(AuthGuard)
+  // Public: allow unauthenticated users to fetch / filter posts
   @Get()
   async findAll(
     @Query() query: FindAllPosts,

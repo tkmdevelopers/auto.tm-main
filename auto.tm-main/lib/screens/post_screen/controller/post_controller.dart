@@ -699,6 +699,13 @@ class PostController extends GetxController {
           'location': selectedLocation.value,
           'phone': fullPhone,
           'description': description.text,
+          // Inject a personalInfo block carrying region semantics. For now region is forced 'Local'.
+          'personalInfo': {
+            'name': Get.isRegistered<ProfileController>() ? Get.find<ProfileController>().name.value : '',
+            'location': selectedLocation.value, // city
+            'phone': fullPhone,
+            'region': 'Local',
+          },
           // 'subscriptionId': selectedSubscriptionId, // add when implemented
         }),
       );

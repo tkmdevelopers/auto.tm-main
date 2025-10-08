@@ -13,7 +13,7 @@ class ResultPremiumSelection extends StatelessWidget {
   ResultPremiumSelection({super.key});
 
   final PremiumController premiumController = Get.put(PremiumController());
-  final FilterController controller = Get.put(FilterController());
+  final FilterController controller = Get.find<FilterController>();
 
   @override
   Widget build(BuildContext context) {

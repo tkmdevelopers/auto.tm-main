@@ -8,7 +8,7 @@ import 'package:get/get.dart';
 class ResultBrandModelComponent extends StatelessWidget {
   ResultBrandModelComponent({super.key});
 
-  final FilterController controller = Get.put(FilterController());
+  final FilterController controller = Get.find<FilterController>();
 
   @override
   Widget build(BuildContext context) {

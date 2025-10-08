@@ -72,15 +72,7 @@ class FilterController extends GetxController {
     });
   }
 
-  @override
-  void onClose() {
-    milleageController.dispose();
-    enginepowerController.dispose();
-    brandSearchController.dispose();
-    modelSearchController.dispose();
-    scrollController.dispose();
-    super.onClose();
-  }
+  // Removed onClose disposal to avoid disposing controllers for a permanent instance.
 
   void updateSortOption(String newSortOption) {
     if (selectedSortOption.value != newSortOption) {
@@ -147,8 +139,7 @@ class FilterController extends GetxController {
   String get effectiveMinYear => minYear.value.isNotEmpty ? minYear.value : '';
   String get effectiveMaxYear => maxYear.value.isNotEmpty ? maxYear.value : '';
 
-  void clearFilters() {
-    // Preserve brand & model selections only.
+  void clearFilters({bool includeBrandModel = false}) {
     transmission.value = '';
     enginepowerController.clear();
     milleageController.clear();
@@ -159,8 +150,14 @@ class FilterController extends GetxController {
     premium.clear();
     minYear.value = '';
     maxYear.value = '';
-  location.value = '';
-  selectedCountry.value = 'Local';
+    location.value = '';
+    selectedCountry.value = 'Local';
+    if (includeBrandModel) {
+      selectedBrand.value = '';
+      selectedBrandUuid.value = '';
+      selectedModel.value = '';
+      selectedModelUuid.value = '';
+    }
   }
 
   Map<String, String> _parseSortOption(String option) {
@@ -183,35 +180,31 @@ class FilterController extends GetxController {
   final searchResults = <Post>[].obs;
 
   void filterBrands(String query) {
-    if (brandSearchController.text.isEmpty) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) {
       filteredBrands.assignAll(brands);
-    } else {
-      filteredBrands.assignAll(
-        brands
-            .where(
-              (brand) => brand['name'].toString().toLowerCase().contains(
-                brandSearchController.text.toLowerCase(),
-              ),
-            )
-            .toList(),
-      );
+      return;
     }
+    filteredBrands.assignAll(
+      brands.where((brand) => brand['name']
+          .toString()
+          .toLowerCase()
+          .contains(q)).toList(),
+    );
   }
 
   void filterModels(String query) {
-    if (modelSearchController.text.isEmpty) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) {
       filteredModels.assignAll(models);
-    } else {
-      filteredModels.assignAll(
-        models
-            .where(
-              (model) => model['name'].toString().toLowerCase().contains(
-                modelSearchController.text.toLowerCase(),
-              ),
-            )
-            .toList(),
-      );
+      return;
     }
+    filteredModels.assignAll(
+      models.where((model) => model['name']
+          .toString()
+          .toLowerCase()
+          .contains(q)).toList(),
+    );
   }
 
   String buildQuery() {
@@ -311,6 +304,8 @@ class FilterController extends GetxController {
           searchResults.addAll(newResults);
           offset += limit;
         }
+
+        _applyRegionAndCityFilters();
       } else if (response.statusCode == 406) {
         final refreshed = await refreshAccessToken();
         if (refreshed) {
@@ -326,6 +321,42 @@ class FilterController extends GetxController {
     } finally {
       isSearchLoading.value = false;
     }
+  }
+
+  void _applyRegionAndCityFilters() {
+    final regionFilterRaw = selectedCountry.value.trim();
+    if (regionFilterRaw.isEmpty) return; // nothing to filter by
+    final regionFilter = regionFilterRaw.toLowerCase();
+    final cityFilter = location.value.trim().toLowerCase();
+
+    // Build filtered list; treat posts with missing region as 'local'
+    final filtered = <Post>[];
+    for (final p in searchResults) {
+      // Pull region from strongly typed field; fallback already handled in Post.fromJson
+      var postRegion = p.region.trim();
+      if (postRegion.isEmpty) {
+        // Legacy posts before region introduction considered Local
+        postRegion = 'Local';
+      }
+      final regionMatch = postRegion.toLowerCase() == regionFilter;
+      if (!regionMatch) continue;
+
+      if (regionFilter == 'local') {
+        if (cityFilter.isEmpty) {
+          // Any local city accepted when user didn't choose a city
+          filtered.add(p);
+        } else {
+          final postCity = p.location.trim().toLowerCase();
+          if (postCity.isNotEmpty && postCity == cityFilter) {
+            filtered.add(p);
+          }
+        }
+      } else {
+        // Non-local regions ignore city list (UI already disabled city selection)
+        filtered.add(p);
+      }
+    }
+    searchResults.assignAll(filtered);
   }
 
   final lastSubscribes = <String>[].obs;

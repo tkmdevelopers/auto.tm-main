@@ -9,21 +9,35 @@ import 'package:auto_tm/utils/key.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class BrandSelection extends StatelessWidget {
-  final FilterController controller = Get.find<FilterController>();
-  // Use find if already registered, else put.
-  final BrandController brandController =
-      Get.isRegistered<BrandController>()
-          ? Get.find<BrandController>()
-          : Get.put(BrandController());
+class BrandSelection extends StatefulWidget {
+  const BrandSelection({super.key});
 
-  BrandSelection({super.key}) {
-    // Load brands only if list empty to prevent refetch loops when returning
+  @override
+  State<BrandSelection> createState() => _BrandSelectionState();
+}
+
+class _BrandSelectionState extends State<BrandSelection> {
+  final FilterController controller = Get.find<FilterController>();
+  final BrandController brandController = Get.isRegistered<BrandController>()
+      ? Get.find<BrandController>()
+      : Get.put(BrandController());
+
+  late final TextEditingController searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    searchController = TextEditingController();
     if (controller.brands.isEmpty) {
       controller.fetchBrands();
     }
-    // Ensure local history is loaded and then fetch details for those brands
     brandController.refreshData();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -59,8 +73,8 @@ class BrandSelection extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: TextField(
-        onChanged: controller.filterBrands,
-        controller: controller.brandSearchController,
+        controller: searchController,
+        onChanged: (val) => controller.filterBrands(val),
         decoration: InputDecoration(
           hintText: 'Search'.tr,
           prefixIcon: const Icon(

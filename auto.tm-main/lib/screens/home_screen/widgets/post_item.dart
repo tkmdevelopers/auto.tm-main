@@ -16,6 +16,7 @@ class PostItem extends StatelessWidget {
   final String photoPath;
   final String? subscription;
   final String location;
+  final String region; // NEW: region (e.g., Local, Dubai, China)
   final double year;
   final double milleage;
   final String currency;
@@ -34,6 +35,7 @@ class PostItem extends StatelessWidget {
     required this.currency,
     required this.createdAt,
     required this.location,
+    this.region = 'Local',
   });
 
   final FavoritesController favoritesController = Get.put(
@@ -236,38 +238,76 @@ class PostItem extends StatelessWidget {
   }
 
   Widget _buildPriceLocationRow(ThemeData theme) {
+    final isLocal = region.toLowerCase() == 'local';
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '${price.toStringAsFixed(0)} $currency',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: AppColors.notificationColor,
+        Expanded(
+          child: Text(
+            '${price.toStringAsFixed(0)} $currency',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.notificationColor,
+            ),
           ),
         ),
-        Row(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Icon(
-              Icons.location_on_outlined,
-              size: 14,
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              location,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+            if (isLocal && location.isNotEmpty)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 14,
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    location,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ],
               ),
-            ),
+            // Show region only when NOT local
+            if (region.isNotEmpty && !isLocal)
+              Padding(
+                padding: EdgeInsets.only(top: isLocal && location.isNotEmpty ? 4 : 0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.public,
+                      size: 14,
+                      color: theme.colorScheme.onSurface.withOpacity(0.55),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      region,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.onSurface.withOpacity(0.65),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ],
     );
   }
+
+  // _shouldShowRegion removed: region is displayed only for non-local posts now.
+
+  // Removed standalone region row; region now integrated into price/location area (only when non-local).
 
   Widget _buildDetailsRow(ThemeData theme) {
     return Row(

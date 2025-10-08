@@ -60,7 +60,7 @@ class CountryPicker extends StatelessWidget {
 
     final Map<String, String> filterOptions = {
       'Local': 'Local',
-      'Dubai': 'Dubai',
+      'UAE': 'UAE',
       'China': 'China',
     };
 
@@ -84,8 +84,14 @@ class CountryPicker extends StatelessWidget {
 
             return GestureDetector(
               onTap: () {
-                controller.selectLocation(englishValue);
-                controller.searchProducts();
+                if (controller.selectedCountry.value != englishValue) {
+                  controller.selectLocation(englishValue);
+                  // If switching away from Local, clear any city selection
+                  if (englishValue != 'Local') {
+                    controller.location.value = '';
+                  }
+                  controller.searchProducts();
+                }
               },
               child: Container(
                 width: MediaQuery.of(context).size.width * 0.28,

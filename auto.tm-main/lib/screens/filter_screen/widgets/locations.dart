@@ -268,7 +268,7 @@ class LocationController extends GetxController {
 // Screen
 class SLocations extends StatelessWidget {
   final LocationController locationController = Get.put(LocationController());
-  final FilterController filterController = Get.put(FilterController());
+  final FilterController filterController = Get.find<FilterController>();
 
   SLocations({super.key});
 
@@ -319,21 +319,29 @@ class SLocations extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20.0),
-            // Location List
+            // Location List (disabled when region != Local)
             Expanded(
               child: Obx(() {
+                final isLocal = filterController.selectedCountry.value == 'Local';
+                if (!isLocal) {
+                  return Center(
+                    child: Text(
+                      'City selection available only for Local region'.tr,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }
                 return Scrollbar(
                   child: ListView.builder(
                     itemCount: locationController.filteredLocations.length,
                     itemBuilder: (context, index) {
-                      final location =
-                          locationController.filteredLocations[index];
-                      //final isSelected = locationController.selectedLocation.value == location; // Removed direct comparison
+                      final location = locationController.filteredLocations[index];
                       return Obx(() {
-                        // Added Obx inside the itemBuilder
-                        final isSelected =
-                            locationController.selectedLocation.value ==
-                                location;
+                        final isSelected = locationController.selectedLocation.value == location;
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8.0),
                           child: AnimatedContainer(
@@ -342,9 +350,9 @@ class SLocations extends StatelessWidget {
                               color: theme.colorScheme.surface,
                               borderRadius: BorderRadius.circular(6.0),
                               border: Border.all(
-                color: isSelected
-                  ? theme.colorScheme.onSurface
-                  : AppColors.textTertiaryColor,
+                                color: isSelected
+                                    ? theme.colorScheme.onSurface
+                                    : AppColors.textTertiaryColor,
                                 width: isSelected ? 2 : 1,
                               ),
                             ),
@@ -360,8 +368,10 @@ class SLocations extends StatelessWidget {
                                       Icons.radio_button_checked,
                                       color: theme.colorScheme.onSurface,
                                     )
-                                  : const Icon(Icons.radio_button_off,
-                                      color: AppColors.textTertiaryColor),
+                                  : const Icon(
+                                      Icons.radio_button_off,
+                                      color: AppColors.textTertiaryColor,
+                                    ),
                               onTap: () {
                                 locationController.selectLocation(location);
                                 filterController.location.value = location;

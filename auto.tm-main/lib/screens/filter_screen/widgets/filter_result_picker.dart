@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class FilterResultPicker extends StatelessWidget {
-  final FilterController controller = Get.put(FilterController());
+  final FilterController controller = Get.find<FilterController>();
 
   FilterResultPicker({super.key});
 

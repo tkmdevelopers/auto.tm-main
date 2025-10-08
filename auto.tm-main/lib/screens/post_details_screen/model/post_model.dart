@@ -16,6 +16,8 @@ class Post {
   final String phoneNumber;
   final String createdAt;
   final bool? status;
+  // Region (personalInfo.region or fallback to personalInfo.location). 'Local' for local posts.
+  final String region;
 
   final String? subscription;
   final String photoPath;
@@ -40,6 +42,7 @@ class Post {
     required this.transmission,
     required this.vinCode,
     required this.phoneNumber,
+    required this.region,
     this.subscription,
     this.status,
     required this.photoPath,
@@ -52,6 +55,8 @@ class Post {
   factory Post.fromJson(Map<String, dynamic> json) {
     // final small = json['subscription']?['photo']?['originalPath'] as String?;
     final small = json['subscription']?['photo']?['path']?['small'] as String?;
+    final personalInfo = json['personalInfo'] as Map<String, dynamic>?;
+    final region = personalInfo?['region']?.toString() ?? personalInfo?['location']?.toString() ?? '';
     return Post(
       uuid: json['uuid'] ?? '',
       model: json['model']?['name'] ?? '',
@@ -84,6 +89,7 @@ class Post {
       subscription: small,
       video: json['video']?['url'] ?? '',
       createdAt: json['createdAt'] ?? '',
+      region: region,
       // file: json['file'],
       file: json['file'] != null ? FileData.fromJson(json['file']) : null,
     );

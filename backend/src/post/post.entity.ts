@@ -64,7 +64,7 @@ export class Posts extends Model {
   @Column
   currency: string;
   @Column({ type: DataType.JSON, allowNull: true })
-  personalInfo: { name: string; location: string; phone: string } | null;
+  personalInfo: { name: string; location: string; phone: string; region?: string } | null;
   @Column
   description: string;
   @Column({ allowNull: true })

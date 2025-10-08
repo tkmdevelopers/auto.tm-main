@@ -1,6 +1,5 @@
 import 'package:auto_tm/global_widgets/refresh_indicator.dart';
 import 'package:auto_tm/screens/blog_screen/controller/blog_controller.dart';
-import 'package:auto_tm/screens/blog_screen/widgets/add_blog_screen.dart';
 import 'package:auto_tm/screens/blog_screen/widgets/blog_detais_screen.dart';
 import 'package:auto_tm/screens/blog_screen/widgets/blog_shimmer.dart';
 import 'package:auto_tm/services/token_service/token_service.dart';
@@ -18,39 +17,37 @@ class BlogScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    controller.fetchBlogs();
+  // Initial fetch handled in BlogController.onInit()
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(elevation:4,
         title: Text(
-          'Car blog'.tr,
-          style: AppStyles.f18w6.copyWith(color: theme.colorScheme.primary),
+          'News'.tr,
+          style: AppStyles.f18w6.copyWith(color: theme.colorScheme.onSurface),
         ),
         backgroundColor: theme.appBarTheme.backgroundColor,
         surfaceTintColor: theme.appBarTheme.backgroundColor,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 10.0),
-            // child: IconButton(onPressed: () => Get.to(() => AddBlogScreen()), icon: Icon(Icons.add, size: 21,color: theme.colorScheme.primary,)),
-            child: IconButton(
-                onPressed: () {
-                  final token = tokenService.getToken();
-                  if (token == null || token.isEmpty) {
-                    Future.delayed(
-                        Duration.zero, () => Get.toNamed('/register'));
-                  } else {
-                    Future.delayed(
-                        Duration.zero, () => Get.to(() => CreateBlogScreen()));
-                  }
-
-                  // Get.to(() => CreateBlogScreen());
-                },
-                icon: Icon(
-                  Icons.add,
-                  size: 21,
-                  color: theme.colorScheme.primary,
-                )),
-          )
+          // Posting temporarily disabled
+          // Padding(
+          //   padding: const EdgeInsets.only(right: 10.0),
+          //   child: IconButton(
+          //       onPressed: () {
+          //         final token = tokenService.getToken();
+          //         if (token == null || token.isEmpty) {
+          //           Future.delayed(
+          //               Duration.zero, () => Get.toNamed('/register'));
+          //         } else {
+          //           Future.delayed(
+          //               Duration.zero, () => Get.to(() => CreateBlogScreen()));
+          //         }
+          //       },
+          //       icon: Icon(
+          //         Icons.add,
+          //         size: 21,
+          //         color: theme.colorScheme.onSurface,
+          //       )),
+          // )
         ],
       ),
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -88,7 +85,7 @@ class BlogScreen extends StatelessWidget {
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
+                    color: theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(color: theme.shadowColor, blurRadius: 5)
@@ -105,8 +102,7 @@ class BlogScreen extends StatelessWidget {
                             AppImages.year,
                             width: 12,
                             height: 12,
-                            colorFilter: ColorFilter.mode(theme.colorScheme.primary, BlendMode.srcIn),
-                            // color: theme.colorScheme.primary,
+                            colorFilter: ColorFilter.mode(theme.colorScheme.onSurface.withOpacity(0.7), BlendMode.srcIn),
                           ),
                           SizedBox(
                             width: 5,
@@ -124,15 +120,16 @@ class BlogScreen extends StatelessWidget {
                       Text(
                         blog.title,
                         style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.primary),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
                       ),
                       // Wrap(
                       // children: [Text(blog.description, style: TextStyle(fontSize: 12, color: Color(0xFFA4A4A4),),maxLines: 3, overflow: TextOverflow.ellipsis,)],
                       // ),
-                      _buildContentWithImages(
-                          blog.description, theme.colorScheme.primary),
+            _buildContentWithImages(
+              blog.description, theme.colorScheme.onSurface),
                     ],
                   ),
                 ),

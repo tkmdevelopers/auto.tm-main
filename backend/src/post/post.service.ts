@@ -67,7 +67,7 @@ export class PostService {
         vin: string;
         price: number;
         currency: string;
-        personalInfo: { name: string; location: string };
+        personalInfo: { name: string; location: string; region?: string };
         description: string;
       }[] = [];
 
@@ -90,6 +90,7 @@ export class PostService {
           personalInfo: {
             name: model?.personalInfo?.name,
             location: model?.personalInfo?.location,
+            region: (model as any)?.personalInfo?.region || 'Local',
           },
           description: model.description,
         });
@@ -358,6 +359,7 @@ export class PostService {
           name: personalInfo?.name,
           location: personalInfo?.location,
           phone: phone,
+          region: (personalInfo as any)?.region,
         },
         milleage: milleage,
         enginePower: enginePower,

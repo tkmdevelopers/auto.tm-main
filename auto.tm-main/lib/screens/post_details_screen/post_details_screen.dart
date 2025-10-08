@@ -603,6 +603,8 @@ class PostDetailsScreen extends StatelessWidget {
                             add(AppImages.carCondition, 'Car condition'.tr, post.value?.condition);
                             add(AppImages.engineType, 'Engine type'.tr, post.value?.engineType);
                             add(AppImages.vin, 'VIN', post.value?.vinCode);
+                            // New: Region (from personalInfo.region)
+                            add(AppImages.location, 'Region'.tr, (post.value?.region.isNotEmpty ?? false) ? post.value!.region : 'Local');
                             add(AppImages.location, 'Location'.tr, post.value?.location);
 
                             if (characteristics.isEmpty) {
