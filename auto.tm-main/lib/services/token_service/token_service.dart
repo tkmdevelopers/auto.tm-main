@@ -12,10 +12,11 @@ class TokenService {
   }
 
   void deleteToken() {
-    _storage.remove('authToken');
+    _storage.remove('ACCESS_TOKEN');
+    _storage.remove('REFRESH_TOKEN');
   }
 
   void clearStorage() {
-    _storage.erase();
+    _storage.erase(); // Be careful: this wipes all persisted data (including preferences)
   }
 }

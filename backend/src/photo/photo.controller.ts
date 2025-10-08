@@ -158,12 +158,14 @@ export class PhotoController {
   @UseInterceptors(FileInterceptor('file', muletrOptionsForUsers))
   @ApiConsumes('multipart/form-data')
   uploadFileUser(
-    @UploadedFiles()
-    file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File,
     @Body() body: UploadUser,
     @Req() req: Request,
     @Res() res: Response,
   ) {
+    if (!file) {
+      return res.status(400).json({ message: 'No file provided' });
+    }
     return this.PhotoService.uploadUser(file, body, req, res);
   }
   @ApiSecurity('token')

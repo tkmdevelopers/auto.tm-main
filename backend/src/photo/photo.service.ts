@@ -375,7 +375,10 @@ export class PhotoService {
     res: Response,
   ) {
     try {
-      console.log(req?.uuid);
+      const userId = req?.uuid;
+      if (!userId) {
+        return res.status(400).json({ message: 'Missing user context' });
+      }
       const originalPath = file.path;
       const uploadDir = path.dirname(originalPath);
 
@@ -385,37 +388,37 @@ export class PhotoService {
         { name: 'small', width: 256 },
       ];
 
-      const paths = {
-        small: '',
-        medium: '',
-        large: '',
-      };
-
+      const paths: any = { small: '', medium: '', large: '' };
       for (const size of sizes) {
         const resizedFilePath = path.join(
           uploadDir,
           `${size.name}_${uuidv4()}${path.extname(file.originalname)}`,
         );
         await sharp(originalPath).resize(size.width).toFile(resizedFilePath);
-
         paths[size.name] = resizedFilePath;
       }
 
-      await this.photo.update(
-        {
+      // Try to find an existing user photo row
+      const existing = await this.photo.findOne({ where: { userId } });
+      if (!existing) {
+        const created = await this.photo.create({
+          uuid: uuidv4(),
           path: paths,
           originalPath,
-        },
-        {
-          where: {
-            userId: req.uuid,
-          },
-        },
-      );
-      return res.status(200).json({ message: 'OK' });
+          userId,
+        } as any);
+        return res
+          .status(200)
+          .json({ message: 'OK', paths: created.path, created: true });
+      } else {
+        await existing.update({ path: paths, originalPath });
+        return res
+          .status(200)
+          .json({ message: 'OK', paths: existing.path, updated: true });
+      }
     } catch (error) {
-      console.error('Error uploading Category photos:', error);
-      throw new Error('Failed to upload banner photos');
+      console.error('Error uploading user photo:', error);
+      return res.status(500).json({ message: 'Upload failed' });
     }
   }
   async deleteUser(param: PhotoUUID) {

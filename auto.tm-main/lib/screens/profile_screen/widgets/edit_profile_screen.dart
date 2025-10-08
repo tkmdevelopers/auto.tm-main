@@ -18,8 +18,9 @@ class EditProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Always attempt a prefill from existing data sources (profile -> reactive -> storage)
-    controller.ensureFormFieldPrefill();
+  // Attempt a prefill from existing data sources (profile -> reactive -> storage).
+  // Do NOT force if we already populated once; late profile arrival listener in controller will re-run with force.
+  controller.ensureFormFieldPrefill();
 
     // Trigger profile fetch+populate only if not already loaded or currently fetching.
     if (!(controller.hasLoadedProfile.value ||
@@ -218,19 +219,26 @@ class EditProfileScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.primaryColor,
+                          // Use surface/onSurface palette instead of primary accent
+                          color: theme.colorScheme.onSurface.withOpacity(0.75),
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
-                ProfileFormFields(
-                  label: 'Name'.tr,
-                  controller: controller.nameController,
-                  focus: controller.nameFocus,
-                  onsubmit: (_) => controller.nameFocus.unfocus(),
-                  hint: 'Enter your name'.tr,
+                FocusScope(
+                  child: Builder(
+                    builder: (ctx) {
+                      return ProfileFormFields(
+                        label: 'Name'.tr,
+                        controller: controller.nameController,
+                        focus: controller.nameFocus,
+                        onsubmit: (_) => controller.nameFocus.unfocus(),
+                        hint: 'Enter your name'.tr,
+                      );
+                    },
+                  ),
                 ),
                 GestureDetector(
                   onTap: () async {
