@@ -15,12 +15,28 @@ class CommentsPage extends StatefulWidget {
 class _CommentsPageState extends State<CommentsPage> {
   final CommentsController controller = Get.put(CommentsController());
   late final String uuid;
+  Map<String, dynamic>? initialReplyTarget;
 
   @override
   void initState() {
     super.initState();
-    uuid = Get.arguments;
-    Future.microtask(() => controller.fetchComments(uuid));
+    final args = Get.arguments;
+    if (args is String) {
+      uuid = args;
+    } else if (args is Map) {
+      uuid = args['postId']?.toString() ?? '';
+      final rt = args['replyTo'];
+      if (rt is Map<String, dynamic>) initialReplyTarget = rt;
+    } else {
+      uuid = '';
+    }
+
+    Future.microtask(() async {
+      await controller.fetchComments(uuid);
+      if (initialReplyTarget != null) {
+        controller.setReplyTo(initialReplyTarget!);
+      }
+    });
   }
 
   @override

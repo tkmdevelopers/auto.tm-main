@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:auto_tm/screens/post_details_screen/controller/comments_controller.dart';
+import 'package:auto_tm/screens/post_details_screen/widgets/comments.dart';
+import 'package:auto_tm/utils/key.dart';
 
 class CommentCarousel extends StatelessWidget {
   CommentCarousel({super.key, required this.postId});
@@ -65,7 +67,13 @@ class CommentCarousel extends StatelessWidget {
               root: root,
               replies: children[root['uuid']?.toString()] ?? const [],
               totalReplies: descendantCount(root['uuid']?.toString() ?? ''),
-              onReply: () => controller.setReplyTo(root),
+              onReply: () {
+                // Navigate to full comments page focusing reply to this root
+                Get.to(() => const CommentsPage(), arguments: {
+                  'postId': postId,
+                  'replyTo': root,
+                });
+              },
             ),
           if (roots.length > 3)
             Padding(
@@ -103,6 +111,7 @@ class _PreviewCommentCard extends StatelessWidget {
     }
     final sender = root['sender']?.toString() ?? 'user';
     final message = root['message']?.toString() ?? '';
+    final avatarPath = _extractAvatarPath(root);
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -114,7 +123,7 @@ class _PreviewCommentCard extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const CircleAvatar(radius: 14, child: Icon(Icons.person, size: 16)),
+          _buildAvatar(theme, avatarPath, sender),
           const SizedBox(width: 8),
           Expanded(child: Text('@$sender', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: theme.colorScheme.onSurface), overflow: TextOverflow.ellipsis)),
           if (date.isNotEmpty) Text(date, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
@@ -133,5 +142,55 @@ class _PreviewCommentCard extends StatelessWidget {
         ])
       ]),
     );
+  }
+
+  Widget _buildAvatar(ThemeData theme, String? avatarPath, String sender) {
+    if (avatarPath != null && avatarPath.trim().isNotEmpty) {
+      final full = avatarPath.startsWith('http') ? avatarPath : '${ApiKey.ip}$avatarPath';
+      return CircleAvatar(
+        radius: 16,
+        backgroundColor: theme.colorScheme.surfaceVariant,
+        backgroundImage: NetworkImage(full),
+        onBackgroundImageError: (_, __) {},
+      );
+    }
+    // Fallback initials
+    final initial = sender.isNotEmpty ? sender[0].toUpperCase() : '?';
+    return CircleAvatar(
+      radius: 16,
+      backgroundColor: theme.colorScheme.primaryContainer,
+      child: Text(
+        initial,
+        style: TextStyle(
+          fontSize: 13,
+          color: theme.colorScheme.primary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  String? _extractAvatarPath(Map<String, dynamic> c) {
+    try {
+      final user = c['user'];
+      if (user is Map) {
+        final avatar = user['avatar'];
+        if (avatar is Map) {
+          final pathObj = avatar['path'];
+          if (pathObj is Map) {
+            final medium = pathObj['medium'] ?? pathObj['small'] ?? pathObj['original'];
+            if (medium is String && medium.trim().isNotEmpty) return medium;
+          }
+          final direct = avatar['medium'] ?? avatar['small'] ?? avatar['path'];
+          if (direct is String && direct.trim().isNotEmpty) return direct;
+        }
+        if (user['avatarPath'] is String && (user['avatarPath'] as String).trim().isNotEmpty) return user['avatarPath'];
+      }
+      if (c['avatar'] is String) return c['avatar'];
+      if (c['avatarPath'] is String) return c['avatarPath'];
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 }
