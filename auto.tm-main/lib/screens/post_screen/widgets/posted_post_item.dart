@@ -176,7 +176,7 @@ class PostedPostItem extends StatelessWidget {
             _buildCarDetailsRow(theme),
             const SizedBox(height: 10),
             Text(
-              "Posted ${_formatDate(createdAt)}",
+              'post_card_posted_at'.trParams({'date': _formatDate(createdAt)}),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,

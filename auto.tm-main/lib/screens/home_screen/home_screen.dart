@@ -396,7 +396,7 @@ class _PostsHeader extends StatelessWidget {
             ),
             child: Obx(
               () => Text(
-                '${controller.posts.length} ${'items'.tr}',
+                '${controller.posts.length} ${'common_items'.tr}',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

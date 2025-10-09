@@ -266,7 +266,9 @@ class FilterScreen extends StatelessWidget {
                         TextButton(
                           onPressed: () => controller.clearFilters(includeBrandModel: true),
                           child: Text(
-                            'Clear All (${active})'.tr,
+          (active > 0
+            ? 'filter_clear_all_count'.trParams({'count': active.toString()})
+            : 'filter_clear_all'.tr),
                             style: TextStyle(color: theme.colorScheme.onSurface),
                           ),
                         ),
@@ -676,7 +678,7 @@ class _YearRangeSlider extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('Year Range'.tr, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+              Text('filter_year_range'.tr, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
               const SizedBox(width: 8),
               if (rv.start != lower.toDouble() || rv.end != upper.toDouble())
                 TextButton(
@@ -747,7 +749,7 @@ class _PriceRangeSlider extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text('Price Range'.tr, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+              Text('filter_price_range'.tr, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
               const SizedBox(width: 8),
               if (rv.start != lower || rv.end != upper)
                 TextButton(

@@ -56,18 +56,18 @@ class UploadStatusBanner extends StatelessWidget {
       final pct = (task.overallProgress.value * 100)
           .clamp(0, 100)
           .toStringAsFixed(0);
-      final title = complete
-          ? 'Upload complete'.tr
-          : failed
-          ? (task.isCancelled.value
-                ? 'Upload cancelled'.tr
-                : 'Upload failed'.tr)
-          : 'Uploading $pct%'.tr;
-      final subtitle = complete
-          ? 'Post published'.tr
-          : failed
-          ? (task.error.value ?? '')
-          : '${task.status.value}${task.etaDisplay.value == '--:--' ? '' : ' • ${task.etaDisplay.value}'}';
+    final title = complete
+      ? 'post_upload_success_title'.tr
+      : failed
+        ? (task.isCancelled.value
+          ? 'post_upload_cancelled_hint'.tr
+          : 'common_error'.tr)
+        : 'post_upload_progress'.trParams({'percent': pct});
+    final subtitle = complete
+      ? 'post_upload_success_body'.tr
+      : failed
+        ? (task.error.value ?? '')
+        : '${task.status.value}${task.etaDisplay.value == '--:--' ? '' : ' • ${task.etaDisplay.value}'}';
 
       Widget _actions() {
         if (complete) {

@@ -295,11 +295,11 @@ extension PostDtoStatusExt on PostDto {
   String statusLabel({String? pending, String? active, String? inactive}) {
     switch (triStatus) {
       case PostStatusTri.pending:
-        return pending ?? 'Pending';
+        return pending ?? 'post_status_pending'.tr;
       case PostStatusTri.active:
-        return active ?? 'Active';
+        return active ?? 'post_status_active'.tr;
       case PostStatusTri.inactive:
-        return inactive ?? 'Declined';
+        return inactive ?? 'post_status_declined'.tr;
     }
   }
 }
@@ -380,7 +380,7 @@ class PostController extends GetxController {
   final RxBool isPosting = false.obs;
   final RxBool isLoading = false.obs;
   final RxDouble uploadProgress = 0.0.obs;
-  final RxString uploadStatus = 'Ready'.obs;
+  final RxString uploadStatus = 'post_upload_ready'.tr.obs;
   final RxString uploadError = ''.obs;
   final RxBool isUploadComplete = false.obs;
   final RxBool isUploadFailed = false.obs;
@@ -622,7 +622,7 @@ class PostController extends GetxController {
     try {
       await manager.startFromController(this, draftId: '');
     } catch (e) {
-      Get.snackbar('Error', 'Failed to start upload: $e');
+      Get.snackbar('common_error'.tr, 'post_upload_start_error'.trParams({'error': e.toString()}));
       isPosting.value = false;
     }
   }
@@ -630,10 +630,9 @@ class PostController extends GetxController {
   void _showFailedTaskDialog(UploadManager manager, dynamic task) {
     Get.dialog(
       AlertDialog(
-        title: Text('Previous upload failed'.tr),
+        title: Text('post_upload_prev_failed_title'.tr),
         content: Text(
-          'You need to retry or discard the failed upload before starting a new one.'
-              .tr,
+          'post_upload_prev_failed_body'.tr,
         ),
         actions: [
           TextButton(
@@ -883,13 +882,13 @@ class PostController extends GetxController {
 
       if (resp.statusCode != null && resp.statusCode! >= 300) {
         uploadError.value =
-            'Video upload failed (status ${resp.statusCode}): ${resp.data}';
+            'common_error'.tr + ' (video ${resp.statusCode}): ${resp.data}';
         return false;
       }
       return true;
     } on dio.DioException catch (e) {
       if (dio.CancelToken.isCancel(e)) {
-        uploadError.value = 'Video upload cancelled';
+  uploadError.value = 'post_upload_cancelled_hint'.tr;
       } else {
         final status = e.response?.statusCode;
         final body = e.response?.data;
@@ -974,7 +973,7 @@ class PostController extends GetxController {
       }
 
       await _clearMediaCaches();
-      uploadStatus.value = 'Upload cancelled';
+  uploadStatus.value = 'post_upload_cancelled_hint'.tr;
     } catch (e) {
       uploadError.value = 'Cancel cleanup error: $e';
     } finally {
@@ -1680,7 +1679,7 @@ class PostController extends GetxController {
     countdown.value = 0;
     isLoading.value = false;
     uploadProgress.value = 0.0;
-    uploadStatus.value = 'Ready';
+  uploadStatus.value = 'post_upload_ready'.tr;
     uploadError.value = '';
     isUploadComplete.value = false;
     isUploadFailed.value = false;

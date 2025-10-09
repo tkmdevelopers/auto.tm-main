@@ -22,7 +22,7 @@ class PostUploadService extends GetxService {
       // Show upload success
       Get.snackbar("Upload", "Your post was successfully uploaded.");
     } catch (e) {
-      Get.snackbar("Upload Failed", "Please try again.");
+  Get.snackbar('common_error'.tr, 'common_retry'.tr);
     } finally {
       _isUploading.value = false;
     }

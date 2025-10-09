@@ -80,10 +80,13 @@ class PostDetailsScreen extends StatelessWidget {
                                         Get.to(
                                           () => ViewPostPhotoScreen(
                                             imageUrls: photos,
-                                            currentIndex: detailsController
-                                                .currentPage
-                                                .value,
+                                            currentIndex: detailsController.currentPage.value,
+                                            postUuid: uuid,
+                                            heroGroupTag: uuid, // align hero tags with potential carousel usage
                                           ),
+                                          transition: Transition.fadeIn,
+                                          curve: Curves.easeInOut,
+                                          duration: const Duration(milliseconds: 220),
                                         );
                                       }
                                     },
@@ -822,7 +825,9 @@ class _DynamicCharacteristics extends StatelessWidget {
       _CharacteristicEntry(
         icon: AppImages.enginePower,
         label: 'Engine power'.tr,
-        value: _isPositive(post!.enginePower) ? post!.enginePower.toStringAsFixed(0) : null,
+        value: _isPositive(post!.enginePower)
+            ? '${post!.enginePower.toStringAsFixed(0)} L'
+            : null,
       ),
       _CharacteristicEntry(
         icon: AppImages.transmission,
