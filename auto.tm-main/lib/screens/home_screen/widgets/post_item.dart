@@ -238,7 +238,20 @@ class PostItem extends StatelessWidget {
   }
 
   Widget _buildPriceLocationRow(ThemeData theme) {
-    final isLocal = region.toLowerCase() == 'local';
+    // Unified logic with details screen:
+    // If region == Local -> show location (city) if non-empty.
+    // If region == UAE or China -> show region label.
+    // Otherwise hide location/region info.
+    String regionTrim = region.trim();
+    String locTrim = location.trim();
+    final lower = regionTrim.toLowerCase();
+    String? displayLocation;
+    if (lower == 'local') {
+      if (locTrim.isNotEmpty) displayLocation = locTrim;
+    } else if (lower == 'uae' || lower == 'china') {
+      displayLocation = regionTrim; // already correct
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -252,55 +265,26 @@ class PostItem extends StatelessWidget {
             ),
           ),
         ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            if (isLocal && location.isNotEmpty)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.location_on_outlined,
-                    size: 14,
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    location,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
-                    ),
-                  ),
-                ],
+        if (displayLocation != null)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                lower == 'local' ? Icons.location_on_outlined : Icons.public,
+                size: 14,
+                color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
-            // Show region only when NOT local
-            if (region.isNotEmpty && !isLocal)
-              Padding(
-                padding: EdgeInsets.only(top: isLocal && location.isNotEmpty ? 4 : 0),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.public,
-                      size: 14,
-                      color: theme.colorScheme.onSurface.withOpacity(0.55),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      region,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: theme.colorScheme.onSurface.withOpacity(0.65),
-                      ),
-                    ),
-                  ],
+              const SizedBox(width: 4),
+              Text(
+                displayLocation,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
                 ),
               ),
-          ],
-        ),
+            ],
+          ),
       ],
     );
   }

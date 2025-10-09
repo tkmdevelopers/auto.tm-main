@@ -37,26 +37,35 @@ class FavoritesScreenTab extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: ListView.builder(
+                padding: EdgeInsets.zero,
                 shrinkWrap: true,
-                itemCount: favController.favoriteProducts.length,
+                itemCount: favController.favoriteProducts.length + 1, // +1 for top spacer
                 itemBuilder: (context, index) {
-                  Post posts = favController.favoriteProducts[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Get.to(() => PostDetailsScreen(),
-                          arguments: posts.uuid.toString());
-                    },
-                    child: PostItem(
-                      uuid: posts.uuid,
-                      brand: posts.brand,
-                      model: posts.model,
-                      price: posts.price,
-                      photoPath: posts.photoPath,
-                      year: posts.year,
-                      milleage: posts.milleage,
-                      currency: posts.currency,
-                      createdAt: posts.createdAt,
-                      location: posts.location,
+                  if (index == 0) {
+                    return const SizedBox(height: 12); // top space below AppBar
+                  }
+                  final realIndex = index - 1;
+                  Post posts = favController.favoriteProducts[realIndex];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: GestureDetector(
+                      onTap: () {
+                        Get.to(() => PostDetailsScreen(),
+                            arguments: posts.uuid.toString());
+                      },
+                      child: PostItem(
+                        uuid: posts.uuid,
+                        brand: posts.brand,
+                        model: posts.model,
+                        price: posts.price,
+                        photoPath: posts.photoPath,
+                        year: posts.year,
+                        milleage: posts.milleage,
+                        currency: posts.currency,
+                        createdAt: posts.createdAt,
+                        location: posts.location,
+                        region: posts.region,
+                      ),
                     ),
                   );
                 },

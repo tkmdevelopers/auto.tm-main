@@ -803,32 +803,26 @@ class _DynamicCharacteristics extends StatelessWidget {
   Widget build(BuildContext context) {
     if (post == null) return const SizedBox.shrink();
 
-    // Compute location/region display according to rule:
-    // If region == 'local' show actual location else show region (if not empty)
+    // Region / location display logic (simplified for backend guarantee):
+    // Backend sends region exactly as one of: 'Local', 'UAE', 'China'.
+    // - Local: show the city (location) if present.
+    // - UAE / China: show that region label directly.
+    // - Anything else: hide.
     final regionRaw = post!.region.trim();
     final regionLower = regionRaw.toLowerCase();
+    final locRaw = post!.location;
     String? displayLocation;
     if (regionLower == 'local') {
-      if (_isNonEmpty(post!.location)) displayLocation = post!.location;
-    } else {
-      if (_isNonEmpty(regionRaw)) displayLocation = regionRaw; // show region itself
+      if (_isNonEmpty(locRaw)) displayLocation = locRaw.trim();
+    } else if (regionLower == 'uae' || regionLower == 'china') {
+      displayLocation = regionRaw; // Already proper case from backend
     }
 
     final characteristics = <_CharacteristicEntry>[
       _CharacteristicEntry(
-        icon: AppImages.brand,
-        label: 'Brand'.tr,
-        value: _isNonEmpty(post!.brand) ? post!.brand : null,
-      ),
-      _CharacteristicEntry(
         icon: AppImages.enginePower,
         label: 'Engine power'.tr,
         value: _isPositive(post!.enginePower) ? post!.enginePower.toStringAsFixed(0) : null,
-      ),
-      _CharacteristicEntry(
-        icon: AppImages.car,
-        label: 'Model'.tr,
-        value: _isNonEmpty(post!.model) ? post!.model : null,
       ),
       _CharacteristicEntry(
         icon: AppImages.transmission,
@@ -864,8 +858,25 @@ class _DynamicCharacteristics extends StatelessWidget {
         _CharacteristicEntry(
           icon: AppImages.location,
           label: 'Location'.tr,
-          value: displayLocation.tr, // in case region/location keys localized
+          // Do not translate standardized region names; only translate if it looks like a key.
+          value: displayLocation,
         ),
+      // Exchange info (always show)
+      _CharacteristicEntry(
+        icon: AppImages.exchange,
+    label: 'Exchange'.tr,
+    value: (post!.exchange == true)
+    ? 'Exchange possible'.tr
+    : 'No exchange'.tr,
+  ),
+      // Credit info (always show)
+      _CharacteristicEntry(
+        icon: AppImages.credit,
+    label: 'Credit'.tr,
+    value: (post!.credit == true)
+    ? 'Credit available'.tr
+    : 'No credit'.tr,
+  ),
     ].where((e) => e.value != null && e.value!.trim().isNotEmpty && e.value != '0').toList();
 
     if (characteristics.isEmpty) return const SizedBox.shrink();

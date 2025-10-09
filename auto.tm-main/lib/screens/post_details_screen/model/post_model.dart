@@ -18,6 +18,10 @@ class Post {
   final bool? status;
   // Region (personalInfo.region or fallback to personalInfo.location). 'Local' for local posts.
   final String region;
+  // Whether seller allows exchange (barter)
+  final bool? exchange;
+  // Whether seller allows credit / financing
+  final bool? credit;
 
   final String? subscription;
   final String photoPath;
@@ -43,6 +47,8 @@ class Post {
     required this.vinCode,
     required this.phoneNumber,
     required this.region,
+  this.exchange,
+  this.credit,
     this.subscription,
     this.status,
     required this.photoPath,
@@ -90,6 +96,8 @@ class Post {
       video: json['video']?['url'] ?? '',
       createdAt: json['createdAt'] ?? '',
       region: region,
+  exchange: json['exchange'] as bool?,
+  credit: json['credit'] as bool?,
       // file: json['file'],
       file: json['file'] != null ? FileData.fromJson(json['file']) : null,
     );

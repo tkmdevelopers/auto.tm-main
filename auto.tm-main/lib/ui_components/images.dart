@@ -38,6 +38,8 @@ class AppImages {
   static const String year = "assets/icons/year_icon.svg";
   static const String subscribe = "assets/icons/subscribe_icon.svg";
   static const String phone = "assets/icons/phone_icon.svg";
+  static const String exchange = "assets/icons/exchange_icon.svg";
+  static const String credit = "assets/icons/credit_icon.svg";
   static const String instagram = "assets/icons/instagram_icon.svg";
   static const String sort= "assets/icons/sort_icon.svg";
 

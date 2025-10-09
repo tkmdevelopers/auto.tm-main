@@ -97,6 +97,7 @@ class CategoryPosts extends StatelessWidget {
                     currency: posts.currency,
                     createdAt: posts.createdAt,
                     location: posts.location,
+                    region: posts.region,
                   );
                 },
               );
