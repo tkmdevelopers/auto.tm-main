@@ -21,7 +21,7 @@ export class CommentsService {
       const comments = await this.comments.findAll({
         where: { postId },
         order: [['createdAt', 'ASC']],
-        group: ['Comments.uuid', 'user.uuid', 'user->avatar.uuid'],
+        group: ['Comments.uuid', 'user.uuid', 'user->avatar.uuid', 'parent.uuid', 'parent->user.uuid'],
         include: [
           {
             model: this.users,
@@ -31,6 +31,17 @@ export class CommentsService {
                 model: Photo,
                 as: 'avatar',
                 attributes: ['uuid', 'path', 'originalPath'],
+              },
+            ],
+          },
+          {
+            model: Comments,
+            as: 'parent',
+            attributes: ['uuid', 'sender'],
+            include: [
+              {
+                model: this.users,
+                attributes: ['uuid', 'name', 'email'],
               },
             ],
           },
@@ -53,7 +64,7 @@ export class CommentsService {
 
   async create(body: createCommets, req: Request | any, res: Response) {
     try {
-      const { message, postId } = body;
+  const { message, postId, replyTo } = body;
 
       const user = await this.users.findOne({
         where: { uuid: req?.uuid },
@@ -73,6 +84,7 @@ export class CommentsService {
         postId,
         userId: req?.uuid,
         sender: user?.name || user?.email,
+        replyTo: replyTo || null,
       });
 
       // Re-fetch with associations to return consistent shape
@@ -87,6 +99,17 @@ export class CommentsService {
                 model: Photo,
                 as: 'avatar',
                 attributes: ['uuid', 'path', 'originalPath'],
+              },
+            ],
+          },
+          {
+            model: this.comments,
+            as: 'parent',
+            attributes: ['uuid', 'sender'],
+            include: [
+              {
+                model: this.users,
+                attributes: ['uuid', 'name', 'email'],
               },
             ],
           },

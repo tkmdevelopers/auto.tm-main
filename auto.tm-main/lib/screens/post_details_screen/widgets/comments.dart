@@ -54,15 +54,94 @@ class _CommentsPageState extends State<CommentsPage> {
                       )),
                 );
               }
-              return ListView.separated(
+              // Flatten to single-level replies: show all descendants at depth 1 when expanded
+              final all = controller.comments;
+              final children = <String, List<Map<String, dynamic>>>{};
+              for (final c in all) {
+                final rt = c['replyTo'];
+                if (rt != null) {
+                  children.putIfAbsent(rt.toString(), () => []).add(c);
+                }
+              }
+              final roots = all.where((c) => c['replyTo'] == null).toList();
+              roots.sort((a, b) {
+                final at = DateTime.tryParse(a['createdAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                final bt = DateTime.tryParse(b['createdAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                return at.compareTo(bt);
+              });
+
+              int descendantCount(String rootId) {
+                var count = 0;
+                final stack = <String>[rootId];
+                final visited = <String>{};
+                while (stack.isNotEmpty) {
+                  final current = stack.removeLast();
+                  final list = children[current];
+                  if (list == null) continue;
+                  for (final ch in list) {
+                    final cid = ch['uuid']?.toString();
+                    if (cid == null || visited.contains(cid)) continue;
+                    visited.add(cid);
+                    count += 1;
+                    stack.add(cid);
+                  }
+                }
+                return count;
+              }
+
+              List<Map<String, dynamic>> collectDescendants(String rootId) {
+                final flat = <Map<String, dynamic>>[];
+                final stack = <String>[rootId];
+                final visited = <String>{};
+                while (stack.isNotEmpty) {
+                  final current = stack.removeLast();
+                  final list = children[current];
+                  if (list == null) continue;
+                  // sort each sibling batch chronologically
+                  list.sort((a, b) {
+                    final at = DateTime.tryParse(a['createdAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                    final bt = DateTime.tryParse(b['createdAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                    return at.compareTo(bt);
+                  });
+                  for (final ch in list) {
+                    final cid = ch['uuid']?.toString();
+                    if (cid == null || visited.contains(cid)) continue;
+                    visited.add(cid);
+                    flat.add(ch);
+                    stack.add(cid);
+                  }
+                }
+                return flat;
+              }
+
+              final display = <({Map<String, dynamic> comment, int depth, bool isParent, int repliesCount, bool expanded, VoidCallback? toggle})>[];
+              for (final root in roots) {
+                final rootId = root['uuid']?.toString();
+                if (rootId == null) continue;
+                final totalReplies = descendantCount(rootId);
+                final expanded = controller.isThreadExpanded(rootId);
+                display.add((comment: root, depth: 0, isParent: true, repliesCount: totalReplies, expanded: expanded, toggle: totalReplies > 0 ? () => controller.toggleThread(rootId) : null));
+                if (expanded && totalReplies > 0) {
+                  final desc = collectDescendants(rootId);
+                  for (final r in desc) {
+                    display.add((comment: r, depth: 1, isParent: false, repliesCount: 0, expanded: false, toggle: null));
+                  }
+                }
+              }
+
+              return ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: controller.comments.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 4),
+                itemCount: display.length,
                 itemBuilder: (context, index) {
-                  final comment = controller.comments[index];
+                  final row = display[index];
                   return _CommentItem(
-                    comment: comment,
-                    onReply: () => controller.setReplyTo(comment),
+                    comment: row.comment,
+                    onReply: () => controller.setReplyTo(row.comment),
+                    isParent: row.isParent,
+                    depth: row.depth,
+                    repliesCount: row.repliesCount,
+                    expanded: row.expanded,
+                    onToggleReplies: row.toggle,
                   );
                 },
               );
@@ -81,10 +160,25 @@ class _CommentsPageState extends State<CommentsPage> {
   }
 }
 
+// Root resolution helper no longer needed after flattening to single-level replies.
+
 class _CommentItem extends StatelessWidget {
-  const _CommentItem({required this.comment, required this.onReply});
+  const _CommentItem({
+    required this.comment,
+    required this.onReply,
+    this.depth = 0,
+    this.isParent = false,
+    this.repliesCount = 0,
+    this.expanded = false,
+    this.onToggleReplies,
+  });
   final Map<String, dynamic> comment;
   final VoidCallback onReply;
+  final int depth; // nesting level (0 parent, 1 reply)
+  final bool isParent;
+  final int repliesCount;
+  final bool expanded;
+  final VoidCallback? onToggleReplies;
 
   String? _extractAvatarPath(Map<String, dynamic> c) {
     try {
@@ -98,10 +192,8 @@ class _CommentItem extends StatelessWidget {
             final medium = pathObj['medium'] ?? pathObj['large'] ?? pathObj['small'] ?? pathObj['original'];
             if (medium is String && medium.trim().isNotEmpty) return medium;
           }
-          // Some responses might flatten to avatar['medium'] etc.
           final mediumFlat = avatar['medium'] ?? avatar['large'] ?? avatar['small'];
-            if (mediumFlat is String && mediumFlat.trim().isNotEmpty) return mediumFlat;
-          // Direct single path string
+          if (mediumFlat is String && mediumFlat.trim().isNotEmpty) return mediumFlat;
           if (avatar['path'] is String) return avatar['path'];
         }
         // Alternate explicit field
@@ -127,29 +219,29 @@ class _CommentItem extends StatelessWidget {
         timeText = DateFormat('MM.dd.yyyy | HH:mm').format(DateTime.parse(createdAtRaw));
       } catch (_) {}
     }
-    final isReply = comment.containsKey('replyTo') && comment['replyTo'] != null;
+  final isReply = (comment['replyTo'] != null) || (comment['parent'] != null);
+  final parentSender = comment['parent'] != null
+    ? (comment['parent']['sender']?.toString() ?? '')
+    : '';
     final sender = comment['sender']?.toString() ?? 'user';
     final message = comment['message']?.toString() ?? '';
     final avatarPath = _extractAvatarPath(comment);
-    if (kDebugMode) {
-      // Temporary debug logging for avatar path extraction
-      // Remove after verifying avatar paths are received correctly.
-      // Shows sender + whether path is null or the string value.
-      // Example output: [COMMENT_AVATAR] @john -> /uploads/avatars/abc_medium.jpg
-      debugPrint('[COMMENT_AVATAR] @$sender -> ' + (avatarPath ?? 'NULL'));
-    }
+    // Debug logging removed after verification of avatar path handling.
+
+  final indent = depth * 28.0;
 
     return GestureDetector(
       onLongPress: onReply,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+        margin: EdgeInsets.fromLTRB(12 + indent, 4, 12, 4),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+        constraints: const BoxConstraints(maxWidth: 900),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceVariant.withOpacity(0.35),
-          borderRadius: BorderRadius.circular(14),
+          color: theme.colorScheme.surfaceVariant.withOpacity(0.28),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: theme.colorScheme.outlineVariant.withOpacity(.4),
-            width: 0.6,
+            color: theme.colorScheme.outlineVariant.withOpacity(.35),
+            width: 0.7,
           ),
         ),
         child: Column(
@@ -158,13 +250,31 @@ class _CommentItem extends StatelessWidget {
             if (isReply)
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  'Replying to…',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontStyle: FontStyle.italic,
-                    color: theme.colorScheme.onSurfaceVariant,
+                child: RichText(
+                  text: TextSpan(
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.2,
+                    ),
+                    children: [
+                      TextSpan(text: 'Replying to '.tr),
+                      if (parentSender.isNotEmpty)
+                        TextSpan(
+                          text: '@$parentSender',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.primary,
+                            fontStyle: FontStyle.normal,
+                          ),
+                        ),
+                      if (parentSender.isEmpty)
+                        const TextSpan(text: '...'),
+                    ],
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             Row(
@@ -215,32 +325,62 @@ class _CommentItem extends StatelessWidget {
                 letterSpacing: 0.1,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  foregroundColor: theme.colorScheme.primary,
-                ),
-                onPressed: onReply,
-                icon: Icon(
-                  Icons.reply_outlined,
-                  size: 14,
-                  color: theme.colorScheme.primary,
-                ),
-                label: Text(
-                  'Reply'.tr,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: theme.colorScheme.primary,
+              child: Wrap(
+                spacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (isParent && repliesCount > 0)
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary.withOpacity(.08),
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        foregroundColor: theme.colorScheme.primary,
+                      ),
+                      onPressed: onToggleReplies,
+                      icon: Icon(
+                        expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        size: 16,
+                        color: theme.colorScheme.primary,
+                      ),
+                      label: Text(
+                        expanded
+                            ? 'Hide ${repliesCount}'.tr
+                            : 'View ${repliesCount}'.tr,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: -.1,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: theme.colorScheme.primary,
+                    ),
+                    onPressed: onReply,
+                    icon: Icon(Icons.reply_outlined, size: 14, color: theme.colorScheme.primary),
+                    label: Text(
+                      'Reply'.tr,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -305,56 +445,81 @@ class _CommentInputBar extends StatelessWidget {
     final theme = Theme.of(context);
     return SafeArea(
       top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(.5),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: theme.colorScheme.outlineVariant.withOpacity(.4),
-                    width: .7,
+      child: Container(
+        // Subtle top separator + background blending
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          border: Border(
+            top: BorderSide(
+              color: theme.colorScheme.outlineVariant.withOpacity(.25),
+              width: .7,
+            ),
+          ),
+        ),
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: TextField(
+            controller: controller.commentTextController,
+            minLines: 1,
+            maxLines: 5,
+            style: TextStyle(
+              fontSize: 14.5,
+              color: theme.colorScheme.onSurface,
+              height: 1.3,
+            ),
+            decoration: InputDecoration(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              filled: true,
+              fillColor: theme.colorScheme.surfaceVariant.withOpacity(.55),
+              hintText: 'Add a comment'.tr,
+              hintStyle: TextStyle(
+                color: theme.colorScheme.onSurfaceVariant.withOpacity(.65),
+                fontSize: 14,
+              ),
+              suffixIcon: Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: IconButton(
+                  tooltip: 'Send'.tr,
+                  splashRadius: 22,
+                  onPressed: () async {
+                    final text = controller.commentTextController.text.trim();
+                    if (text.isEmpty) return;
+                    await controller.sendComment(postUuid, text);
+                    controller.commentTextController.clear();
+                  },
+                  icon: Icon(
+                    Icons.send_rounded,
+                    size: 20,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
-                child: TextField(
-                  controller: controller.commentTextController,
-                  minLines: 1,
-                  maxLines: 4,
-                  style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    hintText: 'Add a comment'.tr,
-                    hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withOpacity(.7)),
-                  ),
-                  textInputAction: TextInputAction.newline,
+              ),
+              suffixIconConstraints: const BoxConstraints(minHeight: 40, minWidth: 40),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(26),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outlineVariant.withOpacity(.35),
+                  width: 0.8,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(26),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.primary.withOpacity(.65),
+                  width: 1.1,
+                ),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(26),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outlineVariant.withOpacity(.35),
+                  width: 0.8,
                 ),
               ),
             ),
-            const SizedBox(width: 10),
-            Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.send_rounded, size: 18),
-                color: theme.colorScheme.onPrimary,
-                splashRadius: 22,
-                onPressed: () async {
-                  final text = controller.commentTextController.text.trim();
-                  if (text.isEmpty) return;
-                  await controller.sendComment(postUuid, text);
-                  controller.commentTextController.clear();
-                },
-              ),
-            ),
-          ],
+            textInputAction: TextInputAction.newline,
+          ),
         ),
       ),
     );

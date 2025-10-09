@@ -14,6 +14,28 @@ class CommentsController extends GetxController {
   var isSending = false.obs; // prevents duplicate rapid sends
 
   var replyToComment = Rxn<Map<String, dynamic>>(); // Stores selected comment for reply
+  // Track expansion state per parent comment uuid
+  final threadExpanded = <String, bool>{}.obs;
+
+  // Cached grouped structure: parent uuid -> list of replies
+  Map<String, List<Map<String, dynamic>>> get groupedReplies {
+    final map = <String, List<Map<String, dynamic>>>{};
+    for (final c in comments) {
+      final replyTo = c['replyTo'];
+      if (replyTo != null) {
+        map.putIfAbsent(replyTo.toString(), () => []).add(c);
+      }
+    }
+    return map;
+  }
+
+  void toggleThread(String parentUuid) {
+    threadExpanded[parentUuid] = !(threadExpanded[parentUuid] ?? false);
+    // trigger reactive update
+    threadExpanded.refresh();
+  }
+
+  bool isThreadExpanded(String parentUuid) => threadExpanded[parentUuid] ?? false;
 
 
   // Fetch comments for a specific post
@@ -44,6 +66,17 @@ class CommentsController extends GetxController {
             }
         }
         comments.value = unique;
+        // Initialize expansion state for any new parents (default collapsed if they have >0 replies)
+        final replyMap = <String, int>{};
+        for (final c in unique) {
+          final parentId = c['replyTo'];
+            if (parentId != null) {
+              replyMap[parentId.toString()] = (replyMap[parentId.toString()] ?? 0) + 1;
+            }
+        }
+        for (final parentId in replyMap.keys) {
+          threadExpanded.putIfAbsent(parentId, () => false); // collapsed by default
+        }
         // Debug: log if duplicates were removed
         final removed = rawList.length - unique.length;
         if (removed > 0) {

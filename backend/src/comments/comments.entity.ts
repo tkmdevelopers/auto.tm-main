@@ -39,4 +39,11 @@ export class Comments extends Model {
   postId: string;
   @BelongsTo(() => Posts)
   post: Posts;
+
+  // Self-referencing reply relationship
+  @ForeignKey(() => Comments)
+  @Column({ type: DataType.STRING, allowNull: true })
+  replyTo: string;
+  @BelongsTo(() => Comments, { foreignKey: 'replyTo', as: 'parent' })
+  parent?: Comments;
 }
