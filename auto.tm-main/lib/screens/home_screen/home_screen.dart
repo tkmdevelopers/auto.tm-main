@@ -206,7 +206,6 @@ class HomeScreen extends StatelessWidget {
               createdAt: post.createdAt,
               subscription: post.subscription,
               location: post.location,
-              region: post.region,
             ),
           );
         },

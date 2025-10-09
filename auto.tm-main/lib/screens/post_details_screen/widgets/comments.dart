@@ -4,6 +4,7 @@ import 'package:auto_tm/screens/profile_screen/widgets/profile_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart';
 
 class CommentsPage extends StatefulWidget {
   const CommentsPage({super.key});
@@ -91,14 +92,22 @@ class _CommentItem extends StatelessWidget {
       if (user is Map) {
         final avatar = user['avatar'];
         if (avatar is Map) {
-          final variants = avatar['variants'] ?? avatar['paths'] ?? avatar['avatarVariants'];
-          if (variants is Map) {
-            final medium = variants['medium'] ?? variants['large'] ?? variants['small'] ?? variants['path'];
-            if (medium is String) return medium;
+          // Common backend shape: avatar: { path: { small: "/uploads/...", medium: "..." } }
+          final pathObj = avatar['path'];
+          if (pathObj is Map) {
+            final medium = pathObj['medium'] ?? pathObj['large'] ?? pathObj['small'] ?? pathObj['original'];
+            if (medium is String && medium.trim().isNotEmpty) return medium;
           }
+          // Some responses might flatten to avatar['medium'] etc.
+          final mediumFlat = avatar['medium'] ?? avatar['large'] ?? avatar['small'];
+            if (mediumFlat is String && mediumFlat.trim().isNotEmpty) return mediumFlat;
+          // Direct single path string
           if (avatar['path'] is String) return avatar['path'];
         }
-        if (user['avatarPath'] is String) return user['avatarPath'];
+        // Alternate explicit field
+        if (user['avatarPath'] is String && (user['avatarPath'] as String).trim().isNotEmpty) {
+          return user['avatarPath'];
+        }
       }
       if (c['avatar'] is String) return c['avatar'];
       if (c['avatarPath'] is String) return c['avatarPath'];
@@ -122,6 +131,13 @@ class _CommentItem extends StatelessWidget {
     final sender = comment['sender']?.toString() ?? 'user';
     final message = comment['message']?.toString() ?? '';
     final avatarPath = _extractAvatarPath(comment);
+    if (kDebugMode) {
+      // Temporary debug logging for avatar path extraction
+      // Remove after verifying avatar paths are received correctly.
+      // Shows sender + whether path is null or the string value.
+      // Example output: [COMMENT_AVATAR] @john -> /uploads/avatars/abc_medium.jpg
+      debugPrint('[COMMENT_AVATAR] @$sender -> ' + (avatarPath ?? 'NULL'));
+    }
 
     return GestureDetector(
       onLongPress: onReply,
