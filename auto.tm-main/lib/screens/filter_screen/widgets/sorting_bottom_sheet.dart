@@ -27,6 +27,16 @@ void showSortOptionsBottomSheet(
     // {'value': 'owners_first_desc', 'displayKey': 'Owners first'}, // Сначала от собственников (если есть такое поле)
   ];
 
+  void _safeSheetPop() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    if (Get.key.currentState?.canPop() == true) {
+      Get.back();
+    }
+  }
+
   Get.bottomSheet(
     SafeArea(
       top: false,
@@ -72,7 +82,7 @@ void showSortOptionsBottomSheet(
                       color: AppColors.textTertiaryColor,
                       size: 20,
                     ),
-                    onPressed: () => Get.back(),
+                    onPressed: _safeSheetPop,
                   ),
                 ],
               ),
@@ -100,7 +110,7 @@ void showSortOptionsBottomSheet(
                     return InkWell(
                       onTap: () {
                         searchController.updateSortOption(apiValue);
-                        Get.back();
+                        _safeSheetPop();
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -130,7 +140,7 @@ void showSortOptionsBottomSheet(
                               onChanged: (String? newValue) {
                                 if (newValue != null) {
                                   searchController.updateSortOption(newValue);
-                                  Get.back();
+                                  _safeSheetPop();
                                 }
                               },
                               activeColor: theme.colorScheme.onSurface,

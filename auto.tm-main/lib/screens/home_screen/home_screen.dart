@@ -246,7 +246,7 @@ class _FilterBar extends StatelessWidget {
         children: [
           Expanded(
             child: InkWell(
-              onTap: () => Get.to(() => BrandSelection()),
+              onTap: () => Get.to(() => BrandSelection(origin: 'directHome')),
               borderRadius: BorderRadius.circular(12),
               child: Row(
                 children: [
@@ -321,7 +321,7 @@ class _FilterBar extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           InkWell(
-           onTap: () => Get.to(() => BrandSelection()),
+           onTap: () => Get.to(() => BrandSelection(origin: 'directHome')),
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(8),

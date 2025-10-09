@@ -5,10 +5,12 @@ class AppTranslations extends Translations {
   Map<String, Map<String, String>> get keys => {
     'en_US': {
       //settings
+   
       'Language': 'Language',
       'About us': 'About us',
       'Dark mode': 'Dark mode',
       //home
+         'Find Your Car':'Find Your Car',
       'Brand': 'Brand',
       'Model': 'Model',
       'Premium': 'Premium',
@@ -149,6 +151,10 @@ class AppTranslations extends Translations {
       'You can add only one video and maximum 10 photos' : 'You can add only one video and maximum 10 photos',
       'Your post is uploading, please wait' : 'Your post is uploading, please wait',
       'Download car diagnostics' : 'Download car diagnostics',
+      'Show Results': 'Show Results',
+      'Clear All': 'Clear All',
+      'City selection available only for Local region': 'City selection available only for Local region',
+      'No locations found': 'No locations found',
     },
     'tm_TM': {
       //settings
@@ -156,6 +162,7 @@ class AppTranslations extends Translations {
       'About us': 'Biz barada',
       'Dark mode': 'Garaňky görnüş',
       //home
+      'Find Your Car':'Gözleýän maşynyňy tap',
       'Brand': 'Marka',
       'Model': 'Model',
       'Premium': 'Premium',
@@ -291,6 +298,10 @@ class AppTranslations extends Translations {
       'You can add only one video and maximum 10 photos': 'Siz diňe bir wideo we iň köp 10 surat goşup bilersiňiz',
       'Your post is uploading, please wait':'Postyňyz ýüklenýär, garaşyň',
       'Download car diagnostics' : 'Maşynyň maglumatlaryny ýükle',
+      'Show Results': 'Netijeleri görkez',
+      'Clear All': 'Hemmesini arassala',
+      'City selection available only for Local region': 'Şäher saýlamak diňe Ýerli sebit üçin elýeterli',
+      'No locations found': 'Şäher tapylmady',
     },
     'ru_RU': {
       //settings
@@ -298,6 +309,7 @@ class AppTranslations extends Translations {
       'About us': 'О нас',
       'Dark mode': 'Темный режим',
       //home
+      'Find Your Car':'Найдите свой автомобиль',
       'Brand': 'Марка',
       'Model': 'Модель',
       'Premium': 'Премиум',
@@ -437,6 +449,10 @@ class AppTranslations extends Translations {
       'You can add only one video and maximum 10 photos': 'Вы можете добавить только одно видео и максимум 10 фотографий',
       'Your post is uploading, please wait':'Ваш пост загружается, пожалуйста, подождите',
       'Download car diagnostics' : 'Скачать диагностику автомобиля',
+      'Show Results': 'Показать результаты',
+      'Clear All': 'Очистить все',
+      'City selection available only for Local region': 'Выбор города доступен только для местного региона',
+      'No locations found': 'Города не найдены',
     },
   };
 }

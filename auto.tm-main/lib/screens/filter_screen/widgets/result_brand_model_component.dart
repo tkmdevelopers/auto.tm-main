@@ -31,7 +31,11 @@ class ResultBrandModelComponent extends StatelessWidget {
         child: Obx(
           () => GestureDetector(
             behavior: HitTestBehavior.opaque, // Ensures the whole area is tappable
-            onTap: () => Get.off(() => BrandSelection()),
+            onTap: () { // Navigate preserving origin; mark results viewed
+              final isResults = Get.currentRoute.contains('FilterResultPage');
+              controller.hasViewedResults.value = controller.hasViewedResults.value || isResults;
+              Get.to(() => BrandSelection(origin: isResults ? 'results' : (controller.hasViewedResults.value ? 'filter' : 'initial')));
+            },
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -100,14 +104,17 @@ class ResultBrandModelComponent extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             onTap: () {
               if (controller.selectedBrandUuid.value != '') {
-                Get.off(
-                  () => ModelSelection(
-                    brandUuid: controller.selectedBrandUuid.value,
-                    brandName: controller.selectedBrand.value,
-                  ),
-                );
+                final isResults = Get.currentRoute.contains('FilterResultPage'); // preserve origin
+                controller.hasViewedResults.value = controller.hasViewedResults.value || isResults;
+                Get.to(() => ModelSelection(
+                      brandUuid: controller.selectedBrandUuid.value,
+                      brandName: controller.selectedBrand.value,
+                      origin: isResults ? 'results' : (controller.hasViewedResults.value ? 'filter' : 'initial'),
+                    ));
               } else {
-                Get.off(() => BrandSelection());
+                final isResults = Get.currentRoute.contains('FilterResultPage'); // preserve origin
+                controller.hasViewedResults.value = controller.hasViewedResults.value || isResults;
+                Get.to(() => BrandSelection(origin: isResults ? 'results' : (controller.hasViewedResults.value ? 'filter' : 'initial')));
               }
             },
             child: Row(

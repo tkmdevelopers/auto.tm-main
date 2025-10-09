@@ -1,7 +1,8 @@
 import 'package:auto_tm/screens/filter_screen/controller/brand_controller.dart';
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
-import 'package:auto_tm/screens/filter_screen/widgets/filter_result_page.dart';
+// Removed direct navigation to FilterResultPage; we now return to origin screen.
 import 'package:auto_tm/screens/filter_screen/widgets/location_picker_component.dart';
+import 'package:auto_tm/screens/filter_screen/widgets/filter_result_page.dart';
 import 'package:auto_tm/screens/filter_screen/widgets/model_selection.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/styles.dart';
@@ -10,7 +11,15 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class BrandSelection extends StatefulWidget {
-  const BrandSelection({super.key});
+  const BrandSelection({super.key, this.origin = 'filter'});
+
+  // origin meanings:
+  //  'initial' / 'directHome' -> first-time flow (hasn't seen results yet); after model selection navigate to results.
+  //  'filter'                -> editing filters only.
+  //  'results'               -> came from results; live update.
+
+  /// Origin of navigation: 'filter' (came from FilterScreen) or 'results' (came from FilterResultPage).
+  final String origin;
 
   @override
   State<BrandSelection> createState() => _BrandSelectionState();
@@ -139,12 +148,11 @@ class _BrandSelectionState extends State<BrandSelection> {
               onTap: () {
                 controller.fetchModels(brand['uuid']);
                 brandController.addToHistory(brand['uuid']);
-                Get.to(
-                  () => ModelSelection(
-                    brandUuid: brand['uuid'],
-                    brandName: brandName,
-                  ),
-                );
+                Get.to(() => ModelSelection(
+                      brandUuid: brand['uuid'],
+                      brandName: brandName,
+                      origin: widget.origin,
+                    ));
               },
               child: Container(
                 width: 100,
@@ -221,8 +229,22 @@ class _BrandSelectionState extends State<BrandSelection> {
                   color: Colors.grey,
                 ),
                 onTap: () {
-                  controller.searchProducts();
-                  Get.to(() => FilterResultPage());
+                  // Clear brand/model filters
+                  controller.selectedBrandUuid.value = '';
+                  controller.selectedBrand.value = '';
+                  controller.selectedModelUuid.value = '';
+                  controller.selectedModel.value = '';
+                  if (widget.origin == 'results') {
+                    controller.searchProducts();
+                    Get.back();
+                  } else if (widget.origin == 'initial' || widget.origin == 'directHome') {
+                    controller.searchProducts();
+                    controller.hasViewedResults.value = true;
+                    Get.offAll(() => FilterResultPage(), transition: Transition.noTransition, duration: Duration.zero);
+                  } else {
+                    // filter origin
+                    Get.back();
+                  }
                 },
               );
             }
@@ -256,12 +278,11 @@ class _BrandSelectionState extends State<BrandSelection> {
               onTap: () {
                 controller.fetchModels(brand['uuid']);
                 brandController.addToHistory(brand['uuid']);
-                Get.to(
-                  () => ModelSelection(
-                    brandUuid: brand['uuid'],
-                    brandName: brandName,
-                  ),
-                );
+                Get.to(() => ModelSelection(
+                      brandUuid: brand['uuid'],
+                      brandName: brandName,
+                      origin: widget.origin,
+                    ));
               },
             );
           },

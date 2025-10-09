@@ -1,6 +1,5 @@
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 import 'package:auto_tm/screens/filter_screen/filter_screen.dart';
-import 'package:auto_tm/screens/filter_screen/widgets/locations.dart';
 import 'package:auto_tm/screens/home_screen/controller/premium_controller.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/images.dart';
@@ -75,36 +74,6 @@ class ResultPremiumSelection extends StatelessWidget {
             SizedBox(
               width: 2,
             ),
-            if(controller.selectedCountry.value == 'Local')
-            _buildLocationButton(context),
-            // GestureDetector(
-            //   onTap: () {
-            //     Get.to(() => SLocations());
-            //   },
-            //   child: Container(
-            //     alignment: Alignment.center,
-            //     padding: EdgeInsets.symmetric(
-            //       vertical: 4,
-            //       horizontal: 10,
-            //     ),
-            //     decoration: BoxDecoration(
-            //       border: Border.all(
-            //         color: AppColors.textTertiaryColor,
-            //         width: 0.3,
-            //       ),
-            //       borderRadius: BorderRadius.circular(12),
-            //       color: theme.colorScheme.secondaryContainer,
-            //     ),
-            //     child: Text(
-            //       'Location'.tr,
-            //       style: TextStyle(
-            //         fontSize: 14,
-            //         fontWeight: FontWeight.w500,
-            //         color: theme.colorScheme.primary,
-            //       ),
-            //     ),
-            //   ),
-            // ),
             SizedBox(
               width: 2,
             ),
@@ -183,35 +152,5 @@ class ResultPremiumSelection extends StatelessWidget {
     );
   }
 
-  Widget _buildLocationButton(BuildContext context) {
-    final theme = Theme.of(context);
-    return GestureDetector(
-            onTap: () {
-              Get.to(() => SLocations());
-            },
-            child: Container(
-              alignment: Alignment.center,
-              padding: EdgeInsets.symmetric(
-                vertical: 4,
-                horizontal: 10,
-              ),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: AppColors.textTertiaryColor,
-                  width: 0.3,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                color: theme.colorScheme.surface,
-              ),
-              child: Text(
-                'Location'.tr,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-          );
-  }
+  // Location button removed: location can only be changed from Filter screen now.
 }

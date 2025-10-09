@@ -8,11 +8,13 @@ import 'package:get/get.dart';
 class ModelSelection extends StatefulWidget {
   final String brandUuid;
   final String brandName;
+  final String origin; // 'filter' (stay within FilterScreen flow) or 'results' (live update & return to results)
 
   const ModelSelection({
     super.key,
     required this.brandUuid,
     required this.brandName,
+    this.origin = 'filter',
   });
 
   @override
@@ -21,6 +23,8 @@ class ModelSelection extends StatefulWidget {
 
 class _ModelSelectionState extends State<ModelSelection> {
   final controller = Get.find<FilterController>();
+
+  // Removed direct navigation; we now signal FilterScreen to navigate via controller.pendingInitialResultNav
 
   @override
   void initState() {
@@ -131,8 +135,18 @@ class _ModelSelectionState extends State<ModelSelection> {
                   controller.selectedBrand.value = widget.brandName;
                   controller.selectedModel.value = '';
                   controller.selectedModelUuid.value = '';
-                  controller.searchProducts();
-                  Get.to(() => FilterResultPage());
+                  if (widget.origin == 'results') { // only run search when coming from results screen
+                    controller.searchProducts();
+                    Get.close(2); // back to results
+                  } else if (widget.origin == 'initial' || widget.origin == 'directHome') {
+                    controller.searchProducts();
+                    controller.hasViewedResults.value = true;
+                    // Navigate straight to results replacing up to current route stack to avoid duplicate FilterScreen assumptions.
+                    Get.offAll(() => FilterResultPage(), transition: Transition.noTransition, duration: Duration.zero);
+                  } else {
+                    // filter origin
+                    Get.close(2);
+                  }
                 },
               );
             }
@@ -162,13 +176,22 @@ class _ModelSelectionState extends State<ModelSelection> {
                     ? theme.colorScheme.onSurface
                     : Colors.grey,
               ),
-              onTap: () {
+                onTap: () {
                 controller.selectedBrandUuid.value = widget.brandUuid;
                 controller.selectedModelUuid.value = model['uuid'];
                 controller.selectedBrand.value = widget.brandName;
                 controller.selectedModel.value = model['name'];
-                controller.searchProducts();
-                Get.to(() => FilterResultPage());
+                if (widget.origin == 'results') { // live update results
+                  controller.searchProducts();
+                  Get.close(2);
+                } else if (widget.origin == 'initial' || widget.origin == 'directHome') {
+                  controller.searchProducts();
+                  controller.hasViewedResults.value = true;
+                  Get.offAll(() => FilterResultPage(), transition: Transition.noTransition, duration: Duration.zero);
+                } else {
+                  // plain filter flow
+                  Get.close(2);
+                }
               },
             );
           },
