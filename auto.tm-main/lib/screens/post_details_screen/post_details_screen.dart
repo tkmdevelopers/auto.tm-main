@@ -330,7 +330,7 @@ class PostDetailsScreen extends StatelessWidget {
                                                   ),
                                                   const SizedBox(width: 10),
                                                   Text(
-                                                    'Watch the video'.tr,
+                                                    'Watch the video'.tr, // consider key e.g. post_watch_video later
                                                     style: const TextStyle(
                                                       color: Colors.white,
                                                       fontWeight:
@@ -522,7 +522,7 @@ class PostDetailsScreen extends StatelessWidget {
                                       ),
                                       SizedBox(height: 8),
                                       Text(
-                                        "Downloading... ${c.progress.value}%",
+                                        "Downloading... ${c.progress.value}%", // consider i18n
                                         style: TextStyle(
                                           color: theme
                                               .colorScheme
@@ -600,7 +600,7 @@ class PostDetailsScreen extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 post.value?.description.isNotEmpty == true
-                                    ? post.value!.description.tr
+                                    ? post.value!.description // DO NOT translate user text
                                     : '-',
                                 style: AppStyles.f16w4.copyWith(
                                   color: theme.colorScheme.onSurface,
@@ -832,12 +832,12 @@ class _DynamicCharacteristics extends StatelessWidget {
       _CharacteristicEntry(
         icon: AppImages.year,
         label: 'Year'.tr,
-        value: _isPositive(post!.year) ? '${post!.year.toStringAsFixed(0)} y.' : null,
+        value: _isPositive(post!.year) ? '${post!.year.toStringAsFixed(0)} y.'.tr : null,
       ),
       _CharacteristicEntry(
         icon: AppImages.milleage,
         label: 'Milleage'.tr,
-        value: _isPositive(post!.milleage) ? '${post!.milleage.toStringAsFixed(0)} km' : null,
+        value: _isPositive(post!.milleage) ? '${post!.milleage.toStringAsFixed(0)} km'.tr : null,
       ),
       _CharacteristicEntry(
         icon: AppImages.carCondition,
@@ -861,22 +861,22 @@ class _DynamicCharacteristics extends StatelessWidget {
           // Do not translate standardized region names; only translate if it looks like a key.
           value: displayLocation,
         ),
-      // Exchange info (always show)
+      // Exchange info (always show) - standardized keys
       _CharacteristicEntry(
         icon: AppImages.exchange,
-    label: 'Exchange'.tr,
-    value: (post!.exchange == true)
-    ? 'Exchange possible'.tr
-    : 'No exchange'.tr,
-  ),
-      // Credit info (always show)
+        label: 'Exchange'.tr,
+        value: (post!.exchange == true)
+            ? 'post_exchange_possible'.tr
+            : 'post_exchange_not_possible'.tr,
+      ),
+      // Credit info (always show) - standardized keys
       _CharacteristicEntry(
         icon: AppImages.credit,
-    label: 'Credit'.tr,
-    value: (post!.credit == true)
-    ? 'Credit available'.tr
-    : 'No credit'.tr,
-  ),
+        label: 'Credit'.tr,
+        value: (post!.credit == true)
+            ? 'post_credit_available'.tr
+            : 'post_credit_not_available'.tr,
+      ),
     ].where((e) => e.value != null && e.value!.trim().isNotEmpty && e.value != '0').toList();
 
     if (characteristics.isEmpty) return const SizedBox.shrink();

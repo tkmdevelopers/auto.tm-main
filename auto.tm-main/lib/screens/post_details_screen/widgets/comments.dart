@@ -421,9 +421,9 @@ class _CommentItem extends StatelessWidget {
                         color: theme.colorScheme.primary,
                       ),
                       label: Text(
-                        expanded
-                            ? 'Hide ${repliesCount}'.tr
-                            : 'View ${repliesCount}'.tr,
+            expanded
+              ? 'comments_thread_hide'.trParams({'count': repliesCount.toString()})
+              : 'comments_thread_view'.trParams({'count': repliesCount.toString()}),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -483,7 +483,7 @@ class _ReplyBanner extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              'Replying to: ' + (message.length > 40 ? message.substring(0, 40) + '…' : message),
+              ('comments_replying_to_prefix'.tr + ' ') + (message.length > 40 ? message.substring(0, 40) + '…' : message),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -546,7 +546,7 @@ class _CommentInputBar extends StatelessWidget {
               contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               filled: true,
               fillColor: theme.colorScheme.surfaceVariant.withOpacity(.55),
-              hintText: 'Add a comment'.tr,
+              hintText: 'comments_add_placeholder'.tr,
               hintStyle: TextStyle(
                 color: theme.colorScheme.onSurfaceVariant.withOpacity(.65),
                 fontSize: 14,

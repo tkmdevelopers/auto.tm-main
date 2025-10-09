@@ -107,7 +107,7 @@ class FilterScreen extends StatelessWidget {
                         "Location".tr,
                         controller.location.value.isEmpty
                             ? (controller.selectedCountry.value.isEmpty
-                                ? 'Any'.tr
+                                ? 'common_any'.tr
                                 : controller.selectedCountry.value)
                             : controller.location.value,
                         () => Get.to(() => SLocations()),
@@ -125,8 +125,8 @@ class FilterScreen extends StatelessWidget {
                             [
                               'Automatic'.tr,
                               'Manual'.tr,
-                              'CVT'.tr,
-                              'Dual-clutch'.tr,
+                              'transmission_cvt'.tr,
+                              'transmission_dual_clutch'.tr,
                             ],
                             controller.transmission,
                           );

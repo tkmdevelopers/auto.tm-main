@@ -52,15 +52,15 @@ class BlogController extends GetxController {
           return fetchBlogs(); // Call fetchBlogs again only if refresh was successful
         } else {
           // Handle the case where token refresh failed (e.g., show an error)
-          ('Error', 'Failed to refresh access token. Please log in again.', snackPosition: SnackPosition.BOTTOM);
+          ('Error', 'Failed to refresh access token. Please log in again.'.tr, snackPosition: SnackPosition.BOTTOM);
           // Optionally navigate to the login screen if refresh consistently fails
           // Get.offAllNamed('/login');
         }
       } else {
-        ('Error', 'Failed to load blogs. Please try again later.', snackPosition: SnackPosition.BOTTOM);
+        ('Error', 'Failed to load blogs. Please try again later.'.tr, snackPosition: SnackPosition.BOTTOM);
       }
     } catch (e) {
-      ('Error', 'Error fetching blogs. Please check your internet connection.', snackPosition: SnackPosition.BOTTOM);
+      ('Error', 'Error fetching blogs. Please check your internet connection.'.tr, snackPosition: SnackPosition.BOTTOM);
     } finally {
       isLoading.value = false;
     }
@@ -117,7 +117,7 @@ class BlogController extends GetxController {
         return "";
       }
     } catch (e) {
-      return "";
+      return ""; // could localize but empty indicates failure
     }
   }
 

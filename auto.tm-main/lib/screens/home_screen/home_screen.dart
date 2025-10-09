@@ -381,7 +381,7 @@ class _PostsHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'Latest Posts'.tr,
+            'home_latest_posts'.tr,
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
@@ -462,7 +462,7 @@ class _EmptyPosts extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'No Posts Found'.tr,
+                  'home_no_posts_found'.tr,
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -471,8 +471,7 @@ class _EmptyPosts extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Try adjusting your filters or check back later for new posts.'
-                      .tr,
+                  'home_no_results_tip'.tr,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,

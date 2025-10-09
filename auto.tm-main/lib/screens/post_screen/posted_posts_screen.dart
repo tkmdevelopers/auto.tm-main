@@ -57,7 +57,7 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
               elevation: 0,
               automaticallyImplyLeading: false,
               title: Text(
-                'My Posts'.tr,
+                'My Posts'.tr, // post_my_posts
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -272,7 +272,7 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                'You have no published posts yet'.tr,
+                'You have no published posts yet'.tr, // post_no_published
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -281,7 +281,7 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Create your first post by tapping the + button.'.tr,
+                'Create your first post by tapping the + button.'.tr, // post_create_first_tip
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,

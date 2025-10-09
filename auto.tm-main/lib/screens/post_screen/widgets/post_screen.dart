@@ -229,7 +229,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Create Post'.tr,
+                'Create Post'.tr, // Already mapped to post_create_title in translations; keep legacy key usage for now
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 2),
@@ -237,8 +237,9 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                 final saved = postController.isFormSaved.value;
                 final dirty = postController.isDirty.value;
                 final text = !saved
-                    ? 'Unsaved form'.tr
-                    : (dirty ? 'Unsaved changes'.tr : 'All changes saved'.tr);
+                    ? 'Unsaved form'.tr // post_unsaved_form
+                    : (dirty ? 'Unsaved changes'.tr // post_unsaved_changes
+                        : 'All changes saved'.tr); // post_all_saved
                 final color = dirty
                     ? theme.colorScheme.error
                     : (saved
@@ -296,7 +297,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Saved form loaded'.tr,
+                                'Saved form loaded'.tr, // post_saved_form_loaded
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -315,7 +316,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                 minimumSize: const Size(0, 32),
                               ),
                               child: Text(
-                                'Dismiss'.tr,
+                                'Dismiss'.tr, // post_dismiss
                                 style: TextStyle(color: c.primary),
                               ),
                             ),
@@ -334,7 +335,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                     _buildSectionCard(
                       context,
                       icon: Icons.perm_media_outlined,
-                      title: 'Photos and Video'.tr,
+                      title: 'Photos and Video'.tr, // post_photos_video
                       child: Column(
                         children: [const PostMediaScrollableSelectionWidget()],
                       ),
@@ -345,7 +346,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                       child: _buildSectionCard(
                         context,
                         icon: Icons.directions_car_filled_outlined,
-                        title: 'Vehicle'.tr,
+                        title: 'Vehicle'.tr, // post_vehicle
                         child: Column(
                           children: [
                             Obx(
@@ -372,7 +373,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                         .selectedBrandUuid
                                         .value
                                         .isEmpty
-                                    ? 'Select brand first'.tr
+                                    ? 'Select brand first'.tr // post_select_brand_first
                                     : 'Select model'.tr,
                                 enabled: postController
                                     .selectedBrandUuid
@@ -428,7 +429,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                     _buildSectionCard(
                       context,
                       icon: Icons.price_change_outlined,
-                      title: 'Pricing'.tr,
+                      title: 'Pricing'.tr, // post_pricing
                       child: Column(
                         children: [
                           _buildTextFormField(
@@ -508,7 +509,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                     _buildSectionCard(
                       context,
                       icon: Icons.location_on_outlined,
-                      title: 'Location'.tr,
+                      title: 'Location'.tr, // post_location_section
                       child: Obx(
                         () => _buildSelectableField(
                           context,
@@ -533,7 +534,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                     _buildSectionCard(
                       context,
                       icon: Icons.phone_outlined,
-                      title: 'Contact Information'.tr,
+                      title: 'Contact Information'.tr, // post_contact_info
                       child: Obx(() {
                         return Column(
                           children: [
@@ -578,7 +579,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          'Verified'.tr,
+                                          'Verified'.tr, // post_verified
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.w600,
@@ -650,8 +651,8 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                           : const Icon(Icons.send_outlined),
                                       label: Text(
                                         postController.showOtpField.value
-                                            ? 'Verify OTP'.tr
-                                            : 'Send OTP'.tr,
+                                            ? 'Verify OTP'.tr // post_verify_otp
+                                            : 'Send OTP'.tr, // post_send_otp
                                       ),
                                       onPressed:
                                           postController.showOtpField.value
@@ -674,11 +675,9 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                           top: 8.0,
                                         ),
                                         child: Text(
-                                          'Resend code in ${postController.countdown.value}s'
-                                              .tr,
+                                          'post_resend_code_in'.trParams({'seconds': postController.countdown.value.toString()}),
                                           style: TextStyle(
-                                            color: theme.colorScheme.onSurface
-                                                .withValues(alpha: 0.6),
+                                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                                           ),
                                         ),
                                       );
@@ -688,7 +687,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                       return TextButton(
                                         onPressed: () =>
                                             postController.sendOtp(),
-                                        child: Text('Resend Code'.tr),
+                                        child: Text('Resend Code'.tr), // post_resend_code
                                       );
                                     } else {
                                       return const SizedBox.shrink();
@@ -703,7 +702,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                     _buildSectionCard(
                       context,
                       icon: Icons.engineering_outlined,
-                      title: 'Technical Details'.tr,
+                      title: 'Technical Details'.tr, // post_technical_details
                       child: Column(
                         children: [
                           Obx(
@@ -736,7 +735,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                             context,
                             label: 'Engine Power (L)'.tr,
                             value: postController.enginePower.text,
-                            hint: 'Select engine size'.tr,
+                            hint: 'Select engine size'.tr, // post_select_engine_size
                             onTap: () async {
                               await _showEnginePowerBottomSheet(context);
                               setState(() {}); // refresh displayed value
@@ -789,9 +788,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                             label: 'Description'.tr,
                             controller: postController.description,
                             keyboardType: TextInputType.multiline,
-                            hint:
-                                "Highlight the car's features and condition..."
-                                    .tr,
+                            hint: "Highlight the car's features and condition...".tr,
                             maxLines: 5,
                           ),
                         ],
@@ -972,10 +969,10 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                         postController.saveForm();
                         final nowComplete = postController.hasMinimumData;
                         final msg = nowComplete
-                            ? 'Form saved'.tr
+                            ? 'Form saved'.tr // post_form_saved
                             : (wasCompleteBefore
-                                  ? 'Form saved (still complete)'.tr
-                                  : 'Partial form saved'.tr);
+                                ? 'Form saved (still complete)'.tr // post_form_saved_still_complete
+                                : 'Partial form saved'.tr); // post_partial_form_saved
                         Get.rawSnackbar(
                           message: msg,
                           duration: const Duration(seconds: 2),
@@ -989,7 +986,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                   final saved = postController.isFormSaved.value;
                   final dirty = postController.isDirty.value;
                   final label = saved
-                      ? (dirty ? 'Save Form'.tr : 'Saved'.tr)
+                      ? (dirty ? 'Save Form'.tr : 'Saved'.tr) // post_save_form, post_saved
                       : 'Save Form'.tr;
                   return Text(label);
                 }),
@@ -1005,11 +1002,10 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                         setState(() {
                           _brandError =
                               postController.selectedBrandUuid.value.isEmpty
-                              ? 'Brand required'.tr
+                              ? 'Brand required'.tr // post_brand_required
                               : null;
-                          _modelError =
-                              postController.selectedModelUuid.value.isEmpty
-                              ? 'Model required'.tr
+                          _modelError = postController.selectedModelUuid.value.isEmpty
+                              ? 'Model required'.tr // post_model_required
                               : null;
                         });
                         if (_brandError != null || _modelError != null) {
@@ -1023,7 +1019,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                         if (!postController.isPhoneVerified.value) {
                           Get.snackbar(
                             'Error',
-                            'You have to go through OTP verification.'.tr,
+                            'You have to go through OTP verification.'.tr, // post_error_otp_required
                             snackPosition: SnackPosition.BOTTOM,
                           );
                           return;
@@ -1056,7 +1052,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            'Posting...'.tr,
+                            'Posting...'.tr, // post_posting
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -1066,14 +1062,14 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                       )
                     : (locked && failedOrCancelled
                           ? Text(
-                              'Resolve pending upload'.tr,
+                              'Resolve pending upload'.tr, // post_resolve_pending_upload
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
                             )
                           : Text(
-                              'Post'.tr,
+                              'Post'.tr, // post_post_action
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -1083,7 +1079,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
             ),
             const SizedBox(width: 12),
             IconButton(
-              tooltip: 'Reset form'.tr,
+              tooltip: 'Reset form'.tr, // post_reset_form
               onPressed:
                   (postController.hasAnyInput ||
                       postController.isFormSaved.value ||
@@ -1093,7 +1089,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                       postController.clearSavedForm();
                       postController.reset();
                       Get.rawSnackbar(
-                        message: hadSaved ? 'Form cleared'.tr : 'Form reset'.tr,
+                        message: hadSaved ? 'Form cleared'.tr : 'Form reset'.tr, // post_form_cleared / post_form_reset
                         duration: const Duration(seconds: 2),
                       );
                     }
@@ -1354,7 +1350,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: 'Search brand...'.tr,
+                  hintText: 'Search brand...'.tr, // post_brand_search_hint
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1382,7 +1378,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text("No brands found".tr),
+                      Text("No brands found".tr), // post_no_brands_found
                       const SizedBox(height: 12),
                       FilledButton.icon(
                         onPressed: () =>
@@ -1484,7 +1480,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: 'Search model...'.tr,
+                  hintText: 'Search model...'.tr, // post_model_search_hint
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -1513,7 +1509,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text("No models found".tr),
+                      Text("No models found".tr), // post_no_models_found
                       const SizedBox(height: 12),
                       FilledButton.icon(
                         onPressed: () => postController.fetchModels(

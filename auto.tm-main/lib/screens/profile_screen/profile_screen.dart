@@ -44,7 +44,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Profile not loaded yet',
+                      'profile_not_loaded'.tr,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -53,7 +53,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Pull to refresh or tap retry to fetch your profile.',
+                      'profile_pull_or_retry'.tr,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
@@ -67,12 +67,12 @@ class ProfileScreen extends StatelessWidget {
                           controller.fetchProfile();
                       },
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Retry'),
+                      label: Text('profile_retry'.tr),
                     ),
                     const SizedBox(height: 12),
                     TextButton(
                       onPressed: () => Get.to(() => EditProfileScreen()),
-                      child: const Text('Fill Manually'),
+                      child: Text('profile_fill_manually'.tr),
                     ),
                   ],
                 ),
@@ -237,7 +237,7 @@ class ProfileScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Location'.tr,
+                              'Address'.tr,
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,

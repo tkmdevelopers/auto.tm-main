@@ -86,7 +86,7 @@ class SearchScreen extends StatelessWidget {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                           const SizedBox(height: 6),
-                          Text('Optimizing suggestions...'.tr, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                          Text('search_optimizing'.tr, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
                         ],
                       ],
                     ),

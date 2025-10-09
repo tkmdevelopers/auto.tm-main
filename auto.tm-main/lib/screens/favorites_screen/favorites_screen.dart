@@ -14,67 +14,57 @@ class FavoritesScreenTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    favController.refreshData();
-    return Obx(
-      () {
-        if (favController.favoriteProducts.isEmpty) {
-          return SRefreshIndicator(
-            onRefresh: favController.refreshData,
-            child: SizedBox(
-              height: MediaQuery.of(context).size.height,
-              child: Center(
-                child: Text(
-                  'Halan harytlaryňyz ýok'.tr,
-                  style: AppStyles.f16w7,
-                ),
-              ),
-            ),
-          );
-        }
+    // Data refresh is handled in controller onInit to avoid redundant calls here.
+    return Obx(() {
+      final items = favController.favoriteProducts;
+      if (items.isEmpty) {
         return SRefreshIndicator(
           onRefresh: favController.refreshData,
-          child: SafeArea(
+          child: Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: favController.favoriteProducts.length + 1, // +1 for top spacer
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return const SizedBox(height: 12); // top space below AppBar
-                  }
-                  final realIndex = index - 1;
-                  Post posts = favController.favoriteProducts[realIndex];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
-                    child: GestureDetector(
-                      onTap: () {
-                        Get.to(() => PostDetailsScreen(),
-                            arguments: posts.uuid.toString());
-                      },
-                      child: PostItem(
-                        uuid: posts.uuid,
-                        brand: posts.brand,
-                        model: posts.model,
-                        price: posts.price,
-                        photoPath: posts.photoPath,
-                        year: posts.year,
-                        milleage: posts.milleage,
-                        currency: posts.currency,
-                        createdAt: posts.createdAt,
-                        location: posts.location,
-                        region: posts.region,
-                      ),
-                    ),
-                  );
-                },
+              padding: const EdgeInsets.all(32.0),
+              child: Text(
+                'favourites_empty'.tr,
+                style: AppStyles.f16w7,
+                textAlign: TextAlign.center,
               ),
             ),
           ),
         );
-      },
-    );
+      }
+      return SRefreshIndicator(
+        onRefresh: favController.refreshData,
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16).copyWith(top: 12),
+          itemCount: items.length,
+          itemBuilder: (context, index) {
+            final Post post = items[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: GestureDetector(
+                onTap: () => Get.to(
+                  () => PostDetailsScreen(),
+                  arguments: post.uuid.toString(),
+                ),
+                child: PostItem(
+                  uuid: post.uuid,
+                  brand: post.brand,
+                  model: post.model,
+                  price: post.price,
+                  photoPath: post.photoPath,
+                  year: post.year,
+                  milleage: post.milleage,
+                  currency: post.currency,
+                  createdAt: post.createdAt,
+                  location: post.location,
+                  region: post.region,
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    });
   }
 }
 
@@ -86,9 +76,6 @@ class MyFavouritesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Ensure favorites are loaded
-    favoritesController.refreshData();
-
     return Scaffold(
       appBar: AppBar(
         elevation: 4,

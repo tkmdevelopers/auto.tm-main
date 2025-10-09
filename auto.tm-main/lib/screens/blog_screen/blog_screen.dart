@@ -22,7 +22,7 @@ class BlogScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(elevation:4,
         title: Text(
-          'News'.tr,
+          'News'.tr, // blog/news key
           style: AppStyles.f18w6.copyWith(color: theme.colorScheme.onSurface),
         ),
         backgroundColor: theme.appBarTheme.backgroundColor,
@@ -67,7 +67,7 @@ class BlogScreen extends StatelessWidget {
             );
           }
           if (controller.blogs.isEmpty) {
-            return Center(child: Text('There are no blogs'.tr));
+            return Center(child: Text('There are no blogs'.tr)); // blog_empty
           }
           return ListView.separated(
             padding: EdgeInsets.all(16),
