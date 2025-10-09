@@ -492,9 +492,10 @@ class UploadManager extends GetxService {
                 ),
               );
               if (!videoOk) {
+                final fallback = 'post_upload_video_failed'.tr;
                 throw Exception(
                   controller.uploadError.value.isEmpty
-                      ? 'Video upload failed'
+                      ? fallback
                       : controller.uploadError.value,
                 );
               }
@@ -521,9 +522,10 @@ class UploadManager extends GetxService {
                 ),
               );
               if (!ok) {
+                final fallback = 'post_upload_photo_failed'.tr;
                 throw Exception(
                   controller.uploadError.value.isEmpty
-                      ? 'Photo upload failed'
+                      ? fallback
                       : controller.uploadError.value,
                 );
               }

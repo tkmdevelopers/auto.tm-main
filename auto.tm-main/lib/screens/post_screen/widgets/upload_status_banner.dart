@@ -83,11 +83,11 @@ class UploadStatusBanner extends StatelessWidget {
                       : Get.put(PostController());
                   mgr.retryActive(pc);
                 },
-                child: Text('Retry'.tr),
+                child: Text('post_retry'.tr),
               ),
               TextButton(
                 onPressed: () => mgr.discardTerminal(),
-                child: Text('Discard'.tr),
+                child: Text('post_discard'.tr),
               ),
             ],
           );
@@ -99,7 +99,7 @@ class UploadStatusBanner extends StatelessWidget {
             final pc = Get.find<PostController>();
             mgr.cancelActive(pc);
           },
-          child: Text('Cancel'.tr),
+          child: Text('post_cancel'.tr),
         );
       }
 

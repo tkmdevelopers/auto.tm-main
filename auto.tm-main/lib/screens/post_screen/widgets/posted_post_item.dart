@@ -287,15 +287,15 @@ class PostedPostItem extends StatelessWidget {
     late final Color contentColor;
     late final IconData icon;
     if (s == null) {
-      label = 'Pending'.tr;
+      label = 'post_status_pending'.tr;
       contentColor = Colors.orange.shade600;
       icon = Icons.hourglass_top_rounded;
     } else if (s) {
-      label = 'Acccepted'.tr;
+      label = 'post_status_active'.tr;
       contentColor = Colors.green.shade600;
       icon = Icons.check_circle_outline_rounded;
     } else {
-      label = 'Declined'.tr;
+      label = 'post_status_declined'.tr;
       contentColor = theme.colorScheme.error;
       icon = Icons.cancel_outlined;
     }
@@ -331,7 +331,7 @@ class PostedPostItem extends StatelessWidget {
         Icons.more_horiz_rounded, // Using a different icon for a softer look
         color: theme.colorScheme.onSurfaceVariant,
       ),
-      tooltip: "More options",
+  tooltip: 'post_menu_more_options'.tr,
       position: PopupMenuPosition.under,
       color: theme.colorScheme.surfaceContainerHigh, // Menu background
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -340,8 +340,8 @@ class PostedPostItem extends StatelessWidget {
         if (value == 'Delete') {
           Get.dialog(
             AlertDialog(
-              title: Text("Confirm Deletion".tr),
-              content: Text("Are you sure you want to delete this post?".tr),
+              title: Text('post_confirm_deletion_title'.tr),
+              content: Text('post_confirm_deletion_message'.tr),
               actions: [
                 TextButton(
                   onPressed: () => NavigationUtils.closeGlobal(),

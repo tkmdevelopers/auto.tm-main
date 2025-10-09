@@ -14,7 +14,7 @@ class BlogDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         elevation: 4,
-        title: Text('News'.tr, style: TextStyle(color: theme.colorScheme.onSurface)),
+        title: Text('blog_detail_title'.tr, style: TextStyle(color: theme.colorScheme.onSurface)),
         backgroundColor: theme.appBarTheme.backgroundColor,
         surfaceTintColor: theme.appBarTheme.backgroundColor,
       ),

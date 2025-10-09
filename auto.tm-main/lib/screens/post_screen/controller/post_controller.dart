@@ -640,18 +640,18 @@ class PostController extends GetxController {
               NavigationUtils.closeGlobal();
               manager.retryActive(this);
             },
-            child: Text('Retry'.tr),
+            child: Text('post_retry'.tr),
           ),
           TextButton(
             onPressed: () {
               manager.discardTerminal();
               NavigationUtils.closeGlobal();
             },
-            child: Text('Discard'.tr),
+            child: Text('post_discard'.tr),
           ),
           TextButton(
             onPressed: () => NavigationUtils.closeGlobal(),
-            child: Text('Cancel'.tr),
+            child: Text('post_cancel'.tr),
           ),
         ],
       ),

@@ -22,7 +22,7 @@ class BlogScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(elevation:4,
         title: Text(
-          'News'.tr, // blog/news key
+          'blog_list_title'.tr, // standardized blog list title key
           style: AppStyles.f18w6.copyWith(color: theme.colorScheme.onSurface),
         ),
         backgroundColor: theme.appBarTheme.backgroundColor,
