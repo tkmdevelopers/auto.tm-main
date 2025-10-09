@@ -11,6 +11,7 @@ class CommentsController extends GetxController {
   var comments = <Map<String, dynamic>>[].obs;
   var isLoading = false.obs;
   var userId = "".obs;
+  var isSending = false.obs; // prevents duplicate rapid sends
 
   var replyToComment = Rxn<Map<String, dynamic>>(); // Stores selected comment for reply
 
@@ -28,7 +29,27 @@ class CommentsController extends GetxController {
       );
       if (response.statusCode == 200) {
         final decodedData = json.decode(response.body);
-        comments.value = List<Map<String, dynamic>>.from(decodedData);
+        final rawList = List<Map<String, dynamic>>.from(decodedData);
+        // Deduplicate by uuid
+        final seen = <String>{};
+        final unique = <Map<String, dynamic>>[];
+        for (final c in rawList) {
+          final id = c['uuid']?.toString();
+            if (id != null) {
+              if (seen.add(id)) {
+                unique.add(c);
+              }
+            } else {
+              unique.add(c); // keep those without uuid just in case
+            }
+        }
+        comments.value = unique;
+        // Debug: log if duplicates were removed
+        final removed = rawList.length - unique.length;
+        if (removed > 0) {
+          // ignore: avoid_print
+          print('[COMMENTS] Removed $removed duplicate comment(s)');
+        }
         Future.delayed(Duration.zero, () { // Schedule for next frame
         isLoading.value = false;
       });
@@ -63,7 +84,8 @@ Future.delayed(Duration.zero, () { // Schedule for next frame
     //   Get.toNamed('/profile'); // Navigate to Profile Screen if user is not logged in
     //   return;
     // }
-    if (message.isEmpty) return;
+  if (message.isEmpty || isSending.value) return;
+  isSending.value = true;
 
     final commentData = {
       "postId": postId,
@@ -87,7 +109,11 @@ Future.delayed(Duration.zero, () { // Schedule for next frame
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final newComment = jsonDecode(response.body);
-        comments.add(newComment); // Add new comment to list
+        final id = newComment['uuid']?.toString();
+        final exists = id != null && comments.any((c) => c['uuid']?.toString() == id);
+        if (!exists) {
+          comments.add(newComment); // Add new unique comment to list
+        }
         replyToComment.value = null; // Clear reply after sending
       } if (response.statusCode == 406) {
         await refreshAccessToken();
@@ -102,7 +128,9 @@ Future.delayed(Duration.zero, () { // Schedule for next frame
       } else {
       }
     } catch (e) {
-      return;
+      // ignore error silently
+    } finally {
+      isSending.value = false;
     }
   }
 

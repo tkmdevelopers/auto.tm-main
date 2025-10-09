@@ -3,6 +3,7 @@ import { createCommets, findAllComments } from './comments.dto';
 import { Request, Response } from 'express';
 import { Posts } from 'src/post/post.entity';
 import { User } from 'src/auth/auth.entity';
+import { Photo } from 'src/photo/photo.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { Comments } from './comments.entity';
 
@@ -19,6 +20,21 @@ export class CommentsService {
       const { postId } = body;
       const comments = await this.comments.findAll({
         where: { postId },
+        order: [['createdAt', 'ASC']],
+        group: ['Comments.uuid', 'user.uuid', 'user->avatar.uuid'],
+        include: [
+          {
+            model: this.users,
+            attributes: ['uuid', 'name', 'email'],
+            include: [
+              {
+                model: Photo,
+                as: 'avatar',
+                attributes: ['uuid', 'path', 'originalPath'],
+              },
+            ],
+          },
+        ],
       });
       if (!comments) throw new HttpException('Empty', HttpStatus.NOT_FOUND);
 
@@ -41,7 +57,14 @@ export class CommentsService {
 
       const user = await this.users.findOne({
         where: { uuid: req?.uuid },
-        attributes: ['email', 'name'],
+        attributes: ['uuid', 'email', 'name'],
+        include: [
+          {
+            model: Photo,
+            as: 'avatar',
+            attributes: ['uuid', 'path', 'originalPath'],
+          },
+        ],
       });
 
       const comment = await this.comments.create({
@@ -52,7 +75,24 @@ export class CommentsService {
         sender: user?.name || user?.email,
       });
 
-      return res.status(200).json(comment);
+      // Re-fetch with associations to return consistent shape
+      const fullComment = await this.comments.findOne({
+        where: { uuid: comment.uuid },
+        include: [
+          {
+            model: this.users,
+            attributes: ['uuid', 'name', 'email'],
+            include: [
+              {
+                model: Photo,
+                as: 'avatar',
+                attributes: ['uuid', 'path', 'originalPath'],
+              },
+            ],
+          },
+        ],
+      });
+      return res.status(200).json(fullComment);
     } catch (error) {
       if (!error.status) {
         console.log(error);

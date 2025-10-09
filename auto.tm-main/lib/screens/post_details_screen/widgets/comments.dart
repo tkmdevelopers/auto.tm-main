@@ -170,12 +170,15 @@ class _CommentItem extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                ProfileAvatar(
-                  remotePath: avatarPath,
-                  radius: 16,
-                  backgroundRadiusDelta: 2,
-                  iconSize: 16,
-                ),
+                if (avatarPath != null)
+                  ProfileAvatar(
+                    remotePath: avatarPath,
+                    radius: 16,
+                    backgroundRadiusDelta: 2,
+                    iconSize: 16,
+                  )
+                else
+                  _InitialsAvatar(name: sender, radius: 16),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -352,6 +355,42 @@ class _CommentInputBar extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InitialsAvatar extends StatelessWidget {
+  const _InitialsAvatar({required this.name, this.radius = 16});
+  final String name;
+  final double radius;
+
+  String _initials(String input) {
+    final parts = input.trim().split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final txt = _initials(name);
+    return CircleAvatar(
+      radius: radius + 2,
+      backgroundColor: Colors.white,
+      child: CircleAvatar(
+        radius: radius,
+        backgroundColor: theme.colorScheme.primaryContainer,
+        child: Text(
+          txt,
+          style: TextStyle(
+            fontSize: radius * 0.9,
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.primary,
+            letterSpacing: -0.5,
+          ),
         ),
       ),
     );
