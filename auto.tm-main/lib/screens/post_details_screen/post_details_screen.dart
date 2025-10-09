@@ -6,6 +6,7 @@ import 'package:auto_tm/screens/post_details_screen/widgets/comments_carousel.da
 import 'package:auto_tm/screens/post_details_screen/widgets/post_details_shimmer.dart';
 import 'package:auto_tm/screens/post_details_screen/widgets/video_player.dart';
 import 'package:auto_tm/screens/post_details_screen/widgets/view_post_photo.dart';
+import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/images.dart';
 import 'package:auto_tm/ui_components/styles.dart';
@@ -67,7 +68,9 @@ class PostDetailsScreen extends StatelessWidget {
                           children: [
                             Container(
                               width: double.infinity,
-                              color: theme.colorScheme.primaryContainer,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surface,
+                              ),
                               child: CarouselSlider(
                                 items: post.value?.photoPaths.map((photo) {
                                   return GestureDetector(
@@ -137,64 +140,73 @@ class PostDetailsScreen extends StatelessWidget {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  InkWell(
+                                  // Back button matching PostItem style
+                                  GestureDetector(
                                     onTap: () => NavigationUtils.close(context),
                                     child: Container(
-                                      padding: const EdgeInsets.all(4),
+                                      width: 44,
+                                      height: 44,
                                       decoration: BoxDecoration(
-                                        color:
-                                            theme.colorScheme.tertiaryContainer,
-                                        borderRadius: BorderRadius.circular(25),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: theme.shadowColor,
-                                            blurRadius: 8,
-                                          ),
-                                        ],
+                                        color: theme.colorScheme.surface,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: theme.colorScheme.outline.withOpacity(0.1),
+                                          width: 1.2,
+                                        ),
                                       ),
-                                      child: Icon(
-                                        Icons.chevron_left,
-                                        color: theme.colorScheme.primary,
-                                        // size: 20.sp,
-                                        size: 20,
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.chevron_left,
+                                          size: 20,
+                                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                  GestureDetector(
-                                    // onTap: onFavoriteToggle,
-                                    onTap: () => favoritesController
-                                        .toggleFavorite(uuid),
-                                    child: Container(
-                                      // padding: EdgeInsets.all(4.w),
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            theme.colorScheme.tertiaryContainer,
-                                        borderRadius: BorderRadius.circular(25),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: theme.shadowColor,
-                                            blurRadius: 8,
+                                  // Favorite button re-styled & animated like PostItem
+                                  Obx(() {
+                                    final isFav = favoritesController.favorites.contains(uuid);
+                                    return GestureDetector(
+                                      onTap: () => favoritesController.toggleFavorite(uuid),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 300),
+                                        curve: Curves.easeInOut,
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: theme.colorScheme.surface,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: theme.colorScheme.outline.withOpacity(0.1),
+                                            width: 1.2,
                                           ),
-                                        ],
+                                          boxShadow: isFav
+                                              ? [
+                                                  BoxShadow(
+                                                    color: theme.colorScheme.primary.withOpacity(0.2),
+                                                    blurRadius: 8,
+                                                    offset: const Offset(0, 3),
+                                                  ),
+                                                ]
+                                              : [],
+                                        ),
+                                        child: Center(
+                                          child: AnimatedSwitcher(
+                                            duration: const Duration(milliseconds: 300),
+                                            transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+                                            child: Icon(
+                                              isFav ? Icons.favorite : Icons.favorite_border,
+                                              key: ValueKey<bool>(isFav),
+                                              color: isFav
+                                                  ? theme.colorScheme.primary
+                                                  : theme.colorScheme.onSurface.withOpacity(0.7),
+                                              size: 20,
+                                            ),
+                                          ),
+                                        ),
                                       ),
-                                      child: Obx(() {
-                                        final isFavorite = favoritesController
-                                            .favorites
-                                            .contains(uuid);
-                                        return Icon(
-                                          // size: 20.sp,
-                                          size: 22,
-                                          isFavorite
-                                              ? Icons.favorite
-                                              : Icons.favorite_border,
-                                          color: isFavorite
-                                              ? Colors.red
-                                              : Colors.red,
-                                        );
-                                      }),
-                                    ),
-                                  ),
+                                    );
+                                  }),
                                 ],
                               ),
                             ),
@@ -555,156 +567,7 @@ class PostDetailsScreen extends StatelessWidget {
 
                   // Product Info
                   const SizedBox(height: 20),
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: theme.scaffoldBackgroundColor,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Characteristics'.tr,
-                          style: AppStyles.f20w5.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Divider(
-                          color: AppColors.textTertiaryColor,
-                          height: 0.5,
-                        ),
-                        SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 1,
-                              child: _buildCharacteristics(
-                                AppImages.brand,
-                                'Brand'.tr,
-                                post.value?.brand ?? '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            // if(post.value?.enginePower != 0)
-                            Expanded(
-                              child: _buildCharacteristics(
-                                AppImages.enginePower,
-                                'Engine power'.tr,
-                                post.value?.enginePower != null ||
-                                        post.value?.enginePower != 0
-                                    ? post.value!.enginePower.toStringAsFixed(0)
-                                    : '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 1,
-                              child: _buildCharacteristics(
-                                AppImages.car,
-                                'Model'.tr,
-                                post.value?.model ?? '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            // if(post.value?.transmission != '')
-                            Expanded(
-                              child: _buildCharacteristics(
-                                AppImages.transmission,
-                                'Transmission'.tr,
-                                post.value?.transmission.isNotEmpty == true
-                                    ? post.value!.transmission.tr
-                                    : '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildCharacteristics(
-                                AppImages.year,
-                                'Year'.tr,
-                                post.value?.year != null
-                                    ? '${post.value!.year.toStringAsFixed(0)} y.'
-                                    : '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            // if(post.value?.milleage != 0)
-                            Expanded(
-                              child: _buildCharacteristics(
-                                AppImages.milleage,
-                                'Milleage'.tr,
-                                post.value?.milleage != null
-                                    ? '${post.value!.milleage.toStringAsFixed(0)} km'
-                                    : '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                        // if(post.value?.milleage != 0 || post.value?.engineType != '')
-                        SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildCharacteristics(
-                                AppImages.carCondition,
-                                'Car condition'.tr,
-                                post.value?.condition.isNotEmpty == true
-                                    ? post.value!.condition.tr
-                                    : '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            // if(post.value?.engineType != '')
-                            Expanded(
-                              child: _buildCharacteristics(
-                                AppImages.engineType,
-                                'Engine type'.tr,
-                                post.value?.engineType.isNotEmpty == true
-                                    ? post.value!.engineType.tr
-                                    : '-',
-                                theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                        // if(post.value?.vinCode != '')
-                        SizedBox(height: 10),
-                        // if(post.value?.vinCode != '')
-                        _buildCharacteristics(
-                          AppImages.vin,
-                          'VIN',
-                          post.value?.vinCode.isNotEmpty == true
-                              ? post.value!.vinCode.tr
-                              : '-',
-                          theme.colorScheme.onSurfaceVariant,
-                        ),
-                        // if(post.value?.location != '')
-                        SizedBox(height: 10),
-                        // if(post.value?.location != '')
-                        _buildCharacteristics(
-                          AppImages.location,
-                          'Location'.tr,
-                          post.value?.location.isNotEmpty == true
-                              ? post.value!.location.tr
-                              : '-',
-                          theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ],
-                    ),
-                  ),
+                  _DynamicCharacteristics(post: post.value, theme: theme),
                   // const SizedBox(
                   //   height: 6,
                   // ),
@@ -926,39 +789,174 @@ class PostDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCharacteristics(
-    String icon,
-    String key,
-    String value,
-    Color color,
-  ) {
+}
+
+class _DynamicCharacteristics extends StatelessWidget {
+  final Post? post;
+  final ThemeData theme;
+  const _DynamicCharacteristics({required this.post, required this.theme});
+
+  bool _isNonEmpty(String? v) => v != null && v.trim().isNotEmpty;
+  bool _isPositive(num? v) => v != null && v > 0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (post == null) return const SizedBox.shrink();
+
+    // Compute location/region display according to rule:
+    // If region == 'local' show actual location else show region (if not empty)
+    final regionRaw = post!.region.trim();
+    final regionLower = regionRaw.toLowerCase();
+    String? displayLocation;
+    if (regionLower == 'local') {
+      if (_isNonEmpty(post!.location)) displayLocation = post!.location;
+    } else {
+      if (_isNonEmpty(regionRaw)) displayLocation = regionRaw; // show region itself
+    }
+
+    final characteristics = <_CharacteristicEntry>[
+      _CharacteristicEntry(
+        icon: AppImages.brand,
+        label: 'Brand'.tr,
+        value: _isNonEmpty(post!.brand) ? post!.brand : null,
+      ),
+      _CharacteristicEntry(
+        icon: AppImages.enginePower,
+        label: 'Engine power'.tr,
+        value: _isPositive(post!.enginePower) ? post!.enginePower.toStringAsFixed(0) : null,
+      ),
+      _CharacteristicEntry(
+        icon: AppImages.car,
+        label: 'Model'.tr,
+        value: _isNonEmpty(post!.model) ? post!.model : null,
+      ),
+      _CharacteristicEntry(
+        icon: AppImages.transmission,
+        label: 'Transmission'.tr,
+        value: _isNonEmpty(post!.transmission) ? post!.transmission.tr : null,
+      ),
+      _CharacteristicEntry(
+        icon: AppImages.year,
+        label: 'Year'.tr,
+        value: _isPositive(post!.year) ? '${post!.year.toStringAsFixed(0)} y.' : null,
+      ),
+      _CharacteristicEntry(
+        icon: AppImages.milleage,
+        label: 'Milleage'.tr,
+        value: _isPositive(post!.milleage) ? '${post!.milleage.toStringAsFixed(0)} km' : null,
+      ),
+      _CharacteristicEntry(
+        icon: AppImages.carCondition,
+        label: 'Car condition'.tr,
+        value: _isNonEmpty(post!.condition) ? post!.condition.tr : null,
+      ),
+      _CharacteristicEntry(
+        icon: AppImages.engineType,
+        label: 'Engine type'.tr,
+        value: _isNonEmpty(post!.engineType) ? post!.engineType.tr : null,
+      ),
+      _CharacteristicEntry(
+        icon: AppImages.vin,
+        label: 'VIN',
+        value: _isNonEmpty(post!.vinCode) ? post!.vinCode : null,
+      ),
+      if (displayLocation != null)
+        _CharacteristicEntry(
+          icon: AppImages.location,
+          label: 'Location'.tr,
+          value: displayLocation.tr, // in case region/location keys localized
+        ),
+    ].where((e) => e.value != null && e.value!.trim().isNotEmpty && e.value != '0').toList();
+
+    if (characteristics.isEmpty) return const SizedBox.shrink();
+
+    // Build rows of two using Wrap for responsive flow
+    final rows = <Widget>[];
+    for (int i = 0; i < characteristics.length; i += 2) {
+      final first = characteristics[i];
+      final second = (i + 1) < characteristics.length ? characteristics[i + 1] : null;
+      rows.add(Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: _buildCharacteristicsItem(first)),
+          const SizedBox(width: 12),
+          Expanded(child: second != null ? _buildCharacteristicsItem(second) : const SizedBox()),
+        ],
+      ));
+      if (i + 2 < characteristics.length) rows.add(const SizedBox(height: 10));
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: theme.scaffoldBackgroundColor,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Characteristics'.tr,
+            style: AppStyles.f20w5.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+            Divider(
+              color: AppColors.textTertiaryColor,
+              height: 0.5,
+            ),
+          const SizedBox(height: 16),
+          ...rows,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCharacteristicsItem(_CharacteristicEntry e) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SvgPicture.asset(
-          icon,
+          e.icon,
           width: 28,
           height: 28,
-          colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-          // color: color,
+          colorFilter: ColorFilter.mode(
+            theme.colorScheme.onSurfaceVariant,
+            BlendMode.srcIn,
+          ),
         ),
-        SizedBox(width: 12),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "$key:",
+                '${e.label}:',
                 style: AppStyles.f16w6.copyWith(
-                  color: color,
+                  color: theme.colorScheme.onSurfaceVariant,
                   overflow: TextOverflow.ellipsis,
                 ),
                 maxLines: 2,
               ),
-              Text(value, style: AppStyles.f14w4.copyWith(color: color)),
+              Text(
+                e.value ?? '-',
+                style: AppStyles.f14w4.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
-        ),
+        )
       ],
     );
   }
+}
+
+class _CharacteristicEntry {
+  final String icon;
+  final String label;
+  final String? value;
+  _CharacteristicEntry({required this.icon, required this.label, required this.value});
 }
