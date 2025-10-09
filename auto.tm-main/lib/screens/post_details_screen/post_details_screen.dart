@@ -288,62 +288,59 @@ class PostDetailsScreen extends StatelessWidget {
                                     -12.0, // Example: Position at the bottom
                                 right: 16.0, // Example: Position to the right
                                 child: hasVideo
-                                    ? Material(
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          onTap: () {
-                                            Get.to(
-                                              () => VideoPlayerPage(),
-                                              arguments: detailsController
-                                                  .post
-                                                  .value!
-                                                  .video,
-                                            );
-                                          },
-                                          borderRadius: BorderRadius.circular(
-                                            12.0,
+                                    ? GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () {
+                                          Get.to(
+                                            () => VideoPlayerPage(),
+                                            arguments: detailsController
+                                                .post
+                                                .value!
+                                                .video,
+                                          );
+                                        },
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            gradient: const LinearGradient(
+                                              begin: Alignment.centerLeft,
+                                              end: Alignment.centerRight,
+                                              colors: [
+                                                Color(0xFF1E4EED),
+                                                Color(0xFF7FA7F6),
+                                              ],
+                                            ),
+                                            borderRadius:
+                                                BorderRadius.circular(12.0),
                                           ),
-                                          child: Ink(
-                                            decoration: BoxDecoration(
-                                              gradient: const LinearGradient(
-                                                begin: Alignment.centerLeft,
-                                                end: Alignment.centerRight,
-                                                colors: [
-                                                  Color(0xFF1E4EED),
-                                                  Color(0xFF7FA7F6),
-                                                ],
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          constraints: const BoxConstraints(
+                                            minHeight: 36,
+                                            minWidth: 140,
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.play_circle_outline,
+                                                color: AppColors.whiteColor,
+                                                size: 16,
                                               ),
-                                              borderRadius:
-                                                  BorderRadius.circular(12.0),
-                                            ),
-                                            child: Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 6,
+                                              const SizedBox(width: 8),
+                                              Flexible(
+                                                child: Text(
+                                                  'post_watch_video'.tr,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 13,
                                                   ),
-                                              alignment: Alignment.center,
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const Icon(
-                                                    Icons.play_circle_outline,
-                                                    color: AppColors.whiteColor,
-                                                    size: 12,
-                                                  ),
-                                                  const SizedBox(width: 10),
-                                                  Text(
-                                                    'Watch the video'.tr, // consider key e.g. post_watch_video later
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
                                               ),
-                                            ),
+                                            ],
                                           ),
                                         ),
                                       )

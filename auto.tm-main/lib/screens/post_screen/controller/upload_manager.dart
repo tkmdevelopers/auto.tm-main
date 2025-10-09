@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:async';
 import 'package:get/get.dart';
+import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
 import 'package:flutter/foundation.dart'; // for compute
 import 'package:get_storage/get_storage.dart';
 import 'package:uuid/uuid.dart';
@@ -209,7 +210,8 @@ class UploadManager extends GetxService {
             if (id.isNotEmpty) {
               // Navigate if possible
               if (Get.isRegistered<PostController>()) {
-                Get.toNamed('/post-details', arguments: id);
+                // Consistent navigation style across app
+                Get.to(() => PostDetailsScreen(), arguments: id);
               }
             }
           }

@@ -154,7 +154,7 @@ class EditProfileScreen extends StatelessWidget {
                             }
                           },
                           child: Text(
-                            'Retry'.tr,
+                            'post_retry'.tr,
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,

@@ -20,7 +20,9 @@ class BlogScreen extends StatelessWidget {
   // Initial fetch handled in BlogController.onInit()
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(elevation:4,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        elevation:4,
         title: Text(
           'blog_list_title'.tr, // standardized blog list title key
           style: AppStyles.f18w6.copyWith(color: theme.colorScheme.onSurface),

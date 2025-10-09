@@ -16,20 +16,32 @@ export class VideoService {
 
   async createVideo(uuid: string, inputPath: string) {
     try {
-      const proccesPath: any = inputPath;
+      const normalizedInput = inputPath.replace(/\\/g, '/');
+      const uploadsIndex = normalizedInput.lastIndexOf('uploads');
+      const relative = uploadsIndex !== -1
+        ? normalizedInput.substring(uploadsIndex + 'uploads'.length).replace(/^[\\/]+/, '')
+        : normalizedInput;
       const new_video = await this.videoRepo.create({
-        url: proccesPath,
+        url: relative,
         postId: uuid,
       });
-      return new_video;
+      return { ...new_video.toJSON(), publicUrl: `/media/${relative}` };
     } catch (error) {
       return error;
     }
   }
 
   async getAllVideos() {
-    return await this.videoRepo.findAll({
+    const videos = await this.videoRepo.findAll({
       include: [{ model: Posts, as: 'post' }],
+    });
+    return videos.map(v => {
+      const plain: any = v.toJSON();
+      if (plain.url) {
+        plain.url = plain.url.replace(/\\/g, '/');
+        plain.publicUrl = `/media/${plain.url.replace(/^[\\/]+/, '')}`;
+      }
+      return plain;
     });
   }
 
@@ -40,13 +52,26 @@ export class VideoService {
     if (!video) {
       throw new NotFoundException(`Video with ID ${id} not found`);
     }
-    return video;
+    const plain: any = video.toJSON();
+    if (plain.url) {
+      plain.url = plain.url.replace(/\\/g, '/');
+      plain.publicUrl = `/media/${plain.url.replace(/^[\\/]+/, '')}`;
+    }
+    return plain;
   }
 
   async getVideosByPostId(postId: string) {
-    return await this.videoRepo.findAll({
+    const list = await this.videoRepo.findAll({
       where: { postId },
       include: [{ model: Posts, as: 'post' }],
+    });
+    return list.map(v => {
+      const plain: any = v.toJSON();
+      if (plain.url) {
+        plain.url = plain.url.replace(/\\/g, '/');
+        plain.publicUrl = `/media/${plain.url.replace(/^[\\/]+/, '')}`;
+      }
+      return plain;
     });
   }
 
@@ -93,11 +118,16 @@ export class VideoService {
 
   async uploadVideo(postId: string, file: Express.Multer.File) {
     try {
+      const normalizedPath = file.path.replace(/\\/g, '/');
+      const uploadsIndex = normalizedPath.lastIndexOf('uploads');
+      const relative = uploadsIndex !== -1
+        ? normalizedPath.substring(uploadsIndex + 'uploads'.length).replace(/^[\\/]+/, '')
+        : normalizedPath;
       const newVideo = await this.videoRepo.create({
-        url: file.path,
+        url: relative,
         postId: postId,
       });
-      return newVideo;
+      return { ...newVideo.toJSON(), publicUrl: `/media/${relative}` };
     } catch (error) {
       throw new Error(`Failed to upload video: ${error.message}`);
     }

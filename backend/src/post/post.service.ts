@@ -302,6 +302,17 @@ export class PostService {
         ],
       };
       const post = await this.posts.findOne(payload);
+      // Attach derived publicUrl for video if available
+      if (post && (post as any).video) {
+        const vid: any = (post as any).video;
+        if (vid.url) {
+          const raw = (vid.url as string).replace(/\\/g, '/');
+          const uploadsIndex = raw.lastIndexOf('uploads');
+          const relative = uploadsIndex !== -1 ? raw.substring(uploadsIndex + 'uploads'.length).replace(/^[\\/]+/, '') : raw;
+          vid.url = relative;
+          vid.publicUrl = `/media/${relative}`;
+        }
+      }
       return res.status(200).json(post);
     } catch (error) {
       if (!error.status) {

@@ -89,11 +89,15 @@ class Post {
           : '',
       photoPaths: (json['photo'] != null && json['photo'].isNotEmpty)
           ? (json['photo'] as List)
-              .map((photo) => photo['path']['medium'].toString())
+              .map((photo) => photo['path']['medium'].toString().replaceAll('\\', '/'))
               .toList()
           : [],
       subscription: small,
-      video: json['video']?['url'] ?? '',
+    video: json['video'] != null
+      ? ((json['video']['publicUrl'] ?? (json['video']['url'] != null
+        ? (json['video']['url'] as String)
+        : '')) as String).replaceAll('\\', '/')
+      : '',
       createdAt: json['createdAt'] ?? '',
       region: region,
   exchange: json['exchange'] as bool?,

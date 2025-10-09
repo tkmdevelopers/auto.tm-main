@@ -78,6 +78,7 @@ class MyFavouritesScreen extends StatelessWidget {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         elevation: 4,
         backgroundColor: theme.appBarTheme.backgroundColor,
         surfaceTintColor: theme.appBarTheme.backgroundColor,

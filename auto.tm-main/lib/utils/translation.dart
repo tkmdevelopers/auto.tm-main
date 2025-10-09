@@ -57,8 +57,10 @@ class AppTranslations extends Translations {
       'Post': 'Post',
       'Description': 'Description',
       'Post a Car': 'Post a Car',
-      //post details
-      'Watch the video': 'Watch the video',
+  //post details
+  // Deprecated direct phrase key 'Watch the video' replaced by domain key below
+  'post_watch_video': 'Watch the video',
+    'post_retry': 'Retry',
       'Posted date:': 'Posted date:',
       'Region': 'Region',
   'Seller\'s comment': 'Goşmaça maglumat',
@@ -280,6 +282,8 @@ class AppTranslations extends Translations {
   'post_status_active': 'Active',
   'post_status_declined': 'Declined',
   'post_upload_ready': 'Ready',
+  'post_inactive_title': 'Post unavailable',
+  'post_inactive_message': 'This post is not active yet or has been declined.',
   'post_upload_prev_failed_title': 'Previous upload failed',
   'post_upload_prev_failed_body': 'You need to retry or discard the failed upload before starting a new one.',
   'post_upload_retry_discard_tip': 'Finish, retry or discard it before starting a new one.',
@@ -294,6 +298,9 @@ class AppTranslations extends Translations {
     'post_upload_photo_failed': 'Photo upload failed',
     'post_upload_start_error': 'Failed to start upload: @error',
   'post_menu_more_options': 'More options',
+  'post_video_play_title': 'Video playback',
+  'post_video_missing_url': 'Video URL not provided',
+  'post_video_play_error': 'Playback error: @error',
   // alt success keys removed (use post_upload_success_title/body)
   'post_confirm_deletion_title': 'Confirm Deletion',
     'post_confirm_deletion_message': 'Are you sure you want to delete this post?',
@@ -370,7 +377,9 @@ class AppTranslations extends Translations {
       'Post': 'Post et',
       'Description': 'Düşündiriş',
       'Post a Car': 'Ulag goş',
-      'Watch the video': 'Wideony gör',
+  // Turkmen locale
+  'post_watch_video': 'Wideony gör',
+    'post_retry': 'Gaýtadan synanyş',
       'Posted date:': 'Goşulan senesi:',
       'Region': 'Sebit',
   'Seller\'s comment': 'Goşmaça maglumat',
@@ -579,6 +588,8 @@ class AppTranslations extends Translations {
   'post_status_active': 'Aktiw',
   'post_status_declined': 'Ret edildi',
   'post_upload_ready': 'Taýýar',
+  'post_inactive_title': 'Elýeterli däl',
+  'post_inactive_message': 'Bu post entek aktiw däl ýa-da ret edildi.',
   'post_upload_prev_failed_title': 'Öňki ýükleme şowsuz',
   'post_upload_prev_failed_body': 'Täzesiniň öňünden şowsuz ýüklemä gaýtadan synan ýa-da taşlamaly.',
   'post_upload_retry_discard_tip': 'Täze başlamazdan ozal gutar, gaýtadan synan ýa-da taşla.',
@@ -593,6 +604,9 @@ class AppTranslations extends Translations {
     'post_upload_photo_failed': 'Surat ýüklenmedi',
     'post_upload_start_error': 'Ýükleme başlanyp bilmedi: @error',
   'post_menu_more_options': 'Goşmaça saýlamalar',
+  'post_video_play_title': 'Wideony aç',
+  'post_video_missing_url': 'Wideo URL berilmedi',
+  'post_video_play_error': 'Wideo ýüklenmedi: @error',
   // alt success keys removed (use post_upload_success_title/body)
   'post_confirm_deletion_title': 'Pozmagy tassykla',
     'post_confirm_deletion_message': 'Bu posty pozmakçymy?',
@@ -667,7 +681,9 @@ class AppTranslations extends Translations {
       'Description': 'Описание',
       'Post a Car': 'Разместить автомобиль',
       //post details
-      'Watch the video': 'Смотреть видео',
+  // Russian locale
+  'post_watch_video': 'Смотреть видео',
+    'post_retry': 'Повторить',
       'Posted date:': 'Дата публикации:',
       'Region': 'Регион',
   'Seller\'s comment': 'Goşmaça maglumat',
@@ -879,6 +895,8 @@ class AppTranslations extends Translations {
   'post_status_active': 'Активно',
   'post_status_declined': 'Отклонено',
   'post_upload_ready': 'Готово',
+  'post_inactive_title': 'Недоступно',
+  'post_inactive_message': 'Это объявление еще не активно или было отклонено.',
   'post_upload_prev_failed_title': 'Предыдущая загрузка не удалась',
   'post_upload_prev_failed_body': 'Нужно повторить или отменить неудачную загрузку перед новой.',
   'post_upload_retry_discard_tip': 'Завершите, повторите или удалите перед новой.',
@@ -893,6 +911,9 @@ class AppTranslations extends Translations {
     'post_upload_photo_failed': 'Фото не удалось загрузить',
     'post_upload_start_error': 'Не удалось начать загрузку: @error',
   'post_menu_more_options': 'Дополнительные параметры',
+  'post_video_play_title': 'Воспроизведение видео',
+  'post_video_missing_url': 'URL видео не указан',
+  'post_video_play_error': 'Ошибка воспроизведения: @error',
   // alt success keys removed (use post_upload_success_title/body)
   'post_confirm_deletion_title': 'Подтвердите удаление',
     'post_confirm_deletion_message': 'Вы уверены, что хотите удалить это объявление?',
