@@ -17,6 +17,12 @@ class _CommentsPageState extends State<CommentsPage> {
   late final String uuid;
   Map<String, dynamic>? initialReplyTarget;
 
+  // Scroll + focus handling
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _commentFocusNode = FocusNode();
+  String? _highlightCommentId; // uuid of comment to highlight
+  bool _didInitialScroll = false; // ensure we only auto-scroll once
+
   @override
   void initState() {
     super.initState();
@@ -35,6 +41,12 @@ class _CommentsPageState extends State<CommentsPage> {
       await controller.fetchComments(uuid);
       if (initialReplyTarget != null) {
         controller.setReplyTo(initialReplyTarget!);
+        _highlightCommentId = initialReplyTarget!['uuid']?.toString();
+        // Delay focus until first frame built
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _commentFocusNode.requestFocus();
+          setState(() {}); // trigger rebuild for highlight usage
+        });
       }
     });
   }
@@ -145,22 +157,49 @@ class _CommentsPageState extends State<CommentsPage> {
                 }
               }
 
+              // Attempt to find highlight index once comments are built
+              if (_highlightCommentId != null && !_didInitialScroll) {
+                final targetIndex = display.indexWhere((e) => e.comment['uuid']?.toString() == _highlightCommentId);
+                if (targetIndex >= 0) {
+                  _didInitialScroll = true; // prevent repeated attempts
+                  // Scroll after current frame
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!_scrollController.hasClients) return;
+                    final offset = targetIndex * 112.0; // rough row height estimate
+                    _scrollController.animateTo(
+                      offset.clamp(0, _scrollController.position.maxScrollExtent),
+                      duration: const Duration(milliseconds: 450),
+                      curve: Curves.easeOutCubic,
+                    );
+                  });
+                }
+              }
               return ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: display.length,
-                itemBuilder: (context, index) {
-                  final row = display[index];
-                  return _CommentItem(
-                    comment: row.comment,
-                    onReply: () => controller.setReplyTo(row.comment),
-                    isParent: row.isParent,
-                    depth: row.depth,
-                    repliesCount: row.repliesCount,
-                    expanded: row.expanded,
-                    onToggleReplies: row.toggle,
-                  );
-                },
-              );
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: display.length,
+                  itemBuilder: (context, index) {
+                    final row = display[index];
+                    final isHighlight = row.comment['uuid']?.toString() == _highlightCommentId;
+                    return _CommentItem(
+                      comment: row.comment,
+                      onReply: () {
+                        controller.setReplyTo(row.comment);
+                        _highlightCommentId = row.comment['uuid']?.toString();
+                        // focus input
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _commentFocusNode.requestFocus();
+                        });
+                        setState(() {});
+                      },
+                      isParent: row.isParent,
+                      depth: row.depth,
+                      repliesCount: row.repliesCount,
+                      expanded: row.expanded,
+                      onToggleReplies: row.toggle,
+                      highlight: isHighlight,
+                    );
+                  });
             }),
           ),
           Obx(() => controller.replyToComment.value != null
@@ -169,7 +208,11 @@ class _CommentsPageState extends State<CommentsPage> {
                   onCancel: controller.clearReply,
                 )
               : const SizedBox.shrink()),
-          _CommentInputBar(controller: controller, postUuid: uuid),
+          _CommentInputBar(
+            controller: controller,
+            postUuid: uuid,
+            focusNode: _commentFocusNode,
+          ),
         ],
       ),
     );
@@ -187,6 +230,7 @@ class _CommentItem extends StatelessWidget {
     this.repliesCount = 0,
     this.expanded = false,
     this.onToggleReplies,
+    this.highlight = false,
   });
   final Map<String, dynamic> comment;
   final VoidCallback onReply;
@@ -195,6 +239,7 @@ class _CommentItem extends StatelessWidget {
   final int repliesCount;
   final bool expanded;
   final VoidCallback? onToggleReplies;
+  final bool highlight;
 
   String? _extractAvatarPath(Map<String, dynamic> c) {
     try {
@@ -246,19 +291,30 @@ class _CommentItem extends StatelessWidget {
 
   final indent = depth * 28.0;
 
+    final baseColor = theme.colorScheme.surfaceVariant.withOpacity(0.28);
+    final highlightStart = theme.colorScheme.primary.withOpacity(0.35);
     return GestureDetector(
       onLongPress: onReply,
-      child: Container(
-        margin: EdgeInsets.fromLTRB(12 + indent, 4, 12, 4),
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-        constraints: const BoxConstraints(maxWidth: 900),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceVariant.withOpacity(0.28),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: theme.colorScheme.outlineVariant.withOpacity(.35),
-            width: 0.7,
-          ),
+      child: TweenAnimationBuilder<Color?>(
+        tween: ColorTween(
+          begin: highlight ? highlightStart : baseColor,
+          end: baseColor,
+        ),
+        duration: highlight ? const Duration(milliseconds: 1300) : Duration.zero,
+        curve: Curves.easeOutCubic,
+        builder: (context, color, child) => Container(
+          margin: EdgeInsets.fromLTRB(12 + indent, 4, 12, 4),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            constraints: const BoxConstraints(maxWidth: 900),
+            decoration: BoxDecoration(
+              color: color ?? baseColor,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant.withOpacity(.35),
+                width: 0.7,
+              ),
+            ),
+            child: child,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,9 +509,10 @@ class _ReplyBanner extends StatelessWidget {
 }
 
 class _CommentInputBar extends StatelessWidget {
-  const _CommentInputBar({required this.controller, required this.postUuid});
+  const _CommentInputBar({required this.controller, required this.postUuid, this.focusNode});
   final CommentsController controller;
   final String postUuid;
+  final FocusNode? focusNode;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -477,6 +534,7 @@ class _CommentInputBar extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 900),
           child: TextField(
             controller: controller.commentTextController,
+            focusNode: focusNode,
             minLines: 1,
             maxLines: 5,
             style: TextStyle(
