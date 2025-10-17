@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16
+    container_name:  auto_tm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: auto_tm
+      POSTGRES_PASSWORD: Key_bismynick1
+      POSTGRES_DB: auto_tm
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auto_tm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  api:
+    image: alpha-motors-backend:1.0.0
+    container_name: alpha_backend
+    restart: unless-stopped
+    depends_on:
+      - db
+    env_file:
+      - .env
+    environment:
+      # Override host so app can reach Postgres service name
+      DATABASE_HOST: db
+      PORT: 3080
+    volumes:
+      - ./uploads:/app/uploads
+    ports:
+      - "3080:3080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3080/api-docs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+volumes:
+  db_data:

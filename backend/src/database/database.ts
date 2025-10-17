@@ -18,16 +18,22 @@ import { OtpTemp } from 'src/otp/otp.entity';
 import { File } from 'src/file/file.entity';
 import { NotificationHistory } from 'src/notification/notification.entity';
 
-5432;
+// Removed stray numeric literal and use environment-driven host/port.
 
 export const databaseProviders = [
   {
     provide: 'SEQUELIZE',
     useFactory: async () => {
+  const host = process.env.DATABASE_HOST || 'db';
+  const port = Number(process.env.DATABASE_PORT) || 5432;
+  // Debug log of resolved host/credentials (remove in production)
+  // eslint-disable-next-line no-console
+  console.log('[database] Connecting to', { host, port, user: process.env.DATABASE_USERNAME, db: process.env.DATABASE });
+
       const sequelize = new Sequelize({
         dialect: 'postgres',
-        host: 'localhost',
-        port: 5432,
+        host,
+        port,
         username: process.env.DATABASE_USERNAME,
         password: process.env.DATABASE_PASSWORD,
         database: process.env.DATABASE,
@@ -53,7 +59,17 @@ export const databaseProviders = [
         File,
         NotificationHistory,
       ]);
-      await sequelize.sync({ alter: true });
+      // Simple retry for initial sync in containerized startup (DB may be ready but auth pending)
+      // Optional: Remove alter syncing; rely on migrations only.
+      try {
+        await sequelize.authenticate();
+        // eslint-disable-next-line no-console
+        console.log('[database] Connection authenticated successfully');
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[database] Initial authentication failed:', err.message);
+        throw err;
+      }
       return sequelize;
     },
   },
