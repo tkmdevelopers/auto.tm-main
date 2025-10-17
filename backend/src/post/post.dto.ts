@@ -114,7 +114,7 @@ export class CreatePost {
   @ApiProperty()
   currency: string;
   @ApiProperty()
-  personalInfo: { name: string; location: string } | null;
+  personalInfo: { name: string; location: string; region?: string } | null;
   @ApiProperty()
   description: string;
   @ApiProperty()
@@ -149,7 +149,7 @@ export class UpdatePost {
   @ApiProperty()
   currency: string;
   @ApiProperty()
-  personalInfo: { name: string; location: string } | null;
+  personalInfo: { name: string; location: string; region?: string } | null;
   @ApiProperty()
   description: string;
   @ApiProperty()

@@ -20,9 +20,9 @@ class PostUploadService extends GetxService {
       // await PostApi.upload(post);
 
       // Show upload success
-      Get.snackbar("Upload", "Your post was successfully uploaded.");
+  Get.snackbar('post_upload_success_title'.tr, 'post_upload_success_body'.tr);
     } catch (e) {
-      Get.snackbar("Upload Failed", "Please try again.");
+  Get.snackbar('common_error'.tr, 'common_retry'.tr);
     } finally {
       _isUploading.value = false;
     }

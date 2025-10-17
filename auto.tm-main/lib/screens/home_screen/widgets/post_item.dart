@@ -16,6 +16,7 @@ class PostItem extends StatelessWidget {
   final String photoPath;
   final String? subscription;
   final String location;
+  final String region; // NEW: region (e.g., Local, Dubai, China)
   final double year;
   final double milleage;
   final String currency;
@@ -34,6 +35,7 @@ class PostItem extends StatelessWidget {
     required this.currency,
     required this.createdAt,
     required this.location,
+    this.region = 'Local',
   });
 
   final FavoritesController favoritesController = Get.put(
@@ -102,14 +104,14 @@ class PostItem extends StatelessWidget {
             errorBuilder: (context, error, stackTrace) => Container(
               height: 200,
               width: double.infinity,
-              color: theme.colorScheme.primaryContainer,
+              color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
               child: Center(
                 child: SvgPicture.asset(
                   AppImages.defaultImageSvg,
-                  height: 60,
-                  width: 60,
+                  height: 40,
+                  width: 40,
                   colorFilter: ColorFilter.mode(
-                    theme.colorScheme.primary.withOpacity(0.3),
+                    theme.colorScheme.onSurface.withValues(alpha: 0.3),
                     BlendMode.srcIn,
                   ),
                 ),
@@ -236,38 +238,60 @@ class PostItem extends StatelessWidget {
   }
 
   Widget _buildPriceLocationRow(ThemeData theme) {
+    // Unified logic with details screen:
+    // If region == Local -> show location (city) if non-empty.
+    // If region == UAE or China -> show region label.
+    // Otherwise hide location/region info.
+    String regionTrim = region.trim();
+    String locTrim = location.trim();
+    final lower = regionTrim.toLowerCase();
+    String? displayLocation;
+    if (lower == 'local') {
+      if (locTrim.isNotEmpty) displayLocation = locTrim;
+    } else if (lower == 'uae' || lower == 'china') {
+      displayLocation = regionTrim; // already correct
+    }
+
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '${price.toStringAsFixed(0)} $currency',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: AppColors.notificationColor,
+        Expanded(
+          child: Text(
+            '${price.toStringAsFixed(0)} $currency',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppColors.notificationColor,
+            ),
           ),
         ),
-        Row(
-          children: [
-            Icon(
-              Icons.location_on_outlined,
-              size: 14,
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              location,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+        if (displayLocation != null)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                lower == 'local' ? Icons.location_on_outlined : Icons.public,
+                size: 14,
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: 4),
+              Text(
+                displayLocation,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ),
       ],
     );
   }
+
+  // _shouldShowRegion removed: region is displayed only for non-local posts now.
+
+  // Removed standalone region row; region now integrated into price/location area (only when non-local).
 
   Widget _buildDetailsRow(ThemeData theme) {
     return Row(

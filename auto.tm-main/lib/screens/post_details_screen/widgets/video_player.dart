@@ -8,7 +8,8 @@ import 'package:chewie/chewie.dart';
 class VideoPlayerPage extends StatelessWidget {
   VideoPlayerPage({super.key});
 
-  final controller = Get.put(FullVideoPlayerController());
+  // We intentionally do not eagerly create controller before we parse arguments.
+  final FullVideoPlayerController controller = Get.put(FullVideoPlayerController());
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -28,7 +29,7 @@ class VideoPlayerPage extends StatelessWidget {
           elevation: 4,
           surfaceTintColor: theme.appBarTheme.backgroundColor,
           backgroundColor: theme.appBarTheme.backgroundColor,
-          title: const Text('Воспроизведение видео'),
+          title: Text('post_video_play_title'.tr),
           leading: IconButton(
             onPressed: () {
               controller.disposeVideo();
@@ -52,16 +53,14 @@ class VideoPlayerPage extends StatelessWidget {
                       builder: (context, errorMessageValue, _) {
                         if (errorMessageValue != null) {
                           return Text(
-                            'Ошибка воспроизведения: $errorMessageValue',
+                            'post_video_play_error'.trParams({'error': errorMessageValue}),
                           );
                         }
                         return ValueListenableBuilder<bool>(
                           valueListenable: controller.isEmpty,
                           builder: (context, isEmptyValue, _) {
                             if (isEmptyValue) {
-                              return const Text(
-                                'URL-адрес видео не предоставлен.',
-                              );
+                              return Text('post_video_missing_url'.tr);
                             }
                             return controller.chewieController != null &&
                                     controller

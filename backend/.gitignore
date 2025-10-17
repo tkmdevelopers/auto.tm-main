@@ -48,7 +48,9 @@ temp/
 # Docker
 docker-compose.override.yml
 .docker/
-
+images_bundle.tar    
+postgres_16.tar 
 # Misc
 .cache/
 .nyc_output/
+alpha_backend_1.0.0.tar

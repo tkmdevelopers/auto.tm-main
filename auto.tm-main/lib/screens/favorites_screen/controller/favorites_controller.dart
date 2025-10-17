@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:isolate';
 
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
@@ -22,6 +23,9 @@ class FavoritesController extends GetxController {
   final RxList<Map<String, dynamic>> subscribedBrands =
       <Map<String, dynamic>>[].obs;
   final RxList<Post> subscribeBrandPosts = <Post>[].obs;
+
+  // Debounce timer for batching rapid favorite toggles before fetching details
+  Timer? _favoritesDebounce;
 
   List<String> loadFavorites() {
     return box.read<List<String>>('favorites') ?? [];
@@ -96,28 +100,37 @@ class FavoritesController extends GetxController {
   }
 
   void toggleFavorite(String uuid) {
-    if (favorites.contains(uuid)) {
+    final removing = favorites.contains(uuid);
+    if (removing) {
+      // Optimistic UI update: remove immediately from both id list and product details list
       favorites.remove(uuid);
+      favoriteProducts.removeWhere((p) => p.uuid == uuid);
       isFavorite.value = false;
     } else {
       favorites.add(uuid);
       isFavorite.value = true;
     }
-    saveFavorites(); // Save to GetStorage
+    saveFavorites();
+    _scheduleFavoritesSync(afterRemoval: removing);
   }
 
   void removeOne(String uuid) {
-    favorites.remove(uuid);
-    isFavorite.value = false;
-    saveFavorites(); // Save to GetStorage
-    refreshData();
+    if (favorites.remove(uuid)) {
+      favoriteProducts.removeWhere((p) => p.uuid == uuid);
+      isFavorite.value = false;
+      saveFavorites();
+      _scheduleFavoritesSync(afterRemoval: true);
+    }
   }
 
   void removeAll() {
-    favorites.clear();
-    isFavorite.value = false;
-    saveFavorites(); // Save to GetStorage
-    refreshData();
+    if (favorites.isNotEmpty) {
+      favorites.clear();
+      favoriteProducts.clear();
+      isFavorite.value = false;
+      saveFavorites();
+      _cancelFavoritesDebounce();
+    }
   }
 
   @override
@@ -125,12 +138,32 @@ class FavoritesController extends GetxController {
     super.onInit();
     loadStoredFavorites(); // Load saved favorites from GetStorage
     loadStoredSubscribes();
-    // fetchFavoriteProducts(); // Fetch product details for the favorites
+    // Initial data fetch (favorites + their details)
+    refreshData();
   }
 
   Future<void> refreshData() async {
     await loadStoredFavorites();
     await fetchFavoriteProducts();
+  }
+
+  void _scheduleFavoritesSync({required bool afterRemoval}) {
+    // If we removed and list is now empty, just clear details and skip fetch
+    if (favorites.isEmpty) {
+      favoriteProducts.clear();
+      _cancelFavoritesDebounce();
+      return;
+    }
+    // When adding, or removing but still have items, debounce the details fetch
+    _favoritesDebounce?.cancel();
+    _favoritesDebounce = Timer(const Duration(milliseconds: 400), () {
+      fetchFavoriteProducts();
+    });
+  }
+
+  void _cancelFavoritesDebounce() {
+    _favoritesDebounce?.cancel();
+    _favoritesDebounce = null;
   }
 
   Future<bool> refreshAccessToken() async {
@@ -185,10 +218,11 @@ class FavoritesController extends GetxController {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        (
-          'Success',
-          'Successfully subscribed to brand!',
-          snackPosition: SnackPosition.BOTTOM
+        Get.snackbar(
+          'common_success'.tr,
+          'favourites_subscribe_success'.tr,
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 3),
         );
         addToSubscribes(brandUuid);
         fetchBrandSubscribes();
@@ -197,10 +231,11 @@ class FavoritesController extends GetxController {
         if (refreshed) {
           return subscribeToBrand(brandUuid);
         } else {
-          (
-            'Error',
-            'Failed to refresh access token. Please log in again.',
-            snackPosition: SnackPosition.BOTTOM
+          Get.snackbar(
+            'common_error'.tr,
+            'blogs_token_refresh_failed'.tr,
+            snackPosition: SnackPosition.BOTTOM,
+            duration: const Duration(seconds: 3),
           );
         }
       }
@@ -228,7 +263,12 @@ class FavoritesController extends GetxController {
       );
 
       if (response.statusCode == 200) {
-        ('Success', 'Successfully unsubscribed from brand!');
+        Get.snackbar(
+          'common_success'.tr,
+          'favourites_unsubscribe_success'.tr,
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 3),
+        );
         removeFromSubscribes(brandUuid);
         fetchBrandSubscribes(); // Обновляем список после удаления
       } if (response.statusCode == 406) {
@@ -237,10 +277,11 @@ class FavoritesController extends GetxController {
           return unSubscribeFromBrand(
               brandUuid); // Call fetchBlogs again only if refresh was successful
         } else {
-          (
-            'Error',
-            'Failed to refresh access token. Please log in again.',
-            snackPosition: SnackPosition.BOTTOM
+          Get.snackbar(
+            'common_error'.tr,
+            'blogs_token_refresh_failed'.tr,
+            snackPosition: SnackPosition.BOTTOM,
+            duration: const Duration(seconds: 3),
           );
         }
       }
@@ -346,5 +387,11 @@ class FavoritesController extends GetxController {
   Future<void> refreshSubscribesData() async {
     await loadStoredSubscribes();
     await fetchBrandSubscribes();
+  }
+
+  @override
+  void onClose() {
+    _cancelFavoritesDebounce();
+    super.onClose();
   }
 }

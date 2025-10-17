@@ -5,6 +5,9 @@ import 'package:auto_tm/screens/filter_screen/widgets/result_brand_model_compone
 import 'package:auto_tm/screens/filter_screen/widgets/result_premium_selection.dart';
 import 'package:auto_tm/screens/filter_screen/widgets/sorting_bottom_sheet.dart';
 import 'package:auto_tm/screens/home_screen/widgets/post_item.dart';
+import 'package:auto_tm/navbar/navbar.dart';
+// import 'package:auto_tm/screens/home_screen/home_screen.dart'; // Avoid direct navigation to raw HomeScreen to preserve BottomNavView
+import 'package:auto_tm/navbar/controller/navbar_controller.dart';
 import 'package:auto_tm/screens/home_screen/widgets/post_shimmer.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
 import 'package:auto_tm/ui_components/images.dart';
@@ -24,15 +27,38 @@ class FilterResultPage extends StatelessWidget {
   Widget build(BuildContext context) {
     profileController.fetchProfile;
     final theme = Theme.of(context);
-    return Scaffold(
+    void _exitToHome() {
+      controller.clearFilters(includeBrandModel: true);
+      // Always rebuild nav root to avoid popping into intermediate selection screens
+      Get.offAll(() => BottomNavView());
+      // After nav root builds, ensure index 0
+      if (Get.isRegistered<BottomNavController>()) {
+        Get.find<BottomNavController>().changeIndex(0);
+      }
+    }
+
+    return WillPopScope(
+      onWillPop: () async {
+        _exitToHome();
+        return false; // we handled navigation
+      },
+      child: Scaffold(
       appBar: AppBar(
         elevation: 4,
         backgroundColor: theme.appBarTheme.backgroundColor,
         surfaceTintColor: theme.appBarTheme.backgroundColor,
-        automaticallyImplyLeading: true,
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: theme.colorScheme.onSurface),
+          tooltip: 'Back',
+          onPressed: _exitToHome,
+        ),
         title: Text(
           'Filter Results'.tr,
-          style: TextStyle(color: theme.colorScheme.primary),
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         actions: [
           Padding(
@@ -42,46 +68,45 @@ class FilterResultPage extends StatelessWidget {
               child: SvgPicture.asset(
                 AppImages.sort,
                 colorFilter: ColorFilter.mode(
-                  theme.colorScheme.primary,
+                  theme.colorScheme.onSurface,
                   BlendMode.srcIn,
                 ),
-                // color: theme.colorScheme.primary,
               ),
             ),
           ),
-          if (controller.selectedBrandUuid.value != '' &&
-              profileController.box.read('USER_ID') != '')
-            Padding(
-              padding: const EdgeInsets.only(right: 10.0),
-              child: InkWell(
-                onTap: () {
-                  if ((profileController.profile.value != null &&
-                      !profileController.profile.value!.brandUuid!.contains(
-                        controller.selectedBrandUuid.value,
-                      ))) {
-                    controller.subscribeToBrand();
-                    profileController.fetchProfile();
-                  } else {
-                    controller.unSubscribeFromBrand();
-                    profileController.fetchProfile();
-                  }
-                },
-                child: Obx(
-                  () => SvgPicture.asset(
-                    (profileController.profile.value != null &&
-                            profileController.profile.value!.brandUuid!
-                                .contains(controller.selectedBrandUuid.value))
-                        ? AppImages.car
-                        : AppImages.subscribe,
-                    colorFilter: ColorFilter.mode(
-                      theme.colorScheme.primary,
-                      BlendMode.srcIn,
-                    ),
-                    // color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-            ),
+          // if (controller.selectedBrandUuid.value != '' &&
+          //     profileController.box.read('USER_ID') != '')
+          //   Padding(
+          //     padding: const EdgeInsets.only(right: 10.0),
+          //     child: InkWell(
+          //       onTap: () {
+          //         if ((profileController.profile.value != null &&
+          //             !profileController.profile.value!.brandUuid!.contains(
+          //               controller.selectedBrandUuid.value,
+          //             ))) {
+          //           controller.subscribeToBrand();
+          //           profileController.fetchProfile();
+          //         } else {
+          //           controller.unSubscribeFromBrand();
+          //           profileController.fetchProfile();
+          //         }
+          //       },
+          //       child: Obx(
+          //         () => SvgPicture.asset(
+          //           (profileController.profile.value != null &&
+          //                   profileController.profile.value!.brandUuid!
+          //                       .contains(controller.selectedBrandUuid.value))
+          //               ? AppImages.car
+          //               : AppImages.subscribe,
+          //           colorFilter: ColorFilter.mode(
+          //             theme.colorScheme.onSurface,
+          //             BlendMode.srcIn,
+          //           ),
+          //           // color: theme.colorScheme.primary,
+          //         ),
+          //       ),
+          //     ),
+          //   ),
         ],
       ),
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -182,6 +207,7 @@ class FilterResultPage extends StatelessWidget {
                           createdAt: post.createdAt,
                           subscription: post.subscription,
                           location: post.location,
+                          region: post.region, // ensure region (personalInfo.region) is displayed
                         ),
                       ),
                     if (controller.isSearchLoading.value &&
@@ -203,14 +229,14 @@ class FilterResultPage extends StatelessWidget {
             curve: Curves.easeOut,
           );
         },
-        foregroundColor: theme.colorScheme.tertiaryContainer,
-        backgroundColor: theme.colorScheme.tertiaryContainer,
+  foregroundColor: theme.colorScheme.surface,
+  backgroundColor: theme.colorScheme.surface,
         shape: const CircleBorder(),
         child: Icon(
           Icons.arrow_upward_outlined,
-          color: theme.colorScheme.primary,
+          color: theme.colorScheme.onSurface,
         ),
       ),
-    );
+    ));
   }
 }

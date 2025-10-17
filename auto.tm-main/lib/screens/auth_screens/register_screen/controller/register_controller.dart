@@ -122,6 +122,11 @@ class RegisterPageController extends GetxController {
         // Wait briefly for initial load (or timeout) to avoid premature navigation to edit screen
         await profileController.waitForInitialLoad();
         storage.write('user_phone', sub); // store subscriber only
+        // Ensure default location persisted for brand new users
+        final existingLoc = storage.read('user_location');
+        if (existingLoc == null || (existingLoc is String && existingLoc.isEmpty)) {
+          storage.write('user_location', ProfileController.defaultLocation);
+        }
         // Notify custom handler first
         if (onVerified != null) {
           onVerified();

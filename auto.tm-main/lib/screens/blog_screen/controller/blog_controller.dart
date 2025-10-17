@@ -12,13 +12,14 @@ class BlogController extends GetxController {
   var blogs = <Blog>[].obs;
   var isLoading = false.obs;
 
-  // @override
-  // void onInit() {
-  //   fetchBlogs();
-  //   super.onInit();
-  // }
+  @override
+  void onInit() {
+    super.onInit();
+    fetchBlogs();
+  }
 
   void fetchBlogs() async {
+    if (isLoading.value) return; // prevent concurrent fetches
     isLoading.value = true;
     try {
       final response = await http.get(
@@ -32,7 +33,18 @@ class BlogController extends GetxController {
 
       if (response.statusCode == 200) {
         final List data = jsonResponse['data'];
-        blogs.value = data.map((json) => Blog.fromJson(json)).toList();
+        // Dedupe by uuid in case backend returns duplicates (e.g., join or pagination overlap)
+        final map = <String, Blog>{};
+        for (final item in data) {
+          try {
+            final blog = Blog.fromJson(item);
+            map[blog.uuid] = blog; // last wins (or only) ensures uniqueness
+          } catch (_) {
+            // skip malformed item silently
+          }
+        }
+        blogs.value = map.values.toList()
+          ..sort((a, b) => b.date.compareTo(a.date)); // keep newest first
       } 
       if (response.statusCode == 406) {
         final refreshed = await refreshAccessToken();
@@ -40,15 +52,15 @@ class BlogController extends GetxController {
           return fetchBlogs(); // Call fetchBlogs again only if refresh was successful
         } else {
           // Handle the case where token refresh failed (e.g., show an error)
-          ('Error', 'Failed to refresh access token. Please log in again.', snackPosition: SnackPosition.BOTTOM);
+          ('Error', 'Failed to refresh access token. Please log in again.'.tr, snackPosition: SnackPosition.BOTTOM);
           // Optionally navigate to the login screen if refresh consistently fails
           // Get.offAllNamed('/login');
         }
       } else {
-        ('Error', 'Failed to load blogs. Please try again later.', snackPosition: SnackPosition.BOTTOM);
+        ('Error', 'Failed to load blogs. Please try again later.'.tr, snackPosition: SnackPosition.BOTTOM);
       }
     } catch (e) {
-      ('Error', 'Error fetching blogs. Please check your internet connection.', snackPosition: SnackPosition.BOTTOM);
+      ('Error', 'Error fetching blogs. Please check your internet connection.'.tr, snackPosition: SnackPosition.BOTTOM);
     } finally {
       isLoading.value = false;
     }
@@ -105,7 +117,7 @@ class BlogController extends GetxController {
         return "";
       }
     } catch (e) {
-      return "";
+      return ""; // could localize but empty indicates failure
     }
   }
 

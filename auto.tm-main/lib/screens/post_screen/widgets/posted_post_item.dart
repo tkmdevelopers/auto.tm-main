@@ -1,6 +1,7 @@
 // Removed legacy favorites & feature imports (not present in current project structure)
 import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
 import 'package:auto_tm/ui_components/images.dart';
+import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
@@ -10,6 +11,8 @@ import 'package:auto_tm/utils/navigation_utils.dart';
 /// inspired by Apple's design guidelines. It emphasizes clarity, depth, and a strong
 /// visual hierarchy.
 class PostedPostItem extends StatelessWidget {
+  // Keep track of which UUIDs have already logged an empty photoPath to avoid log spam.
+  static final Set<String> _loggedEmptyPhoto = <String>{};
   final String uuid;
   final String model;
   final String brand;
@@ -48,10 +51,13 @@ class PostedPostItem extends StatelessWidget {
     final url = postController.buildPostImageUrl(photoPath);
     if (url.isEmpty) {
       if (Get.isLogEnable) {
-        // ignore: avoid_print
-        print(
-          '[PostedPostItem][image] empty photoPath for uuid=$uuid raw="$photoPath"',
-        );
+        if (!_loggedEmptyPhoto.contains(uuid)) {
+          // ignore: avoid_print
+          print(
+            '[PostedPostItem][image] empty photoPath for uuid=$uuid raw="$photoPath"',
+          );
+          _loggedEmptyPhoto.add(uuid);
+        }
       }
       return _buildPlaceholderImage(theme);
     }
@@ -89,7 +95,24 @@ class PostedPostItem extends StatelessWidget {
     final Color acceptedGreen = Colors.green.shade600;
 
     return GestureDetector(
-      onTap: () => _navigateToPostDetails(uuid),
+      onTap: () {
+        // Navigate only if explicitly active (status == true). If null (pending) or false (declined) show info.
+        if (status == true) {
+          _navigateToPostDetails(uuid);
+        } else {
+          Get.closeAllSnackbars();
+          Get.snackbar(
+            'post_inactive_title'.tr,
+            'post_inactive_message'.tr,
+            snackPosition: SnackPosition.BOTTOM,
+            margin: const EdgeInsets.all(12),
+            backgroundColor: Colors.black.withValues(alpha: 0.85),
+            colorText: Colors.white,
+            duration: const Duration(seconds: 3),
+            icon: const Icon(Icons.info_outline, color: Colors.white),
+          );
+        }
+      },
       // APPLE-FRIENDLY REFINEMENT: The main card container.
       // Uses surfaceContainer for a layered look, a subtle border, and softer shadows
       // to create a sense of depth without being distracting.
@@ -176,7 +199,7 @@ class PostedPostItem extends StatelessWidget {
             _buildCarDetailsRow(theme),
             const SizedBox(height: 10),
             Text(
-              "Posted ${_formatDate(createdAt)}",
+              'post_card_posted_at'.trParams({'date': _formatDate(createdAt)}),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -287,15 +310,15 @@ class PostedPostItem extends StatelessWidget {
     late final Color contentColor;
     late final IconData icon;
     if (s == null) {
-      label = 'Pending'.tr;
+      label = 'post_status_pending'.tr;
       contentColor = Colors.orange.shade600;
       icon = Icons.hourglass_top_rounded;
     } else if (s) {
-      label = 'Acccepted'.tr;
+      label = 'post_status_active'.tr;
       contentColor = Colors.green.shade600;
       icon = Icons.check_circle_outline_rounded;
     } else {
-      label = 'Declined'.tr;
+      label = 'post_status_declined'.tr;
       contentColor = theme.colorScheme.error;
       icon = Icons.cancel_outlined;
     }
@@ -331,7 +354,7 @@ class PostedPostItem extends StatelessWidget {
         Icons.more_horiz_rounded, // Using a different icon for a softer look
         color: theme.colorScheme.onSurfaceVariant,
       ),
-      tooltip: "More options",
+  tooltip: 'post_menu_more_options'.tr,
       position: PopupMenuPosition.under,
       color: theme.colorScheme.surfaceContainerHigh, // Menu background
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -340,8 +363,8 @@ class PostedPostItem extends StatelessWidget {
         if (value == 'Delete') {
           Get.dialog(
             AlertDialog(
-              title: Text("Confirm Deletion".tr),
-              content: Text("Are you sure you want to delete this post?".tr),
+              title: Text('post_confirm_deletion_title'.tr),
+              content: Text('post_confirm_deletion_message'.tr),
               actions: [
                 TextButton(
                   onPressed: () => NavigationUtils.closeGlobal(),
@@ -413,15 +436,12 @@ class PostedPostItem extends StatelessWidget {
     );
   }
 
-  // Fallback navigation; replace with actual navigation logic if helper exists elsewhere.
+  // Navigation now mirrors home/favorites: direct push with raw uuid argument.
   void _navigateToPostDetails(String id) {
-    // Attempt to use a named route or a feature module method if available.
-    // For now we use Get.toNamed with a conventional path; adjust as needed.
     if (Get.isRegistered<PostController>()) {
-      // could preload data if necessary
+      // Potential warm-up spot (e.g., prefetch) left intentionally blank.
     }
-    // Replace '/post-details' if your route differs.
-    Get.toNamed('/post-details', arguments: {'uuid': id});
+    Get.to(() => PostDetailsScreen(), arguments: id);
   }
 
   String _formatDate(String iso) {

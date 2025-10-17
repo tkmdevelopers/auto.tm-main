@@ -67,7 +67,7 @@ export class PostService {
         vin: string;
         price: number;
         currency: string;
-        personalInfo: { name: string; location: string };
+        personalInfo: { name: string; location: string; region?: string };
         description: string;
       }[] = [];
 
@@ -90,6 +90,7 @@ export class PostService {
           personalInfo: {
             name: model?.personalInfo?.name,
             location: model?.personalInfo?.location,
+            region: (model as any)?.personalInfo?.region || 'Local',
           },
           description: model.description,
         });
@@ -301,6 +302,17 @@ export class PostService {
         ],
       };
       const post = await this.posts.findOne(payload);
+      // Attach derived publicUrl for video if available
+      if (post && (post as any).video) {
+        const vid: any = (post as any).video;
+        if (vid.url) {
+          const raw = (vid.url as string).replace(/\\/g, '/');
+          const uploadsIndex = raw.lastIndexOf('uploads');
+          const relative = uploadsIndex !== -1 ? raw.substring(uploadsIndex + 'uploads'.length).replace(/^[\\/]+/, '') : raw;
+          vid.url = relative;
+          vid.publicUrl = `/media/${relative}`;
+        }
+      }
       return res.status(200).json(post);
     } catch (error) {
       if (!error.status) {
@@ -358,6 +370,7 @@ export class PostService {
           name: personalInfo?.name,
           location: personalInfo?.location,
           phone: phone,
+          region: (personalInfo as any)?.region,
         },
         milleage: milleage,
         enginePower: enginePower,

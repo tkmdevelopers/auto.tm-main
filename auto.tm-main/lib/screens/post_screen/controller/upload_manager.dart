@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:async';
 import 'package:get/get.dart';
+import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
 import 'package:flutter/foundation.dart'; // for compute
 import 'package:get_storage/get_storage.dart';
 import 'package:uuid/uuid.dart';
@@ -209,7 +210,8 @@ class UploadManager extends GetxService {
             if (id.isNotEmpty) {
               // Navigate if possible
               if (Get.isRegistered<PostController>()) {
-                Get.toNamed('/post-details', arguments: id);
+                // Consistent navigation style across app
+                Get.to(() => PostDetailsScreen(), arguments: id);
               }
             }
           }
@@ -492,9 +494,10 @@ class UploadManager extends GetxService {
                 ),
               );
               if (!videoOk) {
+                final fallback = 'post_upload_video_failed'.tr;
                 throw Exception(
                   controller.uploadError.value.isEmpty
-                      ? 'Video upload failed'
+                      ? fallback
                       : controller.uploadError.value,
                 );
               }
@@ -521,9 +524,10 @@ class UploadManager extends GetxService {
                 ),
               );
               if (!ok) {
+                final fallback = 'post_upload_photo_failed'.tr;
                 throw Exception(
                   controller.uploadError.value.isEmpty
-                      ? 'Photo upload failed'
+                      ? fallback
                       : controller.uploadError.value,
                 );
               }
@@ -578,7 +582,7 @@ class UploadManager extends GetxService {
     _update(
       task,
       overall: 1.0,
-      status: 'Upload completed successfully!',
+  status: 'common_success'.tr,
       phase: UploadPhase.complete,
     );
     _handleSuccess(controller, task);
@@ -611,7 +615,7 @@ class UploadManager extends GetxService {
         return true;
       } on _Cancelled {
         task.isCancelled.value = true;
-        _update(task, status: 'Upload cancelled', phase: UploadPhase.cancelled);
+  _update(task, status: 'post_upload_cancelled_hint'.tr, phase: UploadPhase.cancelled);
         _clearPersisted();
         return false;
       } catch (e) {
@@ -638,10 +642,10 @@ class UploadManager extends GetxService {
     task.status.value = 'Cancelled (needs retry)';
     task.error.value = 'User cancelled';
     _persist(task); // keep snapshot so user can retry or discard later
-    _update(task, status: 'Upload cancelled', phase: UploadPhase.cancelled);
+    _update(task, status: 'post_upload_cancelled_hint'.tr, phase: UploadPhase.cancelled);
     _showNotif(
-      title: 'Upload cancelled',
-      body: 'Upload cancelled. You can retry or discard.',
+      title: 'post_upload_cancelled_hint'.tr,
+      body: 'post_upload_cancelled_hint'.tr,
     );
     // Do NOT auto-clear; user must decide (aligns with failed logic)
     _maybeCleanupMedia(task, success: false);
@@ -651,8 +655,8 @@ class UploadManager extends GetxService {
     task.isCompleted.value = true;
     _clearPersisted();
     _showNotif(
-      title: 'Upload complete',
-      body: 'Your post was uploaded successfully',
+      title: 'post_upload_success_title'.tr,
+      body: 'post_upload_success_body'.tr,
       payload: task.publishedPostId.value != null
           ? 'post:${task.publishedPostId.value}'
           : null,
@@ -677,7 +681,7 @@ class UploadManager extends GetxService {
     // Classify error
     task.failureType.value = _classifyFailure(task.error.value);
     _persist(task); // keep snapshot so user can retry
-    _showNotif(title: 'Upload failed', body: _friendlyError(task));
+  _showNotif(title: 'common_error'.tr, body: _friendlyError(task)); // body already user-friendly, could map to keys
     // Do NOT auto-clear; user decides retry/discard
   }
 

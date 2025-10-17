@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:auto_tm/screens/profile_screen/model/profile_model.dart';
+import 'package:auto_tm/services/auth/auth_service.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:auto_tm/utils/logger.dart';
@@ -17,6 +18,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class ProfileController extends GetxController {
+  // Application-wide default location for newly registered users
+  static const String defaultLocation = 'Aşgabat';
   /// Singleton accessor to avoid accidental duplicate Get.put() calls scattered in UI.
   static ProfileController ensure() {
     if (Get.isRegistered<ProfileController>()) {
@@ -49,6 +52,9 @@ class ProfileController extends GetxController {
 
   var profile = Rxn<ProfileModel>();
 
+  // Tracks whether we've already initialized the form field controllers with existing data
+  final RxBool fieldsInitialized = false.obs;
+
   // Guard flags to prevent duplicate concurrent / repeated fetches
   final RxBool isFetchingProfile =
       false.obs; // true while fetchProfile in-flight
@@ -75,6 +81,11 @@ class ProfileController extends GetxController {
     name.value = box.read('user_name') ?? '';
     phone.value = box.read('user_phone') ?? '993';
     location.value = box.read('user_location') ?? '';
+    if (location.value.isEmpty) {
+      // Apply default if nothing stored yet
+      location.value = defaultLocation;
+      box.write('user_location', defaultLocation);
+    }
     locationController.text = location.value;
 
     // Test API configuration
@@ -82,6 +93,13 @@ class ProfileController extends GetxController {
 
     // Fetch fresh data from backend
     fetchProfile();
+
+    // Late-arrival profile listener: if profile loads after screen build and fields not initialized, prefill.
+    ever<ProfileModel?>(profile, (p) {
+      if (p != null && (!fieldsInitialized.value || nameController.text.isEmpty)) {
+        ensureFormFieldPrefill(force: true);
+      }
+    });
 
     // Add listeners to update text controllers when reactive values change
     name.listen((value) {
@@ -388,6 +406,13 @@ class ProfileController extends GetxController {
       if (profileData.location != null && profileData.location!.isNotEmpty) {
         location.value = profileData.location!;
         locationController.text = profileData.location!;
+      } else {
+        // Backend returned empty / null location, enforce default
+        if (location.value.isEmpty) {
+          location.value = defaultLocation;
+          locationController.text = defaultLocation;
+          box.write('user_location', defaultLocation);
+        }
       }
 
       // Set phone if it exists
@@ -401,6 +426,53 @@ class ProfileController extends GetxController {
         box.write('user_location', profileData.location);
       }
       box.write('user_phone', profileData.phone);
+    }
+  }
+
+  /// Ensure form text controllers are prefilled with the latest known values.
+  /// This is idempotent and will only run once per screen lifecycle unless
+  /// [force] is true. It prefers freshly fetched profile data, then reactive
+  /// fallback values, then persistent storage.
+  void ensureFormFieldPrefill({bool force = false}) {
+    if (fieldsInitialized.value && !force) return;
+
+    // Resolve best-known name
+    String existingName = '';
+    if (profile.value?.name.isNotEmpty == true) {
+      existingName = profile.value!.name;
+    } else if (name.value.isNotEmpty) {
+      existingName = name.value;
+    } else {
+      existingName = box.read('user_name') ?? '';
+    }
+
+    // Resolve best-known location
+    String existingLocation = '';
+    if (profile.value?.location != null && profile.value!.location!.isNotEmpty) {
+      existingLocation = profile.value!.location!;
+    } else if (location.value.isNotEmpty) {
+      existingLocation = location.value;
+    } else {
+      existingLocation = box.read('user_location') ?? '';
+      if (existingLocation.isEmpty) {
+        existingLocation = defaultLocation;
+        box.write('user_location', defaultLocation);
+      }
+    }
+
+    bool applied = false;
+    if (existingName.isNotEmpty && nameController.text.isEmpty) {
+      nameController.text = existingName;
+      applied = true;
+    }
+    if (existingLocation.isNotEmpty && locationController.text.isEmpty) {
+      locationController.text = existingLocation;
+      applied = true;
+    }
+
+    // Only mark initialized if we actually set something, unless forced
+    if (applied || force) {
+      fieldsInitialized.value = true;
     }
   }
 
@@ -424,6 +496,7 @@ class ProfileController extends GetxController {
 
     if (image != null) {
       selectedImage.value = await image.readAsBytes();
+      // Preserve existing name/location; no mutation besides image preview.
     }
   }
 
@@ -446,9 +519,38 @@ class ProfileController extends GetxController {
       );
 
     final response = await request.send();
+    String? bodyString;
+    Map<String, dynamic>? jsonBody;
+    try {
+      bodyString = await response.stream.bytesToString();
+      if (bodyString.isNotEmpty) {
+        jsonBody = json.decode(bodyString);
+      }
+    } catch (_) {}
 
-    if (response.statusCode == 200) {
-      // Optionally parse response
+    if (response.statusCode == 200 && jsonBody != null) {
+      final paths = jsonBody['paths'];
+      String? chosen;
+      if (paths is Map) {
+        chosen = paths['medium']?.toString() ??
+            paths['large']?.toString() ??
+            paths['small']?.toString();
+      }
+      if (chosen != null && chosen.isNotEmpty) {
+        final current = profile.value;
+        if (current != null) {
+          profile.value = ProfileModel(
+            uuid: current.uuid,
+            name: current.name,
+            email: current.email,
+            phone: current.phone,
+            location: current.location,
+            avatar: chosen,
+            createdAt: current.createdAt,
+            brandUuid: current.brandUuid,
+          );
+        }
+      }
     }
     if (response.statusCode == 406) {
       await refreshAccessToken();
@@ -467,6 +569,8 @@ class ProfileController extends GetxController {
 
     if (selectedImage.value != null) {
       await uploadImage(selectedImage.value!);
+      // Clear local picked image so a new session/account won't inherit it
+      selectedImage.value = null;
     }
 
     // No full refetch: merge locally then optionally fire a silent refresh (non-blocking)
@@ -474,8 +578,10 @@ class ProfileController extends GetxController {
     // Fire a silent background refresh without blocking navigation
     Future.microtask(() => fetchProfile());
 
-    // Get.back(); // Navigate back only if everything succeeded
-    Get.offAllNamed('/navView');
+    // Navigate back to the profile screen (stay in profile context)
+    if (Get.currentRoute != '/profile') {
+      Get.back();
+    }
     Get.rawSnackbar(
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: AppColors.whiteColor,
@@ -496,7 +602,7 @@ class ProfileController extends GetxController {
           Icon(Icons.check_circle_outline, color: AppColors.notificationColor),
           SizedBox(width: 8),
           Text(
-            'Post created successfully!',
+            'Profile edited successfully!',
             style: TextStyle(
               color: AppColors.textPrimaryColor,
               fontSize: 16,
@@ -534,9 +640,9 @@ class ProfileController extends GetxController {
 
   Future<bool> postUserDataSave() async {
     try {
+      final trimmedName = nameController.text.trim();
       final Map<String, dynamic> body = {
-        'name': nameController.text,
-        // 'phone': phoneController.text,
+        if (trimmedName.isNotEmpty) 'name': trimmedName,
         'location': locationController.text,
       };
 
@@ -552,7 +658,9 @@ class ProfileController extends GetxController {
       // final resBody = json.decode(response.body);
 
       if (response.statusCode == 200) {
-        box.write('user_name', nameController.text);
+        if ((body['name'] ?? '').toString().isNotEmpty) {
+          box.write('user_name', body['name']);
+        }
         box.write('user_location', locationController.text);
         return true; // local merge will happen in uploadProfile
       }
@@ -619,10 +727,18 @@ class ProfileController extends GetxController {
   /// Merge current edited fields into existing profile model without waiting for network.
   void _mergeLocalProfileAfterEdit() {
     final current = profile.value;
+    final enteredName = nameController.text.trim();
+    final preservedName = enteredName.isNotEmpty
+        ? enteredName
+        : (current?.name.isNotEmpty == true
+            ? current!.name
+            : (name.value.isNotEmpty
+                ? name.value
+                : (box.read('user_name') ?? '')));
     if (current == null) {
       profile.value = ProfileModel(
         uuid: box.read('USER_ID') ?? '',
-        name: nameController.text,
+        name: preservedName,
         email: '',
         phone: phone.value,
         location: locationController.text.isEmpty
@@ -635,7 +751,7 @@ class ProfileController extends GetxController {
     } else {
       profile.value = ProfileModel(
         uuid: current.uuid,
-        name: nameController.text,
+        name: preservedName,
         email: current.email,
         phone: current.phone,
         location: locationController.text.isEmpty
@@ -646,15 +762,41 @@ class ProfileController extends GetxController {
         brandUuid: current.brandUuid,
       );
     }
-    name.value = nameController.text;
+    name.value = preservedName;
+    if (preservedName.isNotEmpty) {
+      box.write('user_name', preservedName);
+    }
     location.value = locationController.text;
     // Mark as loaded since we now have locally merged profile data
     hasLoadedProfile.value = true;
   }
 
   void logout() {
-    box.erase();
-    Get.offAllNamed('/navView');
+    // Use central auth service logout to ensure consistent cleanup
+    if (Get.isRegistered<AuthService>()) {
+      AuthService.to.logout();
+    } else {
+      // Fallback selective removal if auth service not yet initialized
+      box.remove('ACCESS_TOKEN');
+      box.remove('REFRESH_TOKEN');
+      box.remove('USER_PHONE');
+      box.remove('user_name');
+      box.remove('user_phone');
+      box.remove('user_location');
+      box.remove('USER_ID');
+    }
+    // Clear local reactive state
+    profile.value = null;
+    name.value = '';
+    phone.value = '';
+    location.value = defaultLocation;
+    nameController.clear();
+    locationController.text = defaultLocation;
+    selectedImage.value = null; // ensure previous avatar bytes aren't shown for next user
+    fieldsInitialized.value = false;
+    hasLoadedProfile.value = false;
+    // Navigate to login (or splash) route; adjust if different
+    Get.offAllNamed('/login');
   }
 
   // void showBottomSheet(

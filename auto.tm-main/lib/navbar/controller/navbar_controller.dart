@@ -26,17 +26,12 @@ class BottomNavController extends GetxController {
     }
 
     // Handle navigation and token checks only when changing tab
-    if (index == 1) {
+    // Protected tabs: Post (2) & Profile (4)
+    if (index == 2 || index == 4) {
       final token = tokenService.getToken();
       if (token == null || token.isEmpty) {
         Get.toNamed('/register');
-        return;
-      }
-    } else if (index == 4) {
-      final token = tokenService.getToken();
-      if (token == null || token.isEmpty) {
-        Get.toNamed('/register');
-        return;
+        return; // Don't change selectedIndex if redirecting
       }
     }
 
@@ -44,27 +39,28 @@ class BottomNavController extends GetxController {
     selectedIndex.value = index;
   }
 
+  // New order: Home (0), Favourites (1), Post (2 - center), Blog (3), Profile (4)
   final List<Widget> pages = [
     HomeScreen(),
-    PostCheckPage(),
     MyFavouritesScreen(),
+    PostCheckPage(),
     BlogScreen(),
     ProfileCheckPage(),
   ];
 
   final List selectedIcons = [
-    AppImages.searchF,
-    AppImages.postF,
-    AppImages.favouriteF,
-    AppImages.chatF,
-    AppImages.profileO,
+    AppImages.searchF,     // home
+    AppImages.favouriteF,  // favourites
+    AppImages.postF,       // post (center)
+    AppImages.chatF,       // blog
+    AppImages.profileO,    // profile
   ];
   final List unSelectedIcons = [
     AppImages.searchO,
-    AppImages.postO,
     AppImages.favouriteO,
+    AppImages.postO,
     AppImages.chatO,
     AppImages.profileO,
   ];
-  final List<String> labels = ["home", "post", "fav", "blog", "profile"];
+  final List<String> labels = ["home", "fav", "post", "blog", "profile"];
 }

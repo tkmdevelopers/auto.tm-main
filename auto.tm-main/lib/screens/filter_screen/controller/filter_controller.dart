@@ -1,13 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
-import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/utils/key.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:auto_tm/utils/navigation_utils.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
+
+import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
+import 'package:auto_tm/utils/key.dart';
+import 'package:auto_tm/utils/navigation_utils.dart';
 
 class FilterController extends GetxController {
   final TextEditingController milleageController = TextEditingController();
@@ -18,7 +20,19 @@ class FilterController extends GetxController {
   final box = GetStorage();
   var offset = 0;
   final int limit = 20;
+  // Tracks whether user has already opened the results page in this session.
+  final RxBool hasViewedResults = false.obs;
+  
+  // Debounce timer for auto-search
+  Timer? _debounce;
+  void debouncedSearch() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      searchProducts();
+    });
+  }
 
+  // Country selection (defaults to 'Local')
   var selectedCountry = 'Local'.obs;
   var condition = 'All'.obs;
   var brands = <Map<String, dynamic>>[].obs;
@@ -27,18 +41,34 @@ class FilterController extends GetxController {
   var selectedModel = ''.obs;
   var selectedBrandUuid = ''.obs;
   var selectedModelUuid = ''.obs;
-  var location = 'Ashgabat'.obs;
+  // Specific location city (blank means any)
+  var location = ''.obs;
   var transmission = ''.obs;
   var enginePower = ''.obs;
   var selectedColor = ''.obs;
-  final selectedMinDate = DateTime.now().obs;
-  final selectedMaxDate = DateTime.now().obs;
+  // Year filters (allow empty). Using strings so they can be blank until user selects.
+  final RxString minYear = ''.obs;
+  final RxString maxYear = ''.obs;
+  // Slider bounds (will initialize lazily from data or defaults)
+  final RxInt yearLowerBound = 1990.obs;
+  final RxInt yearUpperBound = DateTime.now().year.obs;
+  final Rx<RangeValues> yearRange = RangeValues(1990, DateTime.now().year.toDouble()).obs;
+  // Legacy date objects kept temporarily for compatibility; will be removed once UI updated.
+  final selectedMinDate = DateTime.now().obs; // TODO: remove
+  final selectedMaxDate = DateTime.now().obs; // TODO: remove
 
   var milleage = ''.obs;
   var isLoading = false.obs;
   var exchange = false.obs;
   var credit = false.obs;
   var premium = <String>[].obs;
+  // Price range (nullable). We'll treat empty as not set.
+  final RxnInt minPrice = RxnInt();
+  final RxnInt maxPrice = RxnInt();
+  // Optional UI bounds for price slider if later added
+  final RxInt priceLowerBound = 0.obs;
+  final RxInt priceUpperBound = 500000.obs; // adjust after meta fetch
+  final Rx<RangeValues> priceRange = const RangeValues(0, 500000).obs;
 
   RxBool isLoadingBrands = false.obs;
   RxBool isLoadingModels = false.obs;
@@ -66,15 +96,7 @@ class FilterController extends GetxController {
     });
   }
 
-  @override
-  void onClose() {
-    milleageController.dispose();
-    enginepowerController.dispose();
-    brandSearchController.dispose();
-    modelSearchController.dispose();
-    scrollController.dispose();
-    super.onClose();
-  }
+  // Removed onClose disposal to avoid disposing controllers for a permanent instance.
 
   void updateSortOption(String newSortOption) {
     if (selectedSortOption.value != newSortOption) {
@@ -98,7 +120,8 @@ class FilterController extends GetxController {
               initialDate: DateTime.now(),
               selectedDate: selectedMinDate.value,
               onChanged: (DateTime dateTime) {
-                selectedMinDate.value = dateTime;
+                selectedMinDate.value = dateTime; // legacy
+                minYear.value = dateTime.year.toString();
                 NavigationUtils.closeGlobal();
               },
             ),
@@ -123,7 +146,8 @@ class FilterController extends GetxController {
               initialDate: DateTime.now(),
               selectedDate: selectedMaxDate.value,
               onChanged: (DateTime dateTime) {
-                selectedMaxDate.value = dateTime;
+                selectedMaxDate.value = dateTime; // legacy
+                maxYear.value = dateTime.year.toString();
                 NavigationUtils.closeGlobal();
               },
             ),
@@ -135,6 +159,31 @@ class FilterController extends GetxController {
 
   String get selectedMinYear => "${selectedMinDate.value.year}";
   String get selectedMaxYear => "${selectedMaxDate.value.year}";
+  // Accessors for new year state (prefer these going forward)
+  String get effectiveMinYear => minYear.value.isNotEmpty ? minYear.value : '';
+  String get effectiveMaxYear => maxYear.value.isNotEmpty ? maxYear.value : '';
+
+  void clearFilters({bool includeBrandModel = false}) {
+    transmission.value = '';
+    enginepowerController.clear();
+    milleageController.clear();
+    selectedColor.value = '';
+    condition.value = 'All';
+    exchange.value = false;
+    credit.value = false;
+    premium.clear();
+    minYear.value = '';
+    maxYear.value = '';
+  yearRange.value = RangeValues(yearLowerBound.value.toDouble(), yearUpperBound.value.toDouble());
+    location.value = '';
+    selectedCountry.value = 'Local';
+    if (includeBrandModel) {
+      selectedBrand.value = '';
+      selectedBrandUuid.value = '';
+      selectedModel.value = '';
+      selectedModelUuid.value = '';
+    }
+  }
 
   Map<String, String> _parseSortOption(String option) {
     if (option.contains('_')) {
@@ -150,41 +199,56 @@ class FilterController extends GetxController {
     } else {
       premium.add(uuid);
     }
+    debouncedSearch();
   }
 
   final isSearchLoading = false.obs;
   final searchResults = <Post>[].obs;
 
+  // Computed active filter count for UI chips & summary bar
+  int get activeFilterCount {
+    int count = 0;
+    if (selectedBrandUuid.value.isNotEmpty) count++;
+    if (selectedModelUuid.value.isNotEmpty) count++;
+    if (selectedCountry.value != 'Local' || location.value.isNotEmpty) count++;
+    if (transmission.value.isNotEmpty) count++;
+    if (credit.value) count++;
+    if (exchange.value) count++;
+    if (minYear.value.isNotEmpty || maxYear.value.isNotEmpty) count++;
+    if (milleageController.text.isNotEmpty) count++;
+    if (enginepowerController.text.isNotEmpty) count++;
+    if (selectedColor.value.isNotEmpty) count++;
+    if (premium.isNotEmpty) count++;
+    if (condition.value.isNotEmpty && condition.value != 'All') count++;
+    return count;
+  }
+
   void filterBrands(String query) {
-    if (brandSearchController.text.isEmpty) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) {
       filteredBrands.assignAll(brands);
-    } else {
-      filteredBrands.assignAll(
-        brands
-            .where(
-              (brand) => brand['name'].toString().toLowerCase().contains(
-                brandSearchController.text.toLowerCase(),
-              ),
-            )
-            .toList(),
-      );
+      return;
     }
+    filteredBrands.assignAll(
+      brands.where((brand) => brand['name']
+          .toString()
+          .toLowerCase()
+          .contains(q)).toList(),
+    );
   }
 
   void filterModels(String query) {
-    if (modelSearchController.text.isEmpty) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) {
       filteredModels.assignAll(models);
-    } else {
-      filteredModels.assignAll(
-        models
-            .where(
-              (model) => model['name'].toString().toLowerCase().contains(
-                modelSearchController.text.toLowerCase(),
-              ),
-            )
-            .toList(),
-      );
+      return;
     }
+    filteredModels.assignAll(
+      models.where((model) => model['name']
+          .toString()
+          .toLowerCase()
+          .contains(q)).toList(),
+    );
   }
 
   String buildQuery() {
@@ -193,11 +257,12 @@ class FilterController extends GetxController {
     if (selectedBrandUuid.value.isNotEmpty) {
       queryParams['brandFilter'] = selectedBrandUuid.value;
     }
+    // Location / country logic: 'Local' means use city (if chosen) but do not send 'Local' as value
     if (selectedCountry.value == 'Local') {
       if (location.value.isNotEmpty) {
         queryParams['location'] = location.value;
       }
-    } else {
+    } else if (selectedCountry.value.isNotEmpty) {
       queryParams['location'] = selectedCountry.value;
     }
     if (selectedModelUuid.value.isNotEmpty) {
@@ -220,26 +285,29 @@ class FilterController extends GetxController {
     if (condition.value.isNotEmpty && condition.value != 'All') {
       queryParams['condition'] = condition.value;
     }
-    if (selectedMinYear != '' && selectedMaxYear != '') {
-      int minYear = int.tryParse(selectedMinYear) ?? 0;
-      int maxYear = int.tryParse(selectedMaxYear) ?? 0;
-
-      // Swap if min is greater than max
-      if (minYear > maxYear) {
-        final temp = minYear;
-        minYear = maxYear;
-        maxYear = temp;
-      }
-
-      queryParams['minYear'] = minYear.toString();
-      queryParams['maxYear'] = maxYear.toString();
+    // Year filters (use new minYear/maxYear; include only if set)
+    // Consolidate year logic: prefer explicit text fields if set, else fall back to slider values when moved from defaults
+    if (minYear.value.isNotEmpty || maxYear.value.isNotEmpty) {
+      if (minYear.value.isNotEmpty) queryParams['minYear'] = minYear.value;
+      if (maxYear.value.isNotEmpty) queryParams['maxYear'] = maxYear.value;
     } else {
-      if (selectedMinYear != '') {
-        queryParams['minYear'] = selectedMinYear;
-      }
-      if (selectedMaxYear != '') {
-        queryParams['maxYear'] = selectedMaxYear;
-      }
+      final rv = yearRange.value;
+      final defaultMin = yearLowerBound.value.toDouble();
+      final defaultMax = yearUpperBound.value.toDouble();
+      if (rv.start != defaultMin) queryParams['minYear'] = rv.start.round().toString();
+      if (rv.end != defaultMax) queryParams['maxYear'] = rv.end.round().toString();
+    }
+
+    // Price logic: explicit minPrice/maxPrice if set, else slider delta from defaults
+    if (minPrice.value != null || maxPrice.value != null) {
+      if (minPrice.value != null) queryParams['minPrice'] = minPrice.value.toString();
+      if (maxPrice.value != null) queryParams['maxPrice'] = maxPrice.value.toString();
+    } else {
+      final pr = priceRange.value;
+      final dMin = priceLowerBound.value.toDouble();
+      final dMax = priceUpperBound.value.toDouble();
+      if (pr.start != dMin) queryParams['minPrice'] = pr.start.round().toString();
+      if (pr.end != dMax) queryParams['maxPrice'] = pr.end.round().toString();
     }
 
     return queryParams.entries
@@ -291,6 +359,8 @@ class FilterController extends GetxController {
           searchResults.addAll(newResults);
           offset += limit;
         }
+
+        _applyRegionAndCityFilters();
       } else if (response.statusCode == 406) {
         final refreshed = await refreshAccessToken();
         if (refreshed) {
@@ -308,6 +378,42 @@ class FilterController extends GetxController {
     }
   }
 
+  void _applyRegionAndCityFilters() {
+    final regionFilterRaw = selectedCountry.value.trim();
+    if (regionFilterRaw.isEmpty) return; // nothing to filter by
+    final regionFilter = regionFilterRaw.toLowerCase();
+    final cityFilter = location.value.trim().toLowerCase();
+
+    // Build filtered list; treat posts with missing region as 'local'
+    final filtered = <Post>[];
+    for (final p in searchResults) {
+      // Pull region from strongly typed field; fallback already handled in Post.fromJson
+      var postRegion = p.region.trim();
+      if (postRegion.isEmpty) {
+        // Legacy posts before region introduction considered Local
+        postRegion = 'Local';
+      }
+      final regionMatch = postRegion.toLowerCase() == regionFilter;
+      if (!regionMatch) continue;
+
+      if (regionFilter == 'local') {
+        if (cityFilter.isEmpty) {
+          // Any local city accepted when user didn't choose a city
+          filtered.add(p);
+        } else {
+          final postCity = p.location.trim().toLowerCase();
+          if (postCity.isNotEmpty && postCity == cityFilter) {
+            filtered.add(p);
+          }
+        }
+      } else {
+        // Non-local regions ignore city list (UI already disabled city selection)
+        filtered.add(p);
+      }
+    }
+    searchResults.assignAll(filtered);
+  }
+
   final lastSubscribes = <String>[].obs;
 
   void saveSubscribes() {
@@ -315,11 +421,9 @@ class FilterController extends GetxController {
   }
 
   Future<void> loadStoredSubscribes() async {
-    List<String>? storedHistory = box
-        .read<List>('brand_subscribes')
-        ?.cast<String>();
-    if (storedHistory != null) {
-      lastSubscribes.assignAll(storedHistory);
+    final stored = box.read<List>('brand_subscribes');
+    if (stored != null) {
+      lastSubscribes.assignAll(stored.cast<String>());
     }
   }
 
@@ -413,10 +517,12 @@ class FilterController extends GetxController {
 
   void selectFilter(String filter) {
     condition.value = filter;
+    debouncedSearch();
   }
 
   void selectLocation(String filter) {
     selectedCountry.value = filter;
+    debouncedSearch();
   }
 
   void fetchBrands() async {
@@ -514,5 +620,10 @@ class FilterController extends GetxController {
     } catch (e) {
       return false;
     }
+  }
+  @override
+  void onClose() {
+    _debounce?.cancel();
+    super.onClose();
   }
 }

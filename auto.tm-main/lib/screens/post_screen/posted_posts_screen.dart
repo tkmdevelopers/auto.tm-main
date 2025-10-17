@@ -57,7 +57,7 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
               elevation: 0,
               automaticallyImplyLeading: false,
               title: Text(
-                'My Posts'.tr,
+                'post_my_posts'.tr,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -106,7 +106,10 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
                 );
               }
               if (controller.posts.isEmpty) {
-                return SliverToBoxAdapter(child: _buildEmptyState(context));
+                return SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _buildEmptyState(context),
+                );
               }
               return SliverPadding(
                 padding: const EdgeInsets.all(16),
@@ -255,7 +258,8 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
                 padding: const EdgeInsets.all(20),
@@ -266,13 +270,12 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
                 child: Icon(
                   Icons.car_rental_outlined,
                   size: 48,
-                  // UPDATED: Using a more subtle, onSurface color
                   color: theme.colorScheme.primary,
                 ),
               ),
               const SizedBox(height: 24),
               Text(
-                'You have no published posts yet'.tr,
+                'post_no_published'.tr,
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -281,7 +284,7 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Create your first post by tapping the + button.'.tr,
+                'post_create_first_tip'.tr,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,

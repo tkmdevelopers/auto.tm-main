@@ -40,10 +40,15 @@ export class AuthService {
         );
       }
       phone = `+${phone}`;
+      const DEFAULT_LOCATION = 'Aşgabat';
       const new_user = await this.Users.findOrCreate({
         where: { phone },
-        defaults: { uuid: uuidv4(), phone },
+        defaults: { uuid: uuidv4(), phone, location: DEFAULT_LOCATION },
       });
+      // If user pre-existed and lacks location, patch it with default silently
+      if (new_user && new_user[0] && !new_user[0].location) {
+        await new_user[0].update({ location: DEFAULT_LOCATION });
+      }
       console.log(new_user);
       await this.photo.create({
         uuid: uuidv4(),
@@ -315,6 +320,7 @@ export class AuthService {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        location: user.location,
         access: user.access,
         role: user.role,
         avatar: user.avatar,

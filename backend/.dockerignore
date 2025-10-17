@@ -1,0 +1,15 @@
+# Ignore files not needed in the build context
+node_modules
+dist
+test
+__MACOSX
+.git
+.gitignore
+.env
+uploads/*
+Dockerfile.*
+*.log
+coverage
+
+# Keep schema/migrations
+# !migrations

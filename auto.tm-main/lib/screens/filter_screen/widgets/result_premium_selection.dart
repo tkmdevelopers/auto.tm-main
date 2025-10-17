@@ -1,6 +1,5 @@
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 import 'package:auto_tm/screens/filter_screen/filter_screen.dart';
-import 'package:auto_tm/screens/filter_screen/widgets/locations.dart';
 import 'package:auto_tm/screens/home_screen/controller/premium_controller.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/images.dart';
@@ -13,7 +12,7 @@ class ResultPremiumSelection extends StatelessWidget {
   ResultPremiumSelection({super.key});
 
   final PremiumController premiumController = Get.put(PremiumController());
-  final FilterController controller = Get.put(FilterController());
+  final FilterController controller = Get.find<FilterController>();
 
   @override
   Widget build(BuildContext context) {
@@ -39,10 +38,10 @@ class ResultPremiumSelection extends StatelessWidget {
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: AppColors.textTertiaryColor,
-                    width: 0.3,
+                    width: 0.4,
                   ),
                   borderRadius: BorderRadius.circular(12),
-                  color: theme.colorScheme.secondaryContainer,
+                  color: theme.colorScheme.surface,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -51,7 +50,10 @@ class ResultPremiumSelection extends StatelessWidget {
                       AppImages.filter,
                       width: 16,
                       height: 16,
-                      colorFilter: ColorFilter.mode(theme.colorScheme.primary, BlendMode.srcIn),
+                      colorFilter: ColorFilter.mode(
+                        theme.colorScheme.onSurface,
+                        BlendMode.srcIn,
+                      ),
                       // color: theme.colorScheme.primary,
                     ),
                     SizedBox(
@@ -62,7 +64,7 @@ class ResultPremiumSelection extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: theme.colorScheme.primary,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   ],
@@ -72,36 +74,6 @@ class ResultPremiumSelection extends StatelessWidget {
             SizedBox(
               width: 2,
             ),
-            if(controller.selectedCountry.value == 'Local')
-            _buildLocationButton(context),
-            // GestureDetector(
-            //   onTap: () {
-            //     Get.to(() => SLocations());
-            //   },
-            //   child: Container(
-            //     alignment: Alignment.center,
-            //     padding: EdgeInsets.symmetric(
-            //       vertical: 4,
-            //       horizontal: 10,
-            //     ),
-            //     decoration: BoxDecoration(
-            //       border: Border.all(
-            //         color: AppColors.textTertiaryColor,
-            //         width: 0.3,
-            //       ),
-            //       borderRadius: BorderRadius.circular(12),
-            //       color: theme.colorScheme.secondaryContainer,
-            //     ),
-            //     child: Text(
-            //       'Location'.tr,
-            //       style: TextStyle(
-            //         fontSize: 14,
-            //         fontWeight: FontWeight.w500,
-            //         color: theme.colorScheme.primary,
-            //       ),
-            //     ),
-            //   ),
-            // ),
             SizedBox(
               width: 2,
             ),
@@ -128,19 +100,15 @@ class ResultPremiumSelection extends StatelessWidget {
                           const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: 
-                          isSelected ? 
-                          AppColors.primaryColor
-                              : AppColors
-                                  .textTertiaryColor,
+              color: isSelected
+                ? theme.colorScheme.onSurface
+                : AppColors.textTertiaryColor,
                           width: 0.3,
                         ),
                         borderRadius: BorderRadius.circular(12),
-                        color: isSelected
-                            ? AppColors.primaryColor
-                                .withAlpha((0.1 * 255).round()) // Light fill when selected
-                            : theme.colorScheme
-                                .secondaryContainer, // Default background
+            color: isSelected
+              ? theme.colorScheme.onSurface.withOpacity(0.07)
+              : theme.colorScheme.secondaryContainer,
                         // color: AppColors.primaryColor,
                       ),
                       child: Row(
@@ -164,7 +132,7 @@ class ResultPremiumSelection extends StatelessWidget {
                               controller.togglePremium(option.uuid);
                               controller.searchProducts();
                             },
-                            activeColor: AppColors.primaryColor,
+                            activeColor: theme.colorScheme.onSurface,
                             checkColor: Colors.white,
                             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             visualDensity: VisualDensity.compact,
@@ -184,35 +152,5 @@ class ResultPremiumSelection extends StatelessWidget {
     );
   }
 
-  Widget _buildLocationButton(BuildContext context) {
-    final theme = Theme.of(context);
-    return GestureDetector(
-            onTap: () {
-              Get.to(() => SLocations());
-            },
-            child: Container(
-              alignment: Alignment.center,
-              padding: EdgeInsets.symmetric(
-                vertical: 4,
-                horizontal: 10,
-              ),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: AppColors.textTertiaryColor,
-                  width: 0.3,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                color: theme.colorScheme.secondaryContainer,
-              ),
-              child: Text(
-                'Location'.tr,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ),
-          );
-  }
+  // Location button removed: location can only be changed from Filter screen now.
 }

@@ -32,4 +32,7 @@ export class VideoResponse {
 
   @ApiProperty()
   updatedAt: Date;
+
+  @ApiProperty({ description: 'Computed public URL for serving the video file' })
+  publicUrl?: string;
 }

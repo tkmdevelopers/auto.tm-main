@@ -8,27 +8,28 @@ class BlogItemShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final surface = theme.colorScheme.surface;
+    final baseShade = theme.colorScheme.onSurface.withOpacity(0.08);
+    final highlightShade = theme.colorScheme.onSurface.withOpacity(0.18);
     return Container(
       height: 270,
-          margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8,), //!4/8
-          // padding: EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(12),
-            // boxShadow: [!isDark ? BoxShadow(color: theme.shadowColor, blurRadius: 5) : BoxShadow()], //!active
-            boxShadow: [BoxShadow(color: theme.shadowColor, blurRadius: 5)], //!active
-          ),
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: theme.shadowColor, blurRadius: 5)],
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Shimmer.fromColors(
-          baseColor: theme.colorScheme.primaryContainer, // Light grey
-          highlightColor: Colors.grey[600]!, // Lighter grey for the highlight
+          baseColor: baseShade,
+          highlightColor: highlightShade,
           child: Container(
             height: 270,
             decoration: BoxDecoration(
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: theme.shadowColor, blurRadius: 5)], //!active
+              boxShadow: [BoxShadow(color: theme.shadowColor, blurRadius: 5)],
             ),
             // margin: const EdgeInsets.symmetric(vertical: 8.0),
             child: Column(
@@ -42,7 +43,7 @@ class BlogItemShimmer extends StatelessWidget {
                       // height: 140, // Match PostItem's image height
                       // width: double.infinity,
                       // decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.transparent),
-                      color: Colors.white, // Color that will be shimmered
+                      color: baseShade,
                     ),
                   ),
                 ),
@@ -62,7 +63,7 @@ class BlogItemShimmer extends StatelessWidget {
                                 // width: double.infinity,
                                 width: MediaQuery.of(context).size.width * 0.2,
                                 height: 12.0,
-                                color: Colors.white,
+                                color: baseShade,
                                 // margin: const EdgeInsets.only(bottom: 4.0),
                               ),
                             ),
@@ -75,7 +76,7 @@ class BlogItemShimmer extends StatelessWidget {
                           child: Container(
                             width: MediaQuery.of(context).size.width * 0.4,
                             height: 22.0,
-                            color: Colors.white,
+                            color: baseShade,
                             // margin: const EdgeInsets.only(bottom: 4.0),
                           ),
                         ),
@@ -86,7 +87,7 @@ class BlogItemShimmer extends StatelessWidget {
                           child: Container(
                             width: MediaQuery.of(context).size.width * 0.9,
                             height: 14.0,
-                            color: Colors.white,
+                            color: baseShade,
                           ),
                         ),
                         SizedBox(height: 4,),
@@ -95,7 +96,7 @@ class BlogItemShimmer extends StatelessWidget {
                           child: Container(
                             width: MediaQuery.of(context).size.width * 0.9,
                             height: 14.0,
-                            color: Colors.white,
+                            color: baseShade,
                           ),
                         ),
                         SizedBox(height: 4,),
@@ -104,7 +105,7 @@ class BlogItemShimmer extends StatelessWidget {
                           child: Container(
                             width: MediaQuery.of(context).size.width * 0.6,
                             height: 14.0,
-                            color: Colors.white,
+                            color: baseShade,
                           ),
                         ),
                       ],

@@ -39,8 +39,6 @@ import { multerOptionsForModel } from 'src/photo/config/multer.config';
 export class ModelsController {
   constructor(private modelsService: ModelsService) {}
 
-  @ApiSecurity('token')
-  @UseGuards(AuthGuard)
   @Get()
   async findAll(
     @Query() query: FindAllModels,

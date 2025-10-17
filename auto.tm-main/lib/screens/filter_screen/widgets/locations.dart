@@ -200,188 +200,312 @@
 //   }
 // }
 
-import 'dart:convert';
+// Unified, simplified location selector just for FilterScreen.
+// Mirrors design/behavior of post screen location selector, without origin branching.
 
-import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
-import 'package:auto_tm/ui_components/colors.dart';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 
-// Controller
-class LocationController extends GetxController {
-  final selectedLocation = Rx<String?>(null);
-  final allLocations = <String>[].obs; // changed to observable list
-  final filteredLocations = <String>[].obs;
+class FilterLocationController extends GetxController {
+  final RxList<String> allLocations = <String>[].obs;
+  final RxList<String> filteredLocations = <String>[].obs;
   final searchText = ''.obs;
+  final selectedLocation = ''.obs; // store last tapped (mirrors filterController.location)
 
   @override
   void onInit() {
     super.onInit();
-    loadLocations(); // load from assets
+    _loadLocations();
   }
 
-  Future<void> loadLocations() async {
+  Future<void> _loadLocations() async {
     try {
-      final String response = await rootBundle.loadString('assets/json/city.json');
-      final List<dynamic> data = json.decode(response);
-
-      // extract the `name` field from each item
-      final names = data.map((e) => e['name'].toString()).toList();
-
-      allLocations.assignAll(names);
-      filteredLocations.assignAll(names);
-    } catch (e) {
+      final jsonStr = await rootBundle.loadString('assets/json/city.json');
+      final List<dynamic> data = json.decode(jsonStr) as List<dynamic>;
+      final cities = data
+          .map((e) => e is Map && e['name'] != null ? e['name'].toString() : null)
+          .whereType<String>()
+          .toList();
+      cities.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      allLocations.assignAll(cities);
+      filteredLocations.assignAll(cities);
+    } catch (e, st) {
       if (kDebugMode) {
-        print("Error loading locations: $e");
+        debugPrint('Failed to load locations: $e');
+        debugPrint('$st');
       }
     }
   }
 
-  void selectLocation(String location) {
-    selectedLocation.value = location;
-  }
-
-  String? getSelectedLocation() {
-    return selectedLocation.value;
-  }
-
   void filterLocations(String query) {
     searchText.value = query;
-    if (query.isEmpty) {
+    if (query.trim().isEmpty) {
       filteredLocations.assignAll(allLocations);
-    } else {
-      final lowerCaseQuery = query.toLowerCase();
-      filteredLocations.assignAll(allLocations.where((location) {
-        return location.toLowerCase().contains(lowerCaseQuery);
-      }).toList());
+      return;
     }
+    final q = query.toLowerCase();
+    filteredLocations.assignAll(allLocations.where((c) => c.toLowerCase().contains(q)));
   }
 
-  void resetSearch() {
-    searchText.value = '';
-    filteredLocations.assignAll(allLocations);
-  }
+  void select(String loc) => selectedLocation.value = loc;
+  void resetSearch() { searchText.value = ''; filteredLocations.assignAll(allLocations); }
 }
 
-// Screen
 class SLocations extends StatelessWidget {
-  final LocationController locationController = Get.put(LocationController());
-  final FilterController filterController = Get.put(FilterController());
-
   SLocations({super.key});
+
+  final FilterLocationController locationController = Get.put(FilterLocationController());
+  final FilterController filterController = Get.find<FilterController>();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    final isCupertino = theme.platform == TargetPlatform.iOS;
+
+    // Preselect currently chosen location if any
+    if (filterController.location.value.isNotEmpty &&
+        locationController.selectedLocation.isEmpty) {
+      locationController.selectedLocation.value = filterController.location.value;
+    }
+
+    final searchField = isCupertino
+        ? _CupertinoSearchBar(
+            onChanged: locationController.filterLocations,
+            onClear: locationController.resetSearch,
+          )
+        : _MaterialSearchBar(
+            onChanged: locationController.filterLocations,
+            onClear: locationController.resetSearch,
+          );
+
+    final isLocal = filterController.selectedCountry.value == 'Local';
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        elevation: 4,
-        backgroundColor: theme.appBarTheme.backgroundColor,
-        surfaceTintColor: theme.appBarTheme.backgroundColor,
-        title: Text(
-          "Location".tr,
-          style: TextStyle(color: theme.colorScheme.primary),
-        ),
-        centerTitle: false,
-        actions: [
-          TextButton(
-            onPressed: () {
-              locationController.resetSearch();
-            },
-            child: Text(
-              "Reset",
-              style: TextStyle(color: theme.primaryColor),
-            ),
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SafeArea(
         child: Column(
-          children: <Widget>[
-            // Search Bar
-            Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                border:
-                    Border.all(color: AppColors.textTertiaryColor, width: 0.5),
-                borderRadius: BorderRadius.circular(12.0),
-              ),
-              child: TextField(
-                onChanged: locationController.filterLocations,
-                style: TextStyle(color: theme.colorScheme.primary),
-                decoration: InputDecoration(
-                  prefixIcon:
-                      Icon(Icons.search, color: AppColors.textTertiaryColor),
-                  hintText: "Search",
-                  hintStyle: TextStyle(color: AppColors.textTertiaryColor),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                      vertical: 10.0, horizontal: 16.0),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20.0),
-            // Location List
-            Expanded(
-              child: Obx(() {
-                return Scrollbar(
-                  child: ListView.builder(
-                    itemCount: locationController.filteredLocations.length,
-                    itemBuilder: (context, index) {
-                      final location =
-                          locationController.filteredLocations[index];
-                      //final isSelected = locationController.selectedLocation.value == location; // Removed direct comparison
-                      return Obx(() {
-                        // Added Obx inside the itemBuilder
-                        final isSelected =
-                            locationController.selectedLocation.value ==
-                                location;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(6.0),
-                              border: Border.all(
-                                color: isSelected
-                                    ? theme.primaryColor
-                                    : AppColors.textTertiaryColor,
-                                width: isSelected ? 2 : 1,
-                              ),
-                            ),
-                            child: ListTile(
-                              title: Text(
-                                location,
-                                style:
-                                    TextStyle(color: theme.colorScheme.primary),
-                              ),
-                              leading: isSelected
-                                  ? Icon(Icons.radio_button_checked,
-                                      color: theme.primaryColor)
-                                  : const Icon(Icons.radio_button_off,
-                                      color: AppColors.textTertiaryColor),
-                              onTap: () {
-                                locationController.selectLocation(location);
-                                filterController.location.value = location;
-                                filterController.searchProducts();
-                                Get.back();
-                              },
-                            ),
-                          ),
-                        );
-                      });
+          children: [
+            // Header + search
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: onSurface),
+                    onPressed: () {
+                      _safePop(context);
                     },
+                    tooltip: 'Back',
                   ),
-                );
-              }),
+                  Expanded(
+                    child: Text(
+                      'Location'.tr,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: onSurface,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: searchField,
+            ),
+            if (!isLocal)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                child: Text(
+                  'City selection available only for Local region'.tr,
+                  style: TextStyle(color: onSurface.withOpacity(0.6), fontStyle: FontStyle.italic),
+                  textAlign: TextAlign.center,
+                ),
+              )
+            else
+              Expanded(
+                child: Obx(() {
+                  final locations = locationController.filteredLocations;
+                  if (locations.isEmpty) {
+                    return Center(
+                      child: Text('No locations found'.tr,
+                          style: TextStyle(color: onSurface.withOpacity(0.6))),
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    itemCount: locations.length,
+                    itemBuilder: (context, index) {
+                      final city = locations[index];
+                      final isSelected = locationController.selectedLocation.value == city;
+                      return _LocationTile(
+                        label: city,
+                        isSelected: isSelected,
+                        onTap: () {
+                          // Prevent redundant work if already selected and we came back accidentally
+                          if (filterController.location.value == city) {
+                            _safePop(context);
+                            return;
+                          }
+                          locationController.select(city);
+                          filterController.location.value = city;
+                          // Optionally trigger an automatic search refresh (comment out if not desired)
+                          // filterController.searchProducts();
+                          _safePop(context);
+                        },
+                      );
+                    },
+                  );
+                }),
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _safePop(BuildContext context) {
+    // First try Navigator directly (most reliable)
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    // Fallback to Get if navigator stack not recognized
+    if (Get.key.currentState?.canPop() == true) {
+      Get.back();
+      return;
+    }
+    // As an absolute fallback, do nothing (already at root). Could log in debug.
+  }
+}
+
+class _LocationTile extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+  const _LocationTile({required this.label, required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final onSurface = theme.colorScheme.onSurface;
+    final primary = theme.colorScheme.primary;
+    final borderColor = isSelected ? primary : theme.colorScheme.outline.withOpacity(0.4);
+    final bg = isSelected ? primary.withOpacity(0.08) : theme.colorScheme.surfaceVariant.withOpacity(0.25);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Material(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+            onTap: onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
+              ),
+              child: Row(
+                children: [
+                  Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? primary : onSurface.withOpacity(0.55), size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: onSurface,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MaterialSearchBar extends StatelessWidget {
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+  const _MaterialSearchBar({required this.onChanged, required this.onClear});
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
+      ),
+      child: TextField(
+        onChanged: onChanged,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: 'Search'.tr,
+          prefixIcon: Icon(Icons.search, color: theme.colorScheme.onSurface.withOpacity(0.55)),
+          suffixIcon: IconButton(
+            icon: Icon(Icons.close_rounded, color: theme.colorScheme.onSurface.withOpacity(0.5)),
+            onPressed: onClear,
+            tooltip: 'Clear'.tr,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+        ),
+      ),
+    );
+  }
+}
+
+class _CupertinoSearchBar extends StatelessWidget {
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+  const _CupertinoSearchBar({required this.onChanged, required this.onClear});
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 8),
+          Icon(Icons.search, color: theme.colorScheme.onSurface.withOpacity(0.55)),
+          const SizedBox(width: 4),
+          Expanded(
+            child: TextField(
+              onChanged: onChanged,
+              cursorColor: theme.colorScheme.primary,
+              decoration: InputDecoration(
+                hintText: 'Search'.tr,
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close_rounded, color: theme.colorScheme.onSurface.withOpacity(0.55), size: 20),
+            onPressed: onClear,
+            splashRadius: 18,
+            tooltip: 'Clear'.tr,
+          ),
+        ],
       ),
     );
   }

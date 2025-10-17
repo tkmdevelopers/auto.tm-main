@@ -8,7 +8,7 @@ import 'package:get/get.dart';
 class ResultBrandModelComponent extends StatelessWidget {
   ResultBrandModelComponent({super.key});
 
-  final FilterController controller = Get.put(FilterController());
+  final FilterController controller = Get.find<FilterController>();
 
   @override
   Widget build(BuildContext context) {
@@ -19,9 +19,9 @@ class ResultBrandModelComponent extends StatelessWidget {
     borderRadius: BorderRadius.circular(12),
     border: Border.all(
       color: AppColors.textTertiaryColor,
-      width: 0.3,
+      width: 0.5,
     ),
-    color: theme.colorScheme.secondaryContainer,
+    color: theme.colorScheme.surface,
   ),
   height: 124, // Ensure container has enough height for expansion
   child: Column(
@@ -31,7 +31,11 @@ class ResultBrandModelComponent extends StatelessWidget {
         child: Obx(
           () => GestureDetector(
             behavior: HitTestBehavior.opaque, // Ensures the whole area is tappable
-            onTap: () => Get.off(() => BrandSelection()),
+            onTap: () { // Navigate preserving origin; mark results viewed
+              final isResults = Get.currentRoute.contains('FilterResultPage');
+              controller.hasViewedResults.value = controller.hasViewedResults.value || isResults;
+              Get.to(() => BrandSelection(origin: isResults ? 'results' : (controller.hasViewedResults.value ? 'filter' : 'initial')));
+            },
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -46,16 +50,16 @@ class ResultBrandModelComponent extends StatelessWidget {
                         fontWeight: controller.selectedBrand.value != ''
                             ? FontWeight.w400
                             : FontWeight.w500,
-                        color: controller.selectedBrand.value != ''
-                            ? AppColors.textTertiaryColor
-                            : theme.colorScheme.primary,
+            color: controller.selectedBrand.value != ''
+              ? AppColors.textTertiaryColor
+              : theme.colorScheme.onSurface,
                       ),
                     ),
                     if (controller.selectedBrand.value != '')
                       Text(
                         controller.selectedBrand.value,
                         style: TextStyle(
-                          color: theme.colorScheme.primary,
+                          color: theme.colorScheme.onSurface,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -100,14 +104,17 @@ class ResultBrandModelComponent extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             onTap: () {
               if (controller.selectedBrandUuid.value != '') {
-                Get.off(
-                  () => ModelSelection(
-                    brandUuid: controller.selectedBrandUuid.value,
-                    brandName: controller.selectedBrand.value,
-                  ),
-                );
+                final isResults = Get.currentRoute.contains('FilterResultPage'); // preserve origin
+                controller.hasViewedResults.value = controller.hasViewedResults.value || isResults;
+                Get.to(() => ModelSelection(
+                      brandUuid: controller.selectedBrandUuid.value,
+                      brandName: controller.selectedBrand.value,
+                      origin: isResults ? 'results' : (controller.hasViewedResults.value ? 'filter' : 'initial'),
+                    ));
               } else {
-                Get.off(() => BrandSelection());
+                final isResults = Get.currentRoute.contains('FilterResultPage'); // preserve origin
+                controller.hasViewedResults.value = controller.hasViewedResults.value || isResults;
+                Get.to(() => BrandSelection(origin: isResults ? 'results' : (controller.hasViewedResults.value ? 'filter' : 'initial')));
               }
             },
             child: Row(
@@ -124,16 +131,16 @@ class ResultBrandModelComponent extends StatelessWidget {
                         fontWeight: controller.selectedModel.value != ''
                             ? FontWeight.w400
                             : FontWeight.w500,
-                        color: controller.selectedModel.value != ''
-                            ? AppColors.textTertiaryColor
-                            : theme.colorScheme.primary,
+            color: controller.selectedModel.value != ''
+              ? AppColors.textTertiaryColor
+              : theme.colorScheme.onSurface,
                       ),
                     ),
                     if (controller.selectedModel.value != '')
                       Text(
                         controller.selectedModel.value,
                         style: TextStyle(
-                          color: theme.colorScheme.primary,
+                          color: theme.colorScheme.onSurface,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),

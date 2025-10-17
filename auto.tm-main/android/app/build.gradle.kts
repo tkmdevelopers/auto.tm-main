@@ -1,8 +1,9 @@
 
 import java.util.Properties
 import java.io.FileInputStream
+// Load keystore properties early; fail fast if absent when building release
+val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties().apply {
-    val keystorePropertiesFile = rootProject.file("key.properties")
     if (keystorePropertiesFile.exists()) {
         load(FileInputStream(keystorePropertiesFile))
     }
@@ -19,39 +20,30 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
     signingConfigs {
-            val hasSigning = listOf("keyAlias","keyPassword","storeFile","storePassword").all { keystoreProperties[it] != null }
-            if (hasSigning) {
-                create("release") {
-                    val alias = keystoreProperties["keyAlias"]?.toString()
-                    val keyPass = keystoreProperties["keyPassword"]?.toString()
-                    val storePath = keystoreProperties["storeFile"]?.toString()
-                    val storePass = keystoreProperties["storePassword"]?.toString()
-
-                    if (alias.isNullOrBlank() || keyPass.isNullOrBlank() || storePath.isNullOrBlank() || storePass.isNullOrBlank()) {
-                        throw GradleException("Incomplete keystore configuration in key.properties. Expected keyAlias, keyPassword, storeFile, storePassword.")
-                    }
-                    keyAlias = alias
-                    keyPassword = keyPass
-                    storeFile = file(storePath)
-                    storePassword = storePass
-                }
-            } else {
-                // Provide a placeholder debug-like signing config for release if keystore absent to avoid null cast crash.
-                create("release") {
-                    println("[WARN] key.properties missing or incomplete. Using debug signing for release build. Provide key.properties to sign production builds.")
-                    // Intentionally left blank – Gradle will inject debug keys later if needed.
-                }
+        create("release") {
+            if (!keystorePropertiesFile.exists()) {
+                throw GradleException("key.properties missing. Create one with storeFile=, storePassword=, keyAlias=, keyPassword= for release builds.")
             }
+            val required = listOf("storeFile","storePassword","keyAlias","keyPassword")
+            val missing = required.filter { keystoreProperties[it] == null || keystoreProperties[it].toString().isBlank() }
+            if (missing.isNotEmpty()) {
+                throw GradleException("Missing keystore fields in key.properties: ${missing.joinToString()}")
+            }
+            storeFile = file(keystoreProperties["storeFile"].toString())
+            storePassword = keystoreProperties["storePassword"].toString()
+            keyAlias = keystoreProperties["keyAlias"].toString()
+            keyPassword = keystoreProperties["keyPassword"].toString()
+        }
     }
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-       
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        // Align with modern toolchain (AGP 8.3) & allow desugaring where needed
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
     
 
@@ -70,10 +62,11 @@ android {
     buildTypes {
         getByName("release") {
             signingConfig = signingConfigs.getByName("release")
+            // Temporarily disable to isolate FinalizeBundleTask NPE; re-enable after a successful clean build
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
-                getDefaultProguardFile("proguard-android.txt"),
+                getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
@@ -84,8 +77,15 @@ android {
     }
 }
 dependencies {
-    // ... other dependencies
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4") // <-- Add this line
+    // ... existing dependencies ...
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+
+// Bundletool version pin (defensive) – remove if not needed after stable build
+configurations.all {
+    resolutionStrategy {
+        force("com.android.tools.build:bundletool:1.15.6")
+    }
 }
 flutter {
     source = "../.."

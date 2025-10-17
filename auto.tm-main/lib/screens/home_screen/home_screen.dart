@@ -7,11 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 // Your other imports
-import 'package:auto_tm/screens/filter_screen/filter_screen.dart';
 import 'package:auto_tm/screens/filter_screen/widgets/brand_selection.dart';
 // import 'package:auto_tm/screens/home_screen/widgets/banner_slider.dart'; // temporarily disabled
 import 'package:auto_tm/screens/home_screen/widgets/bottom_sheet_lang.dart';
-import 'package:auto_tm/screens/home_screen/widgets/categories.dart';
 import 'package:auto_tm/screens/search_screen/search_screen.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/images.dart';
@@ -23,7 +21,7 @@ class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
 
   final HomeController controller = Get.put(HomeController());
-  final FilterController filterController = Get.put(FilterController());
+  final FilterController filterController = Get.find<FilterController>();
   final BannerController bannerController = Get.put(BannerController());
 
   @override
@@ -123,8 +121,6 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 24),
             // IgnorePointer(child: BannerSlider()),
             const SizedBox(height: 24),
-            IgnorePointer(child: Categories()),
-            const SizedBox(height: 24),
             IgnorePointer(
               child: _PostsHeader(theme: theme, controller: controller),
             ),
@@ -148,8 +144,6 @@ class HomeScreen extends StatelessWidget {
                 _FilterBar(theme: theme),
                 const SizedBox(height: 24),
                 // BannerSlider(),
-                const SizedBox(height: 24),
-                Categories(),
                 const SizedBox(height: 24),
                 _PostsHeader(theme: theme, controller: controller),
               ],
@@ -175,8 +169,6 @@ class HomeScreen extends StatelessWidget {
                   _FilterBar(theme: theme),
                   const SizedBox(height: 24),
                   // BannerSlider(),
-                  const SizedBox(height: 24),
-                  Categories(),
                   const SizedBox(height: 24),
                   _PostsHeader(theme: theme, controller: controller),
                   const SizedBox(height: 16),
@@ -214,6 +206,7 @@ class HomeScreen extends StatelessWidget {
               createdAt: post.createdAt,
               subscription: post.subscription,
               location: post.location,
+              region: post.region,
             ),
           );
         },
@@ -253,7 +246,7 @@ class _FilterBar extends StatelessWidget {
         children: [
           Expanded(
             child: InkWell(
-              onTap: () => Get.to(() => BrandSelection()),
+              onTap: () => Get.to(() => BrandSelection(origin: 'directHome')),
               borderRadius: BorderRadius.circular(12),
               child: Row(
                 children: [
@@ -328,7 +321,7 @@ class _FilterBar extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           InkWell(
-            onTap: () => Get.to(() => FilterScreen()),
+           onTap: () => Get.to(() => BrandSelection(origin: 'directHome')),
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(8),
@@ -388,7 +381,7 @@ class _PostsHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'Latest Posts'.tr,
+            'home_latest_posts'.tr,
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
@@ -403,7 +396,7 @@ class _PostsHeader extends StatelessWidget {
             ),
             child: Obx(
               () => Text(
-                '${controller.posts.length} ${'items'.tr}',
+                '${controller.posts.length} ${'common_items'.tr}',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -469,7 +462,7 @@ class _EmptyPosts extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'No Posts Found'.tr,
+                  'home_no_posts_found'.tr,
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
@@ -478,8 +471,7 @@ class _EmptyPosts extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Try adjusting your filters or check back later for new posts.'
-                      .tr,
+                  'home_no_results_tip'.tr,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,

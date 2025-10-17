@@ -61,6 +61,7 @@ export function createRandomPoster() {
     personalInfo: {
       name: faker.person.fullName(),
       location: faker.location.country(),
+      region: 'Local',
     },
     description: faker.lorem.sentence({min:3,max:10}),
   };

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:get/get.dart';
+import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
 import 'package:http/http.dart' as http;
 import 'package:get_storage/get_storage.dart';
 import 'auth_models.dart';
@@ -161,9 +162,37 @@ class AuthService extends GetxService {
 
   void logout() {
     currentSession.value = null;
+    // Core auth tokens
     _box.remove('ACCESS_TOKEN');
     _box.remove('REFRESH_TOKEN');
     _box.remove('USER_PHONE');
+    // User profile cached fields
+    _box.remove('user_name');
+    _box.remove('user_phone');
+    _box.remove('user_location');
+    _box.remove('USER_ID');
+    // Session derived flags (extend here if more keys added later)
+    // Notify interested controllers (profile, favorites, etc.) to reset if registered
+    // We do not erase the entire storage to preserve unrelated preferences (theme, language)
+    _notifyControllersOfLogout();
+  }
+
+  void _notifyControllersOfLogout() {
+    // Use Get.isRegistered to avoid creating new instances during logout.
+    if (Get.isRegistered<ProfileController>()) {
+      try {
+        final pc = Get.find<ProfileController>();
+        // Reset reactive fields without disposing controller (or dispose forcefully if desired)
+        pc.profile.value = null;
+        pc.name.value = '';
+        pc.phone.value = '';
+        pc.location.value = ProfileController.defaultLocation;
+        pc.nameController.clear();
+        pc.locationController.text = ProfileController.defaultLocation;
+        pc.hasLoadedProfile.value = false;
+      } catch (_) {}
+    }
+    // Add other controllers reset logic here (favorites, posts cache, etc.) when needed.
   }
 
   void _persistSession(AuthSession session) {

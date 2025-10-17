@@ -18,6 +18,10 @@ class EditProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+  // Attempt a prefill from existing data sources (profile -> reactive -> storage).
+  // Do NOT force if we already populated once; late profile arrival listener in controller will re-run with force.
+  controller.ensureFormFieldPrefill();
+
     // Trigger profile fetch+populate only if not already loaded or currently fetching.
     if (!(controller.hasLoadedProfile.value ||
         controller.isFetchingProfile.value)) {
@@ -36,13 +40,21 @@ class EditProfileScreen extends StatelessWidget {
         automaticallyImplyLeading: true,
         actions: [
           TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: theme.colorScheme.onSurface,
+              backgroundColor: theme.colorScheme.surface.withOpacity(0.6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             onPressed: controller.uploadProfile,
             child: Text(
               'Done'.tr,
               style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: AppColors.primaryColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
               ),
             ),
           ),
@@ -142,7 +154,7 @@ class EditProfileScreen extends StatelessWidget {
                             }
                           },
                           child: Text(
-                            'Retry'.tr,
+                            'post_retry'.tr,
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -207,19 +219,26 @@ class EditProfileScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.primaryColor,
+                          // Use surface/onSurface palette instead of primary accent
+                          color: theme.colorScheme.onSurface.withOpacity(0.75),
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
-                ProfileFormFields(
-                  label: 'Name'.tr,
-                  controller: controller.nameController,
-                  focus: controller.nameFocus,
-                  onsubmit: (_) => controller.nameFocus.unfocus(),
-                  hint: 'Enter your name'.tr,
+                FocusScope(
+                  child: Builder(
+                    builder: (ctx) {
+                      return ProfileFormFields(
+                        label: 'Name'.tr,
+                        controller: controller.nameController,
+                        focus: controller.nameFocus,
+                        onsubmit: (_) => controller.nameFocus.unfocus(),
+                        hint: 'Enter your name'.tr,
+                      );
+                    },
+                  ),
                 ),
                 GestureDetector(
                   onTap: () async {
@@ -231,6 +250,8 @@ class EditProfileScreen extends StatelessWidget {
                       controller.locationController.text = selected;
                       final box = GetStorage();
                       box.write('user_location', selected);
+                      // Allow re-entry to re-edit with newly chosen location
+                      controller.fieldsInitialized.value = false;
                     }
                   },
                   child: AbsorbPointer(
@@ -278,9 +299,9 @@ class ProfileFormFields extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: theme.colorScheme.primary,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface.withOpacity(0.7),
           ),
         ),
         SizedBox(height: 6),

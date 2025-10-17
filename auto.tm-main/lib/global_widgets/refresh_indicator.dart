@@ -16,7 +16,7 @@ class SRefreshIndicator extends StatelessWidget {
 
     return RefreshIndicator.adaptive(
       color: AppColors.primaryColor,
-      backgroundColor: theme.colorScheme.primaryContainer,
+      backgroundColor: theme.colorScheme.surface,
       onRefresh: onRefresh,
       child: child,
     );

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:auto_tm/screens/post_details_screen/controller/video_controller.dart';
+import 'package:flutter/foundation.dart';
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
 import 'package:auto_tm/screens/post_details_screen/widgets/video_player.dart';
 import 'package:auto_tm/utils/key.dart';
@@ -40,7 +41,12 @@ class PostDetailsController extends GetxController {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        if (kDebugMode) {
+          final videoSection = data['video'];
+            debugPrint('[PostDetailsController] video section raw: $videoSection');
+        }
         post.value = Post.fromJson(data);
+        if (kDebugMode) debugPrint('[PostDetailsController] parsed post video: ${post.value?.video}');
       } if (response.statusCode == 406) {
         // await refreshAccesToken(uuid); // ✅ Pass the uuid here
       }

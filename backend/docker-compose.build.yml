@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16
+    container_name: auto_tm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: auto_tm
+      POSTGRES_PASSWORD: Key_bismynick1 
+      POSTGRES_DB: auto_tm
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: alpha-motors-backend:1.0.0
+    container_name: alpha_backend
+    restart: unless-stopped
+    depends_on:
+      - db
+    env_file:
+      - .env
+    environment:
+      DATABASE_HOST: db
+      PORT: 3080
+    volumes:
+      - ./uploads:/app/uploads
+    ports:
+      - "3080:3080"
+volumes:
+  db_data:

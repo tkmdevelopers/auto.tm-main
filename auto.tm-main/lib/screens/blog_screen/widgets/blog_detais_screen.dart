@@ -6,7 +6,7 @@ class BlogDetailScreen extends StatelessWidget {
   final String blogId;
   BlogDetailScreen({super.key, required this.blogId});
 
-  final BlogController controller = Get.put(BlogController());
+  final BlogController controller = Get.find<BlogController>();
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +14,7 @@ class BlogDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         elevation: 4,
-        title: Text("Blog Details".tr),
+        title: Text('blog_detail_title'.tr, style: TextStyle(color: theme.colorScheme.onSurface)),
         backgroundColor: theme.appBarTheme.backgroundColor,
         surfaceTintColor: theme.appBarTheme.backgroundColor,
       ),
@@ -33,8 +33,8 @@ class BlogDetailScreen extends StatelessWidget {
 
           return Padding(
             padding: EdgeInsets.all(10),
-            child: _buildContentWithImages(
-                snapshot.data!, theme.colorScheme.primary),
+      child: _buildContentWithImages(
+        snapshot.data!, theme.colorScheme.onSurface),
           );
         },
       ),

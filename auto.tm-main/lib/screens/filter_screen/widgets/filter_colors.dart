@@ -63,7 +63,7 @@ class ColorController extends GetxController {
 // Screen
 class SFilterColors extends StatelessWidget {
   final ColorController colorController = Get.put(ColorController());
-  final FilterController filterController = Get.put(FilterController());
+  final FilterController filterController = Get.find<FilterController>();
 
   SFilterColors({super.key});
 
@@ -77,7 +77,7 @@ class SFilterColors extends StatelessWidget {
         surfaceTintColor: theme.appBarTheme.backgroundColor,
         title: Text(
           "Color".tr,
-          style: TextStyle(color: theme.colorScheme.primary),
+          style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w600),
         ),
         centerTitle: false,
         actions: [
@@ -87,7 +87,10 @@ class SFilterColors extends StatelessWidget {
             },
             child: Text(
               "Reset".tr,
-              style: TextStyle(color: theme.primaryColor),
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
@@ -99,7 +102,7 @@ class SFilterColors extends StatelessWidget {
             // Search Bar
             Container(
               decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(12.0),
                 border: Border.all(
                   color: AppColors.textTertiaryColor,
@@ -108,7 +111,7 @@ class SFilterColors extends StatelessWidget {
               ),
               child: TextField(
                 onChanged: colorController.filterColors,
-                style: TextStyle(color: theme.colorScheme.primary),
+                style: TextStyle(color: theme.colorScheme.onSurface),
                 decoration: InputDecoration(
                   prefixIcon:
                       Icon(Icons.search, color: AppColors.textTertiaryColor),
@@ -138,20 +141,21 @@ class SFilterColors extends StatelessWidget {
                           return AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.primaryContainer,
+                              color: theme.colorScheme.surface,
                               borderRadius: BorderRadius.circular(12.0),
                               border: Border.all(
                                 color: isSelected
-                                    ? theme.primaryColor
-                                    : AppColors.textTertiaryColor,
+                                                    ? theme.colorScheme.onSurface
+                                                    : AppColors.textTertiaryColor,
                                 width: isSelected ? 1 : 0.5,
                               ),
                             ),
                             child: ListTile(
                               title: Text(
                                 color,
-                                style:
-                                    TextStyle(color: theme.colorScheme.primary),
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                ),
                               ),
                               leading: Container(
                                 width: 24,
@@ -161,17 +165,17 @@ class SFilterColors extends StatelessWidget {
                                   color: _getColor(
                                       color), // Use helper to get color
                                   border: Border.all(
-                                    color: isSelected
-                                        ? AppColors.primaryColor
-                                        : Colors.transparent,
+                  color: isSelected
+                    ? theme.colorScheme.onSurface
+                    : Colors.transparent,
                                     width: 2,
                                   ),
                                 ),
                               ),
                               trailing: isSelected
-                                  ? const Icon(
+                                  ? Icon(
                                       Icons.radio_button_checked,
-                                      color: AppColors.primaryColor,
+                                      color: theme.colorScheme.onSurface,
                                     )
                                   : const Icon(
                                       Icons.radio_button_off,

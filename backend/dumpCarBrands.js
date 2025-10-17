@@ -6,9 +6,9 @@ const data = require(path.join(__dirname, 'cars.brands.json'));
 const client = new Client({
   host: 'localhost',
   port: 5432,
-  user: 'postgres',
-  password: 'root',
-  database: 'alpha_motors'
+  user: 'auto_tm',
+  password: 'Key_bismynick1',
+  database: 'auto_tm'
 });
 
 (async () => {
@@ -31,8 +31,8 @@ const client = new Client({
         uuid UUID PRIMARY KEY,
         "brandId" UUID REFERENCES brands(uuid) ON DELETE CASCADE,
         name TEXT NOT NULL,
-        "yearStart" INT,
-        "yearEnd" INT,
+        "yearstart" INT,
+        "yearend" INT,
         "createdAt" TIMESTAMPTZ DEFAULT NOW(),
         "updatedAt" TIMESTAMPTZ DEFAULT NOW()
       );
@@ -53,7 +53,7 @@ const client = new Client({
       for (const model of brand.models) {
         const modelUuid = uuidv4(); // Generate UUID for each model
         await client.query(
-          `INSERT INTO models (uuid, "brandId", name, "yearStart", "yearEnd", "createdAt", "updatedAt")
+          `INSERT INTO models (uuid, "brandId", name, "yearstart", "yearend", "createdAt", "updatedAt")
            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
           [modelUuid, brandUuid, model.name, model.yearStart, model.yearEnd]
         );

@@ -71,6 +71,146 @@ $ mau deploy
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
+---
+
+## 🔐 Production Deployment (Docker + Postgres)
+
+This project is containerized. Follow these steps to replace any old native Postgres instance with the Docker stack safely.
+
+### 1. Backup Existing Server Database (IMPORTANT)
+If you have an existing Postgres running directly on the host:
+
+```bash
+# Adjust user/db as needed
+pg_dump -U auto_tm -d auto_tm -F c -f backup_$(date +%Y%m%d).dump
+```
+
+Verify backup integrity:
+
+```bash
+pg_restore -l backup_YYYYMMDD.dump | head
+```
+
+### 2. Stop & Disable Old Postgres Service
+
+```bash
+sudo systemctl stop postgresql || true
+sudo systemctl disable postgresql || true
+```
+
+Optionally remove old data directory AFTER confirming you have backups:
+
+```bash
+sudo rm -rf /var/lib/postgresql/data_old_backup_if_any
+```
+
+### 3. Copy Artifacts to Server
+
+```bash
+scp -r backend/ user@server:/opt/alpha-motors-backend
+```
+
+### 4. Create `.env` (Server)
+Use `backend/.env.example` as a template:
+
+```bash
+cd /opt/alpha-motors-backend
+cp .env.example .env
+nano .env   # set secrets (DB creds, JWT, email, firebase keys)
+```
+
+### 5. Build Image (Online Build Path)
+
+```bash
+docker compose -f docker-compose.build.yml build api
+```
+
+If building offline, pre-build elsewhere:
+
+```bash
+docker save alpha-motors-backend:1.0.0 | gzip > alpha_backend_1.0.0.tar.gz
+scp alpha_backend_1.0.0.tar.gz user@server:/opt/alpha-motors-backend
+gunzip -c alpha_backend_1.0.0.tar.gz | docker load
+```
+
+### 6. Start Production Stack
+
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
+
+### 7. Verify
+
+```bash
+docker ps
+docker logs alpha_backend --tail 80
+curl -f http://SERVER_IP:3080/api-docs | head
+docker exec auto_tm_postgres psql -U auto_tm -d auto_tm -c '\dt'
+```
+
+### 8. Schedule Backups
+
+Create a backup script `/usr/local/bin/pg_backup_alpha.sh`:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+STAMP=$(date +%Y%m%d_%H%M)
+docker exec auto_tm_postgres pg_dump -U auto_tm -d auto_tm -F c > /opt/backups/alpha_${STAMP}.dump
+find /opt/backups -type f -name 'alpha_*.dump' -mtime +7 -delete
+```
+
+Cron entry (`crontab -e`):
+
+```bash
+0 2 * * * /usr/local/bin/pg_backup_alpha.sh >> /var/log/alpha_pg_backup.log 2>&1
+```
+
+### 9. Log Rotation
+
+Use `docker logs --since 1h alpha_backend` for ad-hoc inspection. For persistent logs create a Fluent Bit / Loki pipeline (optional).
+
+### 10. Updating the App
+
+```bash
+git pull origin development
+docker compose -f docker-compose.build.yml build --no-cache api
+docker compose -f docker-compose.prod.yml up -d --force-recreate api
+```
+
+### 11. Hardening Checklist
+
+- Remove debug logs in `entrypoint.sh` / `database.ts`.
+- Ensure JWT secrets are long & random.
+- Restrict inbound traffic to port 3080 only (ufw / security group).
+- Consider pgBouncer if connection churn grows.
+- Add monitoring (Prometheus or managed service).
+
+### 12. Disaster Recovery Drill
+
+Test restore quarterly:
+
+```bash
+docker exec auto_tm_postgres dropdb -U auto_tm restore_test || true
+docker exec auto_tm_postgres createdb -U auto_tm restore_test
+docker exec -i auto_tm_postgres pg_restore -U auto_tm -d restore_test < /opt/backups/latest.dump
+```
+
+---
+
+## Removing Obsolete Migrations (Optional)
+Legacy no-op migrations can be pruned once you are on a stable schema snapshot (take a backup first). Removing them reduces noise:
+
+```bash
+git rm backend/migrations/20251009120000-add-reply-to-comments.js
+git rm backend/migrations/20251010000000-rename-posts-uudi-to-uuid.js
+git rm backend/migrations/20251012000000-rename-posts-uudi-and-fix-comments-fk.js
+```
+
+Then tag a release: `git tag v1.0.0 && git push --tags`.
+
+---
+
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:

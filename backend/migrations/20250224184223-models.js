@@ -1,18 +1,6 @@
 'use strict';
-
-/** @type {import('sequelize-cli').Migration} */
+/** Obsolete partial models table creation. Replaced by consolidated 20250224181000-models.js. Converted to no-op. */
 module.exports = {
-  async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('models', {
-      uuid: {
-        allowNull: false,
-        primaryKey: true,
-        type: Sequelize.STRING,
-      },
-    });
-  },
-
-  async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('models');
-  },
+  async up() { /* no-op */ },
+  async down() { /* no-op */ },
 };

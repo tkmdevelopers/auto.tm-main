@@ -16,6 +16,12 @@ class Post {
   final String phoneNumber;
   final String createdAt;
   final bool? status;
+  // Region (personalInfo.region or fallback to personalInfo.location). 'Local' for local posts.
+  final String region;
+  // Whether seller allows exchange (barter)
+  final bool? exchange;
+  // Whether seller allows credit / financing
+  final bool? credit;
 
   final String? subscription;
   final String photoPath;
@@ -40,6 +46,9 @@ class Post {
     required this.transmission,
     required this.vinCode,
     required this.phoneNumber,
+    required this.region,
+  this.exchange,
+  this.credit,
     this.subscription,
     this.status,
     required this.photoPath,
@@ -52,6 +61,8 @@ class Post {
   factory Post.fromJson(Map<String, dynamic> json) {
     // final small = json['subscription']?['photo']?['originalPath'] as String?;
     final small = json['subscription']?['photo']?['path']?['small'] as String?;
+    final personalInfo = json['personalInfo'] as Map<String, dynamic>?;
+    final region = personalInfo?['region']?.toString() ?? personalInfo?['location']?.toString() ?? '';
     return Post(
       uuid: json['uuid'] ?? '',
       model: json['model']?['name'] ?? '',
@@ -78,12 +89,19 @@ class Post {
           : '',
       photoPaths: (json['photo'] != null && json['photo'].isNotEmpty)
           ? (json['photo'] as List)
-              .map((photo) => photo['path']['medium'].toString())
+              .map((photo) => photo['path']['medium'].toString().replaceAll('\\', '/'))
               .toList()
           : [],
       subscription: small,
-      video: json['video']?['url'] ?? '',
+    video: json['video'] != null
+      ? ((json['video']['publicUrl'] ?? (json['video']['url'] != null
+        ? (json['video']['url'] as String)
+        : '')) as String).replaceAll('\\', '/')
+      : '',
       createdAt: json['createdAt'] ?? '',
+      region: region,
+  exchange: json['exchange'] as bool?,
+  credit: json['credit'] as bool?,
       // file: json['file'],
       file: json['file'] != null ? FileData.fromJson(json['file']) : null,
     );

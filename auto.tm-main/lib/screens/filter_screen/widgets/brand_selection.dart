@@ -1,7 +1,8 @@
 import 'package:auto_tm/screens/filter_screen/controller/brand_controller.dart';
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
-import 'package:auto_tm/screens/filter_screen/widgets/filter_result_page.dart';
+// Removed direct navigation to FilterResultPage; we now return to origin screen.
 import 'package:auto_tm/screens/filter_screen/widgets/location_picker_component.dart';
+import 'package:auto_tm/screens/filter_screen/widgets/filter_result_page.dart';
 import 'package:auto_tm/screens/filter_screen/widgets/model_selection.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/styles.dart';
@@ -9,17 +10,43 @@ import 'package:auto_tm/utils/key.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class BrandSelection extends StatelessWidget {
-  final FilterController controller = Get.find<FilterController>();
-  final BrandController brandController = Get.put(BrandController());
+class BrandSelection extends StatefulWidget {
+  const BrandSelection({super.key, this.origin = 'filter'});
 
-  // --- PERFORMANCE FIX ---
-  // Data fetching is moved to the constructor to ensure it runs only ONCE
-  // when the widget is created, not on every rebuild.
-  // The best practice is to place these in your controller's onInit method.
-  BrandSelection({super.key}) {
-    controller.fetchBrands();
-    brandController.fetchBrandHistory();
+  // origin meanings:
+  //  'initial' / 'directHome' -> first-time flow (hasn't seen results yet); after model selection navigate to results.
+  //  'filter'                -> editing filters only.
+  //  'results'               -> came from results; live update.
+
+  /// Origin of navigation: 'filter' (came from FilterScreen) or 'results' (came from FilterResultPage).
+  final String origin;
+
+  @override
+  State<BrandSelection> createState() => _BrandSelectionState();
+}
+
+class _BrandSelectionState extends State<BrandSelection> {
+  final FilterController controller = Get.find<FilterController>();
+  final BrandController brandController = Get.isRegistered<BrandController>()
+      ? Get.find<BrandController>()
+      : Get.put(BrandController());
+
+  late final TextEditingController searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    searchController = TextEditingController();
+    if (controller.brands.isEmpty) {
+      controller.fetchBrands();
+    }
+    brandController.refreshData();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -55,8 +82,8 @@ class BrandSelection extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: TextField(
-        onChanged: controller.filterBrands,
-        controller: controller.brandSearchController,
+        controller: searchController,
+        onChanged: (val) => controller.filterBrands(val),
         decoration: InputDecoration(
           hintText: 'Search'.tr,
           prefixIcon: const Icon(
@@ -121,12 +148,11 @@ class BrandSelection extends StatelessWidget {
               onTap: () {
                 controller.fetchModels(brand['uuid']);
                 brandController.addToHistory(brand['uuid']);
-                Get.to(
-                  () => ModelSelection(
-                    brandUuid: brand['uuid'],
-                    brandName: brandName,
-                  ),
-                );
+                Get.to(() => ModelSelection(
+                      brandUuid: brand['uuid'],
+                      brandName: brandName,
+                      origin: widget.origin,
+                    ));
               },
               child: Container(
                 width: 100,
@@ -203,8 +229,22 @@ class BrandSelection extends StatelessWidget {
                   color: Colors.grey,
                 ),
                 onTap: () {
-                  controller.searchProducts();
-                  Get.to(() => FilterResultPage());
+                  // Clear brand/model filters
+                  controller.selectedBrandUuid.value = '';
+                  controller.selectedBrand.value = '';
+                  controller.selectedModelUuid.value = '';
+                  controller.selectedModel.value = '';
+                  if (widget.origin == 'results') {
+                    controller.searchProducts();
+                    Get.back();
+                  } else if (widget.origin == 'initial' || widget.origin == 'directHome') {
+                    controller.searchProducts();
+                    controller.hasViewedResults.value = true;
+                    Get.offAll(() => FilterResultPage(), transition: Transition.noTransition, duration: Duration.zero);
+                  } else {
+                    // filter origin
+                    Get.back();
+                  }
                 },
               );
             }
@@ -238,12 +278,11 @@ class BrandSelection extends StatelessWidget {
               onTap: () {
                 controller.fetchModels(brand['uuid']);
                 brandController.addToHistory(brand['uuid']);
-                Get.to(
-                  () => ModelSelection(
-                    brandUuid: brand['uuid'],
-                    brandName: brandName,
-                  ),
-                );
+                Get.to(() => ModelSelection(
+                      brandUuid: brand['uuid'],
+                      brandName: brandName,
+                      origin: widget.origin,
+                    ));
               },
             );
           },
