@@ -13,7 +13,8 @@ import { User } from 'src/auth/auth.entity';
 import { PhotoVlog } from 'src/junction/photo_vlog';
 import { Photo } from 'src/photo/photo.entity';
 
-@Table({ tableName: 'vlog' })
+// Align with existing production table name 'vlogs'
+@Table({ tableName: 'vlogs' })
 export class Vlogs extends Model {
   @ApiProperty()
   @Column({

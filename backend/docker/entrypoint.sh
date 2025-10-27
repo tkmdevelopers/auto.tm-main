@@ -46,20 +46,19 @@ cat > "$CONFIG_FILE" <<JSON
 }
 JSON
 
-echo "[entrypoint] Running migrations"
-# Log critical env vars for debugging
+echo "[entrypoint] Running migrations (offline safe)"
 echo "[entrypoint] ENV DATABASE_HOST=$DATABASE_HOST DATABASE_USERNAME=$DATABASE_USERNAME DATABASE=$DATABASE"
-# Debug: list migrations and show first lines of add-reply and create-comments
-ls -1 migrations || true
-echo "[entrypoint] Head of add-reply migration:" && sed -n '1,15p' migrations/20251009120000-add-reply-to-comments.js || true
-echo "[entrypoint] Head of create-comments migration:" && sed -n '1,15p' migrations/20251011130000-create-comments.js || true
-# Ensure sequelize CLI available (after prune) by invoking via local node_modules or fallback to npx
-if [ -f node_modules/.bin/sequelize-cli ]; then
-  node_modules/.bin/sequelize-cli db:migrate || {
-    echo "[entrypoint] Migrations failed" >&2; exit 1; }
-else
-  npx sequelize-cli db:migrate || {
-    echo "[entrypoint] Migrations failed" >&2; exit 1; }
+ls -1 migrations | head -n 20 || true
+
+if [ ! -f node_modules/.bin/sequelize-cli ]; then
+  echo "[entrypoint] sequelize-cli missing in node_modules (expected offline install)." >&2
+  echo "[entrypoint] Aborting migrations." >&2
+  exit 1
+fi
+
+if ! node_modules/.bin/sequelize-cli db:migrate; then
+  echo "[entrypoint] sequelize-cli db:migrate failed" >&2
+  exit 1
 fi
 
 echo "[entrypoint] Starting application"

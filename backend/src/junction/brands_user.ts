@@ -16,6 +16,7 @@ export class BrandsUser extends Model {
   @ForeignKey(() => User)
   userId: string;
 
+  // Rename FK to brandId for clarity; matches migration field name
   @ForeignKey(() => Brands)
-  uuid: string;
+  brandId: string;
 }
