@@ -7,6 +7,104 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
 
+/// Shimmer widget that matches the PostedPostItem design
+class PostedPostItemShimmer extends StatelessWidget {
+  const PostedPostItemShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final shimmerColor = theme.colorScheme.onSurface.withValues(alpha: 0.1);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: theme.colorScheme.surfaceContainer,
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image placeholder
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AspectRatio(
+              aspectRatio: 4 / 3,
+              child: Container(color: shimmerColor),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Title placeholder
+          Container(
+            height: 20,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: shimmerColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 20,
+            width: 200,
+            decoration: BoxDecoration(
+              color: shimmerColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Price placeholder
+          Container(
+            height: 24,
+            width: 120,
+            decoration: BoxDecoration(
+              color: shimmerColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Detail chips placeholder
+          Row(
+            children: [
+              Container(
+                height: 24,
+                width: 70,
+                decoration: BoxDecoration(
+                  color: shimmerColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                height: 24,
+                width: 90,
+                decoration: BoxDecoration(
+                  color: shimmerColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Date placeholder
+          Container(
+            height: 12,
+            width: 150,
+            decoration: BoxDecoration(
+              color: shimmerColor,
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// A widget that displays a posted car item with a clean, modern, and responsive design,
 /// inspired by Apple's design guidelines. It emphasizes clarity, depth, and a strong
 /// visual hierarchy.
@@ -354,7 +452,7 @@ class PostedPostItem extends StatelessWidget {
         Icons.more_horiz_rounded, // Using a different icon for a softer look
         color: theme.colorScheme.onSurfaceVariant,
       ),
-  tooltip: 'post_menu_more_options'.tr,
+      tooltip: 'post_menu_more_options'.tr,
       position: PopupMenuPosition.under,
       color: theme.colorScheme.surfaceContainerHigh, // Menu background
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

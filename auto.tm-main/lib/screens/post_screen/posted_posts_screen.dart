@@ -29,17 +29,25 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
       controller = Get.put(PostController());
     }
     // Preload brand/model caches (don't await UI) then fetch posts.
-    controller.ensureBrandModelCachesLoaded().whenComplete(() {
-      controller.fetchMyPosts();
-    });
+    controller
+        .ensureBrandModelCachesLoaded()
+        .whenComplete(() {
+          if (mounted) {
+            controller.fetchMyPosts();
+          }
+        })
+        .catchError((e) {
+          // If cache loading fails, still fetch posts (names may not resolve but posts will show)
+          debugPrint('Cache loading failed: $e');
+          if (mounted) {
+            controller.fetchMyPosts();
+          }
+        });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // RESPONSIVE: Calculate cross-axis count based on screen width
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final int crossAxisCount = (screenWidth / 250).floor().clamp(1, 4);
 
     // Removed bottom floating button; action now in top app bar
     return Scaffold(
@@ -100,9 +108,18 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
             ),
             const SliverToBoxAdapter(child: UploadStatusBanner()),
             Obx(() {
-              if (controller.isLoadingP.value && controller.posts.isEmpty) {
-                return SliverToBoxAdapter(
-                  child: _buildLoadingShimmer(context, crossAxisCount),
+              // Show shimmer only after 300ms delay (prevents flash on fast loads)
+              if (controller.showShimmer.value) {
+                return SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverList.separated(
+                    itemCount: 5,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 16),
+                    itemBuilder: (context, index) {
+                      return const PostedPostItemShimmer();
+                    },
+                  ),
                 );
               }
               if (controller.posts.isEmpty) {
@@ -148,103 +165,6 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
             // Removed bottom spacer (no floating button now)
           ],
         ),
-      ),
-    );
-  }
-
-  // REFACTORED: Extracted loading shimmer for clarity
-  Widget _buildLoadingShimmer(BuildContext context, int crossAxisCount) {
-    final theme = Theme.of(context);
-    return SizedBox(
-      height: 600, // Fixed height to prevent unbounded constraints
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: 8,
-        separatorBuilder: (context, index) => const SizedBox(height: 16),
-        itemBuilder: (context, index) {
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: AspectRatio(
-                    aspectRatio: 4 / 3,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.onSurface.withValues(
-                          alpha: 0.1,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 20,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.1,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        height: 24,
-                        width: 100,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.1,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Container(
-                            height: 20,
-                            width: 50,
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.1,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            height: 20,
-                            width: 70,
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.onSurface.withValues(
-                                alpha: 0.1,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
       ),
     );
   }

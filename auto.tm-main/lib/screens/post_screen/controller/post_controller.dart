@@ -447,6 +447,8 @@ class PostController extends GetxController {
   // Posts management
   final RxList<PostDto> posts = <PostDto>[].obs;
   final RxBool isLoadingP = false.obs;
+  final RxBool showShimmer = false.obs;
+  Timer? _shimmerDelayTimer;
 
   // Computed getters for filtered lists
   List<BrandDto> get filteredBrands {
@@ -493,6 +495,7 @@ class PostController extends GetxController {
     otpController.dispose();
     otpFocus.dispose();
     _timer?.cancel();
+    _shimmerDelayTimer?.cancel();
     try {
       _uploadProgressSub?.cancel();
     } catch (_) {}
@@ -622,7 +625,10 @@ class PostController extends GetxController {
     try {
       await manager.startFromController(this, draftId: '');
     } catch (e) {
-      Get.snackbar('common_error'.tr, 'post_upload_start_error'.trParams({'error': e.toString()}));
+      Get.snackbar(
+        'common_error'.tr,
+        'post_upload_start_error'.trParams({'error': e.toString()}),
+      );
       isPosting.value = false;
     }
   }
@@ -631,9 +637,7 @@ class PostController extends GetxController {
     Get.dialog(
       AlertDialog(
         title: Text('post_upload_prev_failed_title'.tr),
-        content: Text(
-          'post_upload_prev_failed_body'.tr,
-        ),
+        content: Text('post_upload_prev_failed_body'.tr),
         actions: [
           TextButton(
             onPressed: () {
@@ -700,7 +704,9 @@ class PostController extends GetxController {
           'description': description.text,
           // Inject a personalInfo block carrying region semantics. For now region is forced 'Local'.
           'personalInfo': {
-            'name': Get.isRegistered<ProfileController>() ? Get.find<ProfileController>().name.value : '',
+            'name': Get.isRegistered<ProfileController>()
+                ? Get.find<ProfileController>().name.value
+                : '',
             'location': selectedLocation.value, // city
             'phone': fullPhone,
             'region': 'Local',
@@ -723,15 +729,26 @@ class PostController extends GetxController {
   /// Fetch user's posts - called by UploadManager after successful upload
   Future<void> fetchMyPosts() async {
     isLoadingP.value = true;
+
+    // Only show shimmer if loading takes longer than 300ms
+    _shimmerDelayTimer?.cancel();
+    _shimmerDelayTimer = Timer(const Duration(milliseconds: 300), () {
+      if (isLoadingP.value && posts.isEmpty) {
+        showShimmer.value = true;
+      }
+    });
+
     try {
       final token = box.read('ACCESS_TOKEN');
-      final response = await http.get(
-        Uri.parse(ApiKey.getMyPostsKey),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await http
+          .get(
+            Uri.parse(ApiKey.getMyPostsKey),
+            headers: {
+              'Content-Type': 'application/json',
+              if (token != null) 'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -748,11 +765,29 @@ class PostController extends GetxController {
             .map((json) => PostDto.fromJson(json as Map<String, dynamic>))
             .toList();
         posts.assignAll(postDtos);
+      } else if (response.statusCode == 406) {
+        final refreshed = await refreshAccessToken();
+        if (refreshed) {
+          return fetchMyPosts(); // Retry with new token
+        } else {
+          Get.snackbar('Error', 'Session expired. Please login again.');
+        }
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to load posts (${response.statusCode})'.tr,
+        );
       }
+    } on TimeoutException {
+      debugPrint('Fetch my posts timeout');
+      Get.snackbar('Error', 'Request timed out. Please try again.'.tr);
     } catch (e) {
       debugPrint('Fetch my posts error: $e');
+      Get.snackbar('Error', 'Failed to load posts: ${e.toString()}'.tr);
     } finally {
+      _shimmerDelayTimer?.cancel();
       isLoadingP.value = false;
+      showShimmer.value = false;
     }
   }
 
@@ -781,7 +816,12 @@ class PostController extends GetxController {
 
   /// Refresh posts data
   Future<void> refreshData() async {
-    await fetchMyPosts();
+    try {
+      await fetchMyPosts();
+    } catch (e) {
+      debugPrint('Refresh data error: $e');
+      // Ensure refresh completes even on error
+    }
   }
 
   /// Upload single video - called by UploadManager
@@ -888,7 +928,7 @@ class PostController extends GetxController {
       return true;
     } on dio.DioException catch (e) {
       if (dio.CancelToken.isCancel(e)) {
-  uploadError.value = 'post_upload_cancelled_hint'.tr;
+        uploadError.value = 'post_upload_cancelled_hint'.tr;
       } else {
         final status = e.response?.statusCode;
         final body = e.response?.data;
@@ -973,7 +1013,7 @@ class PostController extends GetxController {
       }
 
       await _clearMediaCaches();
-  uploadStatus.value = 'post_upload_cancelled_hint'.tr;
+      uploadStatus.value = 'post_upload_cancelled_hint'.tr;
     } catch (e) {
       uploadError.value = 'Cancel cleanup error: $e';
     } finally {
@@ -1679,7 +1719,7 @@ class PostController extends GetxController {
     countdown.value = 0;
     isLoading.value = false;
     uploadProgress.value = 0.0;
-  uploadStatus.value = 'post_upload_ready'.tr;
+    uploadStatus.value = 'post_upload_ready'.tr;
     uploadError.value = '';
     isUploadComplete.value = false;
     isUploadFailed.value = false;
