@@ -53,9 +53,15 @@ class HomeController extends GetxController {
   Future<void> fetchInitialData() async {
     // This function is only for the very first load to show the main shimmer
     initialLoad.value = true;
-    await fetchPosts();
-    FlutterNativeSplash.remove();
-    initialLoad.value = false;
+    try {
+      await fetchPosts();
+    } catch (e) {
+      // Log error or show a message if needed
+      debugPrint('Error fetching initial data: $e');
+    } finally {
+      FlutterNativeSplash.remove();
+      initialLoad.value = false;
+    }
   }
 
   Future<void> fetchPosts() async {
@@ -84,6 +90,9 @@ class HomeController extends GetxController {
           hasMore.value = false;
         }
       }
+    } catch (e) {
+      // Handle any errors during fetch
+      debugPrint('Error fetching posts: $e');
     } finally {
       // This is crucial: always set isLoading to false after the attempt.
       isLoading.value = false;
@@ -91,12 +100,17 @@ class HomeController extends GetxController {
   }
 
   Future<void> refreshData() async {
-    // Reset all state for a pull-to-refresh
-    isLoading.value = false;
-    hasMore.value = true;
-    offset = 0;
-    posts.clear();
-    await fetchInitialData();
+    try {
+      // Reset all state for a pull-to-refresh
+      isLoading.value = false;
+      hasMore.value = true;
+      offset = 0;
+      posts.clear();
+      await fetchInitialData();
+    } catch (e) {
+      // Ensure the refresh completes even on error
+      debugPrint('Error refreshing data: $e');
+    }
   }
 
   Future<http.Response?> _makeGetRequest(String url) async {

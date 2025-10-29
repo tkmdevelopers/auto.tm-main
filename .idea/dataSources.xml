@@ -15,5 +15,12 @@
       <jdbc-url>jdbc:postgresql://localhost:5432/auto_tm</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="auto_tm@216.250.10.28" uuid="58b5c9ab-26a7-43d8-99e3-fd3f4f927993">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://216.250.10.28:5432/auto_tm</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>
