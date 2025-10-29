@@ -6,7 +6,9 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common';
-import * as sharp from 'sharp';
+// Use require form to keep compatibility with CommonJS build and callable signature
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const sharp = require('sharp');
 import * as path from 'path';
 import * as fs from 'fs';
 import { promisify } from 'util';
@@ -22,6 +24,55 @@ import { PhotoVlog } from 'src/junction/photo_vlog';
 @Injectable()
 export class PhotoService {
   constructor(@Inject('PHOTO_REPOSITORY') private photo: typeof Photo) {}
+
+  /**
+   * Convert a filesystem path (possibly with backslashes, relative, or absolute) to a
+   * public web path served under /uploads. Always returns a string beginning with '/uploads/'.
+   */
+  private toPublicPath(fsPath: string, rootSegment = 'uploads'): string {
+    if (!fsPath) return '';
+    let p = fsPath.replace(/\\/g, '/');
+    p = p.replace(/^\.\//, '');
+    // If absolute, trim everything before the root segment
+    const marker = `/${rootSegment}/`;
+    const idx = p.lastIndexOf(marker);
+    if (idx !== -1) {
+      p = p.substring(idx + 1); // drop leading slash
+    }
+    // Ensure it starts with rootSegment/
+    if (!p.startsWith(`${rootSegment}/`)) {
+      // Try to locate segment anywhere
+      const segIdx = p.indexOf(`${rootSegment}/`);
+      if (segIdx !== -1) {
+        p = p.substring(segIdx);
+      } else {
+        // Prepend segment if missing
+        p = `${rootSegment}/${p}`;
+      }
+    }
+    if (!p.startsWith('/')) p = '/' + p;
+    // Collapse duplicate slashes
+    p = p.replace(/\/\/+/g, '/');
+    return p;
+  }
+
+  /** Convert a stored public path (/uploads/...) or full URL into an absolute filesystem path */
+  private toFsPath(publicPath: string): string {
+    if (!publicPath) return '';
+    let p = publicPath.trim();
+    if (p.startsWith('http://') || p.startsWith('https://')) {
+      try {
+        const u = new URL(p);
+        p = u.pathname; // '/uploads/...'
+      } catch {
+        // leave as-is
+      }
+    }
+    p = p.replace(/\\/g, '/');
+    if (p.startsWith('/')) p = p.substring(1);
+    return path.join(process.cwd(), p);
+  }
+
   async uploadPhoto(
     files: Array<Express.Multer.File>,
     body: PhotoUUID,
@@ -60,7 +111,7 @@ export class PhotoService {
           );
           await sharp(originalPath).resize(size.width).toFile(resizedFilePath);
 
-          paths[size.name] = resizedFilePath;
+          paths[size.name] = this.toPublicPath(resizedFilePath);
         }
 
         await this.photo.create({
@@ -71,7 +122,7 @@ export class PhotoService {
 
         await PhotoPosts.create({
           postId: body.uuid,
-          uuid: uuid,
+          photoUuid: uuid,  // Fixed: was 'uuid', should be 'photoUuid'
         });
       }
 
@@ -129,7 +180,7 @@ export class PhotoService {
       });
       await PhotoPosts.destroy({
         where: {
-          uuid,
+          photoUuid: uuid,  // Fixed: was 'uuid', should be 'photoUuid'
         },
       });
       return { message: 'OK' };

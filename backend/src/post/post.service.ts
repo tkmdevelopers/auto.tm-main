@@ -487,6 +487,7 @@ export class PostService {
       const posts = await this.posts.findAll({
         where: { userId: req?.uuid },
         include: ['photo', 'brand', 'model'],
+        order: [['createdAt', 'DESC']], // Newest first
       });
       if (!posts) throw new HttpException('Empty', HttpStatus.NOT_FOUND);
       return res.status(200).json(posts);

@@ -67,6 +67,6 @@ export class Photo extends Model {
   })
   user: User;
   @ApiProperty()
-  @BelongsToMany(() => Posts, () => PhotoPosts, 'uuid')
+  @BelongsToMany(() => Posts, () => PhotoPosts, 'photoUuid')
   posts: Posts[];
 }

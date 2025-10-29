@@ -752,6 +752,12 @@ class PostController extends GetxController {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
+        // Debug: Print first post to see structure
+        if (Get.isLogEnable && data is List && data.isNotEmpty) {
+          debugPrint('[fetchMyPosts] First post sample: ${data.first}');
+        }
+
         List<dynamic> rawPosts;
         if (data is List) {
           rawPosts = data;
@@ -764,6 +770,17 @@ class PostController extends GetxController {
         final postDtos = rawPosts
             .map((json) => PostDto.fromJson(json as Map<String, dynamic>))
             .toList();
+
+        // Debug: Check how many posts have photos
+        if (Get.isLogEnable) {
+          final withPhotos = postDtos
+              .where((p) => p.photoPath.isNotEmpty)
+              .length;
+          debugPrint(
+            '[fetchMyPosts] Loaded ${postDtos.length} posts, $withPhotos with photos',
+          );
+        }
+
         posts.assignAll(postDtos);
       } else if (response.statusCode == 406) {
         final refreshed = await refreshAccessToken();
