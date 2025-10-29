@@ -1,8 +1,8 @@
 {
   "development": {
-    "username": "postgres",
-    "password": "root",
-    "database": "alpha_motors",
+    "username": "auto_tm",
+    "password": "Key_bismynick1",
+    "database": "auto_tm",
     "host": "127.0.0.1",
     "dialect": "postgres"
   },

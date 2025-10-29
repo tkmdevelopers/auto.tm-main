@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   Table,
   Column,
@@ -8,12 +8,12 @@ import {
   BelongsTo,
   ForeignKey,
   HasOne,
-} from 'sequelize-typescript';
-import { Brands } from 'src/brands/brands.entity';
-import { Photo } from 'src/photo/photo.entity';
-import { Posts } from 'src/post/post.entity';
+} from "sequelize-typescript";
+import { Brands } from "src/brands/brands.entity";
+import { Photo } from "src/photo/photo.entity";
+import { Posts } from "src/post/post.entity";
 
-@Table({ tableName: 'models' })
+@Table({ tableName: "models" })
 export class Models extends Model {
   @ApiProperty()
   @Column({ primaryKey: true })
@@ -21,13 +21,19 @@ export class Models extends Model {
   @ApiProperty()
   @Column
   name: string;
+  @ApiProperty()
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  yearstart: number;
+  @ApiProperty()
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  yearend: number;
   @ForeignKey(() => Brands)
   @Column({ type: DataType.STRING, allowNull: true })
   brandId: string;
   @HasOne(() => Photo, {
-      foreignKey: 'modelsId',
-    })
-    photo: Photo;
+    foreignKey: "modelsId",
+  })
+  photo: Photo;
   @BelongsTo(() => Brands)
   brand: Brands;
   @HasMany(() => Posts)
