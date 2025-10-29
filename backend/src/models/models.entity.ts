@@ -21,6 +21,12 @@ export class Models extends Model {
   @ApiProperty()
   @Column
   name: string;
+  @ApiProperty()
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  yearstart: number;
+  @ApiProperty()
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  yearend: number;
   @ForeignKey(() => Brands)
   @Column({ type: DataType.STRING, allowNull: true })
   brandId: string;
