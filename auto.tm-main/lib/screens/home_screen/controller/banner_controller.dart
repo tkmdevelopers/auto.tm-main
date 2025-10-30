@@ -26,13 +26,15 @@ class BannerController extends GetxController {
   Future<void> fetchBanners() async {
     try {
       isLoading.value = true;
-      final response = await http.get(
-        Uri.parse(ApiKey.getBannersKey),
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}'
-        },
-      ).timeout(Duration(seconds: 5));
+      final response = await http
+          .get(
+            Uri.parse(ApiKey.getBannersKey),
+            headers: {
+              "Content-Type": "application/json",
+              'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+            },
+          )
+          .timeout(Duration(seconds: 5));
       if (response.statusCode == 200) {
         banners.value = await Isolate.run(() {
           List<dynamic> data = json.decode(response.body);
@@ -40,7 +42,8 @@ class BannerController extends GetxController {
               .map((item) => BannerModel.fromJson(item))
               .toList(); // Parse JSON into BannerModel
         });
-      } if (response.statusCode == 406) {
+      }
+      if (response.statusCode == 406) {
         // await refreshAccessToken();
         return fetchBanners(); // Retry after refreshing token
       }
@@ -59,7 +62,7 @@ class BannerController extends GetxController {
         Uri.parse(ApiKey.refreshTokenKey),
         headers: {
           "Content-Type": "application/json",
-          'Authorization': 'Bearer $refreshToken'
+          'Authorization': 'Bearer $refreshToken',
         },
       );
 
@@ -68,12 +71,11 @@ class BannerController extends GetxController {
         final newAccessToken = data['accessToken'];
         if (newAccessToken != null) {
           box.write('ACCESS_TOKEN', newAccessToken);
-        } else {
-        }
-      } if (response.statusCode == 406) {
-        Get.offAllNamed('/login');
-      } else {
+        } else {}
       }
+      if (response.statusCode == 406) {
+        Get.offAllNamed('/register'); // Fixed: /login doesn't exist
+      } else {}
     } catch (e) {
       return;
     }

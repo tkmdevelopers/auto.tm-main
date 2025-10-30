@@ -12,8 +12,8 @@ class OtpScreen extends StatelessWidget {
   final bool returnOnSuccess; // if true, Navigator.pop with success
   OtpScreen({super.key, this.returnOnSuccess = false});
 
-  final RegisterPageController getController =
-      Get.find<RegisterPageController>();
+  // Use ensure pattern to prevent "Controller not found" errors
+  final RegisterPageController getController = RegisterPageController.ensure();
 
   @override
   Widget build(BuildContext context) {

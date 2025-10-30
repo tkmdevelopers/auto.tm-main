@@ -4,11 +4,13 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:auto_tm/screens/auth_screens/register_screen/register_screen.dart';
 import 'package:auto_tm/screens/profile_screen/model/profile_model.dart';
 import 'package:auto_tm/services/auth/auth_service.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:auto_tm/utils/logger.dart';
+import 'package:auto_tm/utils/navigation_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -20,6 +22,7 @@ import 'package:permission_handler/permission_handler.dart';
 class ProfileController extends GetxController {
   // Application-wide default location for newly registered users
   static const String defaultLocation = 'Aşgabat';
+
   /// Singleton accessor to avoid accidental duplicate Get.put() calls scattered in UI.
   static ProfileController ensure() {
     if (Get.isRegistered<ProfileController>()) {
@@ -95,24 +98,16 @@ class ProfileController extends GetxController {
     fetchProfile();
 
     // Late-arrival profile listener: if profile loads after screen build and fields not initialized, prefill.
+    // Only trigger if fields genuinely haven't been initialized yet
     ever<ProfileModel?>(profile, (p) {
-      if (p != null && (!fieldsInitialized.value || nameController.text.isEmpty)) {
+      if (p != null && !fieldsInitialized.value) {
+        AppLogger.d('Profile loaded via ever() listener, prefilling fields');
         ensureFormFieldPrefill(force: true);
       }
     });
 
-    // Add listeners to update text controllers when reactive values change
-    name.listen((value) {
-      if (nameController.text != value) {
-        nameController.text = value;
-      }
-    });
-
-    location.listen((value) {
-      if (locationController.text != value) {
-        locationController.text = value;
-      }
-    });
+    // Removed bidirectional listeners - they caused conflicts with manual field updates
+    // Fields now update via ensureFormFieldPrefill and fetchProfileAndPopulateFields only
   }
 
   @override
@@ -448,7 +443,8 @@ class ProfileController extends GetxController {
 
     // Resolve best-known location
     String existingLocation = '';
-    if (profile.value?.location != null && profile.value!.location!.isNotEmpty) {
+    if (profile.value?.location != null &&
+        profile.value!.location!.isNotEmpty) {
       existingLocation = profile.value!.location!;
     } else if (location.value.isNotEmpty) {
       existingLocation = location.value;
@@ -460,20 +456,23 @@ class ProfileController extends GetxController {
       }
     }
 
-    bool applied = false;
-    if (existingName.isNotEmpty && nameController.text.isEmpty) {
+    // Always set fields when we have data, regardless of current field values
+    // This fixes the issue where cleared fields wouldn't repopulate
+    if (existingName.isNotEmpty) {
       nameController.text = existingName;
-      applied = true;
+      name.value = existingName; // Keep reactive value in sync
     }
-    if (existingLocation.isNotEmpty && locationController.text.isEmpty) {
+    if (existingLocation.isNotEmpty) {
       locationController.text = existingLocation;
-      applied = true;
+      location.value = existingLocation; // Keep reactive value in sync
     }
 
-    // Only mark initialized if we actually set something, unless forced
-    if (applied || force) {
-      fieldsInitialized.value = true;
-    }
+    // Always mark as initialized after attempting prefill
+    fieldsInitialized.value = true;
+
+    AppLogger.d(
+      'Profile fields prefilled: name="${existingName}", location="${existingLocation}"',
+    );
   }
 
   Future<bool> requestGalleryPermission() async {
@@ -501,44 +500,62 @@ class ProfileController extends GetxController {
   }
 
   Future<void> uploadImage(Uint8List imageBytes) async {
-    final uri = Uri.parse(ApiKey.putUserPhotoKey); // Replace with your API URL
+    try {
+      if (profile.value == null) {
+        AppLogger.w('Cannot upload image: profile not loaded');
+        Get.snackbar(
+          'Error',
+          'Profile not loaded. Please try again.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return;
+      }
 
-    final request = http.MultipartRequest('PUT', uri)
-      ..headers['Authorization'] =
-          'Bearer ${box.read('ACCESS_TOKEN')}' // if needed
-      ..fields['uuid'] = profile
-          .value!
-          .uuid // Attach UUID
-      ..files.add(
-        http.MultipartFile.fromBytes(
-          'file', // field name expected by backend
-          imageBytes,
-          filename: 'image.jpg',
-          contentType: MediaType('image', 'jpeg'),
-        ),
+      final uri = Uri.parse(ApiKey.putUserPhotoKey);
+
+      final request = http.MultipartRequest('PUT', uri)
+        ..headers['Authorization'] = 'Bearer ${box.read('ACCESS_TOKEN')}'
+        ..fields['uuid'] = profile.value!.uuid
+        ..files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            imageBytes,
+            filename: 'image.jpg',
+            contentType: MediaType('image', 'jpeg'),
+          ),
+        );
+
+      AppLogger.d('Uploading profile image...');
+
+      final response = await request.send().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException('Image upload timed out');
+        },
       );
 
-    final response = await request.send();
-    String? bodyString;
-    Map<String, dynamic>? jsonBody;
-    try {
-      bodyString = await response.stream.bytesToString();
-      if (bodyString.isNotEmpty) {
-        jsonBody = json.decode(bodyString);
+      String? bodyString;
+      Map<String, dynamic>? jsonBody;
+      try {
+        bodyString = await response.stream.bytesToString();
+        if (bodyString.isNotEmpty) {
+          jsonBody = json.decode(bodyString);
+        }
+      } catch (e) {
+        AppLogger.w('Failed to parse image upload response: $e');
       }
-    } catch (_) {}
 
-    if (response.statusCode == 200 && jsonBody != null) {
-      final paths = jsonBody['paths'];
-      String? chosen;
-      if (paths is Map) {
-        chosen = paths['medium']?.toString() ??
-            paths['large']?.toString() ??
-            paths['small']?.toString();
-      }
-      if (chosen != null && chosen.isNotEmpty) {
-        final current = profile.value;
-        if (current != null) {
+      if (response.statusCode == 200 && jsonBody != null) {
+        final paths = jsonBody['paths'];
+        String? chosen;
+        if (paths is Map) {
+          chosen =
+              paths['medium']?.toString() ??
+              paths['large']?.toString() ??
+              paths['small']?.toString();
+        }
+        if (chosen != null && chosen.isNotEmpty) {
+          final current = profile.value!;
           profile.value = ProfileModel(
             uuid: current.uuid,
             name: current.name,
@@ -549,69 +566,146 @@ class ProfileController extends GetxController {
             createdAt: current.createdAt,
             brandUuid: current.brandUuid,
           );
+          AppLogger.i('Profile image uploaded successfully: $chosen');
+        } else {
+          AppLogger.w('No valid image path in response');
         }
+      } else if (response.statusCode == 406 || response.statusCode == 401) {
+        AppLogger.d('Token expired during image upload, refreshing...');
+        final refreshed = await refreshAccessToken();
+        if (refreshed) {
+          // Retry upload after token refresh
+          return uploadImage(imageBytes);
+        } else {
+          Get.snackbar(
+            'Error',
+            'Session expired. Please log in again.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red[400],
+            colorText: Colors.white,
+          );
+        }
+      } else {
+        AppLogger.w('Image upload failed with status: ${response.statusCode}');
+        Get.snackbar(
+          'Error',
+          'Failed to upload image. Status: ${response.statusCode}',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red[400],
+          colorText: Colors.white,
+        );
       }
+    } on TimeoutException catch (e) {
+      AppLogger.w('Image upload timeout: $e');
+      Get.snackbar(
+        'Timeout',
+        'Image upload took too long. Please try again.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange[400],
+        colorText: Colors.white,
+      );
+    } catch (e, st) {
+      AppLogger.e('Error uploading image', error: e, stackTrace: st);
+      Get.snackbar(
+        'Error',
+        'Failed to upload image: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red[400],
+        colorText: Colors.white,
+      );
     }
-    if (response.statusCode == 406) {
-      await refreshAccessToken();
-      // if (refreshed) {
-      //   return fetchBlogs(); // Call fetchBlogs again only if refresh was successful
-      // } else {
-      //   ('Error', 'Failed to refresh access token. Please log in again.', snackPosition: SnackPosition.BOTTOM);
-      // }
-    } else {}
   }
 
   Future<void> uploadProfile() async {
-    final success = await postUserDataSave();
-
-    if (!success) return; // If not successful, stop here
-
-    if (selectedImage.value != null) {
-      await uploadImage(selectedImage.value!);
-      // Clear local picked image so a new session/account won't inherit it
-      selectedImage.value = null;
+    // Prevent duplicate saves
+    if (isLoadingN.value) {
+      AppLogger.d('Upload already in progress, ignoring duplicate call');
+      return;
     }
 
-    // No full refetch: merge locally then optionally fire a silent refresh (non-blocking)
-    _mergeLocalProfileAfterEdit();
-    // Fire a silent background refresh without blocking navigation
-    Future.microtask(() => fetchProfile());
+    isLoadingN.value = true;
+    AppLogger.d('Starting profile upload...');
 
-    // Navigate back to the profile screen (stay in profile context)
-    if (Get.currentRoute != '/profile') {
-      Get.back();
-    }
-    Get.rawSnackbar(
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: AppColors.whiteColor,
-      borderRadius: 12,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      padding: const EdgeInsets.all(16),
-      duration: const Duration(milliseconds: 1800),
-      animationDuration: const Duration(milliseconds: 250),
-      boxShadows: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.15),
-          blurRadius: 8,
-          offset: const Offset(0, 3),
-        ),
-      ],
-      messageText: Row(
-        children: const [
-          Icon(Icons.check_circle_outline, color: AppColors.notificationColor),
-          SizedBox(width: 8),
-          Text(
-            'Profile edited successfully!',
-            style: TextStyle(
-              color: AppColors.textPrimaryColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+    try {
+      final success = await postUserDataSave();
+
+      if (!success) {
+        AppLogger.w('Profile save failed, aborting upload');
+        isLoadingN.value = false;
+        return; // If not successful, stop here
+      }
+
+      if (selectedImage.value != null) {
+        AppLogger.d('Uploading selected image...');
+        await uploadImage(selectedImage.value!);
+        // Clear local picked image so a new session/account won't inherit it
+        selectedImage.value = null;
+      }
+
+      // No full refetch: merge locally then optionally fire a silent refresh (non-blocking)
+      _mergeLocalProfileAfterEdit();
+
+      AppLogger.i('Profile upload completed successfully');
+
+      // Clear loading state before navigation
+      isLoadingN.value = false;
+
+      // Navigate back immediately using proper navigation utility
+      NavigationUtils.closeGlobal();
+
+      // Show success message after navigation
+      Get.rawSnackbar(
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.whiteColor,
+        borderRadius: 12,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.all(16),
+        duration: const Duration(milliseconds: 1800),
+        animationDuration: const Duration(milliseconds: 250),
+        boxShadows: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
-      ),
-    );
+        messageText: Row(
+          children: const [
+            Icon(
+              Icons.check_circle_outline,
+              color: AppColors.notificationColor,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Profile edited successfully!',
+              style: TextStyle(
+                color: AppColors.textPrimaryColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+
+      // Fire a silent background refresh after navigation
+      Future.microtask(() => fetchProfile());
+    } catch (e, st) {
+      AppLogger.e(
+        'Unexpected error in uploadProfile',
+        error: e,
+        stackTrace: st,
+      );
+      Get.snackbar(
+        'Error',
+        'An unexpected error occurred: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red[400],
+        colorText: Colors.white,
+      );
+    } finally {
+      isLoadingN.value = false;
+    }
   }
 
   // void postUserData(String key, String value) async {
@@ -641,37 +735,85 @@ class ProfileController extends GetxController {
   Future<bool> postUserDataSave() async {
     try {
       final trimmedName = nameController.text.trim();
+
+      // Validation
+      if (trimmedName.isEmpty) {
+        Get.snackbar(
+          'Validation Error',
+          'Name cannot be empty',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red[400],
+          colorText: Colors.white,
+        );
+        return false;
+      }
+
       final Map<String, dynamic> body = {
-        if (trimmedName.isNotEmpty) 'name': trimmedName,
+        'name': trimmedName,
         'location': locationController.text,
       };
 
-      final response = await http.put(
-        Uri.parse(ApiKey.setPasswordKey),
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
-        },
-        body: json.encode(body),
+      AppLogger.d(
+        'Saving profile: name="${trimmedName}", location="${locationController.text}"',
       );
 
-      // final resBody = json.decode(response.body);
+      final response = await http
+          .put(
+            Uri.parse(ApiKey.setPasswordKey),
+            headers: {
+              "Content-Type": "application/json",
+              'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+            },
+            body: json.encode(body),
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw TimeoutException('Profile update timed out');
+            },
+          );
 
       if (response.statusCode == 200) {
-        if ((body['name'] ?? '').toString().isNotEmpty) {
-          box.write('user_name', body['name']);
-        }
+        box.write('user_name', trimmedName);
         box.write('user_location', locationController.text);
+        AppLogger.i('Profile saved successfully');
         return true; // local merge will happen in uploadProfile
       }
 
       if (response.statusCode == 406 || response.statusCode == 401) {
+        AppLogger.d('Token expired, attempting refresh...');
         final retried = await _tryWithTokenRefresh(() => postUserDataSave());
         return retried;
       }
 
+      AppLogger.w('Profile save failed with status: ${response.statusCode}');
+      Get.snackbar(
+        'Error',
+        'Failed to save profile. Status: ${response.statusCode}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red[400],
+        colorText: Colors.white,
+      );
+      return false;
+    } on TimeoutException catch (e) {
+      AppLogger.w('Profile save timeout: $e');
+      Get.snackbar(
+        'Timeout',
+        'Profile save took too long. Please try again.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange[400],
+        colorText: Colors.white,
+      );
       return false;
     } catch (e) {
+      AppLogger.e('Error saving profile', error: e);
+      Get.snackbar(
+        'Error',
+        'Failed to save profile: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red[400],
+        colorText: Colors.white,
+      );
       return false;
     } finally {
       isLoadingN.value = false;
@@ -703,7 +845,7 @@ class ProfileController extends GetxController {
         }
       }
       if (response.statusCode == 406) {
-        Get.offAllNamed('/login');
+        Get.offAllNamed('/register'); // Fixed: /login doesn't exist
         return false; // Indicate failed refresh
       } else {
         return false; // Indicate failed refresh
@@ -731,10 +873,10 @@ class ProfileController extends GetxController {
     final preservedName = enteredName.isNotEmpty
         ? enteredName
         : (current?.name.isNotEmpty == true
-            ? current!.name
-            : (name.value.isNotEmpty
-                ? name.value
-                : (box.read('user_name') ?? '')));
+              ? current!.name
+              : (name.value.isNotEmpty
+                    ? name.value
+                    : (box.read('user_name') ?? '')));
     if (current == null) {
       profile.value = ProfileModel(
         uuid: box.read('USER_ID') ?? '',
@@ -771,7 +913,79 @@ class ProfileController extends GetxController {
     hasLoadedProfile.value = true;
   }
 
-  void logout() {
+  // Flag to prevent showing error states during logout
+  final RxBool isLoggingOut = false.obs;
+
+  /// Shows confirmation dialog and performs logout if confirmed
+  Future<void> logout() async {
+    AppLogger.d('Logout confirmation requested');
+
+    final theme = Get.theme;
+
+    // Show confirmation dialog
+    final confirmed = await Get.dialog<bool>(
+      AlertDialog(
+        title: Text(
+          'logout_confirm_title'.tr,
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          'logout_confirm_message'.tr,
+          style: TextStyle(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => NavigationUtils.closeGlobal(result: false),
+            child: Text(
+              'Cancel'.tr,
+              style: TextStyle(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error.withValues(alpha: 0.12),
+              foregroundColor: theme.colorScheme.error,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () => NavigationUtils.closeGlobal(result: true),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.logout_rounded, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Log out'.tr,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      barrierDismissible: true,
+    );
+
+    // User cancelled
+    if (confirmed != true) {
+      AppLogger.d('Logout cancelled by user');
+      return;
+    }
+
+    // Set flag to prevent UI state changes during logout
+    isLoggingOut.value = true;
+    AppLogger.d('Logout confirmed - starting cleanup');
+
     // Use central auth service logout to ensure consistent cleanup
     if (Get.isRegistered<AuthService>()) {
       AuthService.to.logout();
@@ -785,6 +999,7 @@ class ProfileController extends GetxController {
       box.remove('user_location');
       box.remove('USER_ID');
     }
+
     // Clear local reactive state
     profile.value = null;
     name.value = '';
@@ -792,11 +1007,23 @@ class ProfileController extends GetxController {
     location.value = defaultLocation;
     nameController.clear();
     locationController.text = defaultLocation;
-    selectedImage.value = null; // ensure previous avatar bytes aren't shown for next user
+    selectedImage.value =
+        null; // ensure previous avatar bytes aren't shown for next user
     fieldsInitialized.value = false;
     hasLoadedProfile.value = false;
-    // Navigate to login (or splash) route; adjust if different
-    Get.offAllNamed('/login');
+
+    // Navigate IMMEDIATELY without microtask to prevent any screen flashes
+    AppLogger.d('Navigating to register after logout');
+
+    // Direct synchronous navigation - fastest possible
+    Get.offAll(
+      () => SRegisterPage(),
+      transition: Transition.noTransition, // No animation = no flash
+      duration: Duration.zero,
+    );
+
+    // Reset flag after navigation completes
+    isLoggingOut.value = false;
   }
 
   // void showBottomSheet(

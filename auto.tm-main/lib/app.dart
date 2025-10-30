@@ -11,22 +11,21 @@ class AuthCheckPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final token = tokenService.getToken();
-    if (token == null || token.isEmpty) {
-      Future.delayed(Duration.zero, () => Get.offNamed('/register'));
-    } else {
-      // Future.delayed(Duration.zero, () => Get.offNamed('/home'));
-      Future.delayed(Duration.zero, () => Get.offNamed('/navView'));
-    }
 
-    // Loading screen while checking token
-    return const Scaffold(
+    // Immediate navigation without delay to avoid flash
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (token == null || token.isEmpty) {
+        Get.offNamed('/register');
+      } else {
+        Get.offNamed('/navView');
+      }
+    });
+
+    // Minimal invisible scaffold - user won't see this
+    // Keep it simple to minimize flash during logout
+    return Scaffold(
       backgroundColor: AppColors.scaffoldColor,
-      body: Center(
-        child: CircularProgressIndicator.adaptive(
-          backgroundColor: AppColors.primaryColor,
-          valueColor: AlwaysStoppedAnimation(AppColors.scaffoldColor),
-        ),
-      ),
+      body: const SizedBox.shrink(), // Empty - navigation happens immediately
     );
   }
 }

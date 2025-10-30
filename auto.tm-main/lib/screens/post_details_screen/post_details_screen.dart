@@ -80,13 +80,18 @@ class PostDetailsScreen extends StatelessWidget {
                                         Get.to(
                                           () => ViewPostPhotoScreen(
                                             imageUrls: photos,
-                                            currentIndex: detailsController.currentPage.value,
+                                            currentIndex: detailsController
+                                                .currentPage
+                                                .value,
                                             postUuid: uuid,
-                                            heroGroupTag: uuid, // align hero tags with potential carousel usage
+                                            heroGroupTag:
+                                                uuid, // align hero tags with potential carousel usage
                                           ),
                                           transition: Transition.fadeIn,
                                           curve: Curves.easeInOut,
-                                          duration: const Duration(milliseconds: 220),
+                                          duration: const Duration(
+                                            milliseconds: 220,
+                                          ),
                                         );
                                       }
                                     },
@@ -153,7 +158,8 @@ class PostDetailsScreen extends StatelessWidget {
                                         color: theme.colorScheme.surface,
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
-                                          color: theme.colorScheme.outline.withOpacity(0.1),
+                                          color: theme.colorScheme.outline
+                                              .withOpacity(0.1),
                                           width: 1.2,
                                         ),
                                       ),
@@ -161,32 +167,43 @@ class PostDetailsScreen extends StatelessWidget {
                                         child: Icon(
                                           Icons.chevron_left,
                                           size: 20,
-                                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                                          color: theme.colorScheme.onSurface
+                                              .withOpacity(0.7),
                                         ),
                                       ),
                                     ),
                                   ),
                                   // Favorite button re-styled & animated like PostItem
                                   Obx(() {
-                                    final isFav = favoritesController.favorites.contains(uuid);
+                                    final isFav = favoritesController.favorites
+                                        .contains(uuid);
                                     return GestureDetector(
-                                      onTap: () => favoritesController.toggleFavorite(uuid),
+                                      onTap: () => favoritesController
+                                          .toggleFavorite(uuid),
                                       child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 300),
+                                        duration: const Duration(
+                                          milliseconds: 300,
+                                        ),
                                         curve: Curves.easeInOut,
                                         width: 44,
                                         height: 44,
                                         decoration: BoxDecoration(
                                           color: theme.colorScheme.surface,
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           border: Border.all(
-                                            color: theme.colorScheme.outline.withOpacity(0.1),
+                                            color: theme.colorScheme.outline
+                                                .withOpacity(0.1),
                                             width: 1.2,
                                           ),
                                           boxShadow: isFav
                                               ? [
                                                   BoxShadow(
-                                                    color: theme.colorScheme.primary.withOpacity(0.2),
+                                                    color: theme
+                                                        .colorScheme
+                                                        .primary
+                                                        .withOpacity(0.2),
                                                     blurRadius: 8,
                                                     offset: const Offset(0, 3),
                                                   ),
@@ -195,14 +212,24 @@ class PostDetailsScreen extends StatelessWidget {
                                         ),
                                         child: Center(
                                           child: AnimatedSwitcher(
-                                            duration: const Duration(milliseconds: 300),
-                                            transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+                                            duration: const Duration(
+                                              milliseconds: 300,
+                                            ),
+                                            transitionBuilder:
+                                                (child, animation) =>
+                                                    ScaleTransition(
+                                                      scale: animation,
+                                                      child: child,
+                                                    ),
                                             child: Icon(
-                                              isFav ? Icons.favorite : Icons.favorite_border,
+                                              isFav
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
                                               key: ValueKey<bool>(isFav),
                                               color: isFav
                                                   ? theme.colorScheme.primary
-                                                  : theme.colorScheme.onSurface.withOpacity(0.7),
+                                                  : theme.colorScheme.onSurface
+                                                        .withOpacity(0.7),
                                               size: 20,
                                             ),
                                           ),
@@ -309,8 +336,9 @@ class PostDetailsScreen extends StatelessWidget {
                                                 Color(0xFF7FA7F6),
                                               ],
                                             ),
-                                            borderRadius:
-                                                BorderRadius.circular(12.0),
+                                            borderRadius: BorderRadius.circular(
+                                              12.0,
+                                            ),
                                           ),
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 12,
@@ -337,7 +365,8 @@ class PostDetailsScreen extends StatelessWidget {
                                                     fontWeight: FontWeight.w600,
                                                     fontSize: 13,
                                                   ),
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ],
@@ -478,6 +507,59 @@ class PostDetailsScreen extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                                const SizedBox(height: 8),
+                                // Status badge
+                                if (post.value?.status != true)
+                                  Container(
+                                    margin: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 6,
+                                      horizontal: 12,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      color:
+                                          (post.value?.status == null
+                                                  ? Colors.orange
+                                                  : theme.colorScheme.error)
+                                              .withValues(alpha: 0.1),
+                                      border: Border.all(
+                                        color: post.value?.status == null
+                                            ? Colors.orange
+                                            : theme.colorScheme.error,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          post.value?.status == null
+                                              ? Icons.hourglass_top_rounded
+                                              : Icons.cancel_outlined,
+                                          size: 16,
+                                          color: post.value?.status == null
+                                              ? Colors.orange.shade700
+                                              : theme.colorScheme.error,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          post.value?.status == null
+                                              ? 'post_status_pending_review'.tr
+                                              : 'post_status_declined_admin'.tr,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: post.value?.status == null
+                                                ? Colors.orange.shade700
+                                                : theme.colorScheme.error,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                               ],
                             ),
                             // if (downloadController.isDownloading.value &&
@@ -600,7 +682,9 @@ class PostDetailsScreen extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 post.value?.description.isNotEmpty == true
-                                    ? post.value!.description // DO NOT translate user text
+                                    ? post
+                                          .value!
+                                          .description // DO NOT translate user text
                                     : '-',
                                 style: AppStyles.f16w4.copyWith(
                                   color: theme.colorScheme.onSurface,
@@ -788,7 +872,6 @@ class PostDetailsScreen extends StatelessWidget {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
-
 }
 
 class _DynamicCharacteristics extends StatelessWidget {
@@ -818,68 +901,84 @@ class _DynamicCharacteristics extends StatelessWidget {
       displayLocation = regionRaw; // Already proper case from backend
     }
 
-    final characteristics = <_CharacteristicEntry>[
-      _CharacteristicEntry(
-        icon: AppImages.enginePower,
-        label: 'Engine power'.tr,
-        value: _isPositive(post!.enginePower)
-            ? '${post!.enginePower.toStringAsFixed(0)} L'
-            : null,
-      ),
-      _CharacteristicEntry(
-        icon: AppImages.transmission,
-        label: 'Transmission'.tr,
-        value: _isNonEmpty(post!.transmission) ? post!.transmission.tr : null,
-      ),
-      _CharacteristicEntry(
-        icon: AppImages.year,
-        label: 'Year'.tr,
-        value: _isPositive(post!.year) ? '${post!.year.toStringAsFixed(0)} y.'.tr : null,
-      ),
-      _CharacteristicEntry(
-        icon: AppImages.milleage,
-        label: 'Milleage'.tr,
-        value: _isPositive(post!.milleage) ? '${post!.milleage.toStringAsFixed(0)} km'.tr : null,
-      ),
-      _CharacteristicEntry(
-        icon: AppImages.carCondition,
-        label: 'Car condition'.tr,
-        value: _isNonEmpty(post!.condition) ? post!.condition.tr : null,
-      ),
-      _CharacteristicEntry(
-        icon: AppImages.engineType,
-        label: 'Engine type'.tr,
-        value: _isNonEmpty(post!.engineType) ? post!.engineType.tr : null,
-      ),
-      _CharacteristicEntry(
-        icon: AppImages.vin,
-        label: 'VIN',
-        value: _isNonEmpty(post!.vinCode) ? post!.vinCode : null,
-      ),
-      if (displayLocation != null)
-        _CharacteristicEntry(
-          icon: AppImages.location,
-          label: 'Location'.tr,
-          // Do not translate standardized region names; only translate if it looks like a key.
-          value: displayLocation,
-        ),
-      // Exchange info (always show) - standardized keys
-      _CharacteristicEntry(
-        icon: AppImages.exchange,
-        label: 'Exchange'.tr,
-        value: (post!.exchange == true)
-            ? 'post_exchange_possible'.tr
-            : 'post_exchange_not_possible'.tr,
-      ),
-      // Credit info (always show) - standardized keys
-      _CharacteristicEntry(
-        icon: AppImages.credit,
-        label: 'Credit'.tr,
-        value: (post!.credit == true)
-            ? 'post_credit_available'.tr
-            : 'post_credit_not_available'.tr,
-      ),
-    ].where((e) => e.value != null && e.value!.trim().isNotEmpty && e.value != '0').toList();
+    final characteristics =
+        <_CharacteristicEntry>[
+              _CharacteristicEntry(
+                icon: AppImages.enginePower,
+                label: 'Engine power'.tr,
+                value: _isPositive(post!.enginePower)
+                    ? '${post!.enginePower.toStringAsFixed(0)} L'
+                    : null,
+              ),
+              _CharacteristicEntry(
+                icon: AppImages.transmission,
+                label: 'Transmission'.tr,
+                value: _isNonEmpty(post!.transmission)
+                    ? post!.transmission.tr
+                    : null,
+              ),
+              _CharacteristicEntry(
+                icon: AppImages.year,
+                label: 'Year'.tr,
+                value: _isPositive(post!.year)
+                    ? '${post!.year.toStringAsFixed(0)} y.'.tr
+                    : null,
+              ),
+              _CharacteristicEntry(
+                icon: AppImages.milleage,
+                label: 'Milleage'.tr,
+                value: _isPositive(post!.milleage)
+                    ? '${post!.milleage.toStringAsFixed(0)} km'.tr
+                    : null,
+              ),
+              _CharacteristicEntry(
+                icon: AppImages.carCondition,
+                label: 'Car condition'.tr,
+                value: _isNonEmpty(post!.condition) ? post!.condition.tr : null,
+              ),
+              _CharacteristicEntry(
+                icon: AppImages.engineType,
+                label: 'Engine type'.tr,
+                value: _isNonEmpty(post!.engineType)
+                    ? post!.engineType.tr
+                    : null,
+              ),
+              _CharacteristicEntry(
+                icon: AppImages.vin,
+                label: 'VIN',
+                value: _isNonEmpty(post!.vinCode) ? post!.vinCode : null,
+              ),
+              if (displayLocation != null)
+                _CharacteristicEntry(
+                  icon: AppImages.location,
+                  label: 'Location'.tr,
+                  // Do not translate standardized region names; only translate if it looks like a key.
+                  value: displayLocation,
+                ),
+              // Exchange info (always show) - standardized keys
+              _CharacteristicEntry(
+                icon: AppImages.exchange,
+                label: 'Exchange'.tr,
+                value: (post!.exchange == true)
+                    ? 'post_exchange_possible'.tr
+                    : 'post_exchange_not_possible'.tr,
+              ),
+              // Credit info (always show) - standardized keys
+              _CharacteristicEntry(
+                icon: AppImages.credit,
+                label: 'Credit'.tr,
+                value: (post!.credit == true)
+                    ? 'post_credit_available'.tr
+                    : 'post_credit_not_available'.tr,
+              ),
+            ]
+            .where(
+              (e) =>
+                  e.value != null &&
+                  e.value!.trim().isNotEmpty &&
+                  e.value != '0',
+            )
+            .toList();
 
     if (characteristics.isEmpty) return const SizedBox.shrink();
 
@@ -887,15 +986,23 @@ class _DynamicCharacteristics extends StatelessWidget {
     final rows = <Widget>[];
     for (int i = 0; i < characteristics.length; i += 2) {
       final first = characteristics[i];
-      final second = (i + 1) < characteristics.length ? characteristics[i + 1] : null;
-      rows.add(Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: _buildCharacteristicsItem(first)),
-          const SizedBox(width: 12),
-          Expanded(child: second != null ? _buildCharacteristicsItem(second) : const SizedBox()),
-        ],
-      ));
+      final second = (i + 1) < characteristics.length
+          ? characteristics[i + 1]
+          : null;
+      rows.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: _buildCharacteristicsItem(first)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: second != null
+                  ? _buildCharacteristicsItem(second)
+                  : const SizedBox(),
+            ),
+          ],
+        ),
+      );
       if (i + 2 < characteristics.length) rows.add(const SizedBox(height: 10));
     }
 
@@ -916,10 +1023,7 @@ class _DynamicCharacteristics extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-            Divider(
-              color: AppColors.textTertiaryColor,
-              height: 0.5,
-            ),
+          Divider(color: AppColors.textTertiaryColor, height: 0.5),
           const SizedBox(height: 16),
           ...rows,
         ],
@@ -961,7 +1065,7 @@ class _DynamicCharacteristics extends StatelessWidget {
               ),
             ],
           ),
-        )
+        ),
       ],
     );
   }
@@ -971,5 +1075,9 @@ class _CharacteristicEntry {
   final String icon;
   final String label;
   final String? value;
-  _CharacteristicEntry({required this.icon, required this.label, required this.value});
+  _CharacteristicEntry({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 }

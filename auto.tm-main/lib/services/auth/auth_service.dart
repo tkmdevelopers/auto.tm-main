@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
+import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
 import 'package:http/http.dart' as http;
 import 'package:get_storage/get_storage.dart';
 import 'auth_models.dart';
@@ -192,7 +193,16 @@ class AuthService extends GetxService {
         pc.hasLoadedProfile.value = false;
       } catch (_) {}
     }
-    // Add other controllers reset logic here (favorites, posts cache, etc.) when needed.
+
+    // Clear PostController cached data to prevent showing stale brand/model IDs
+    if (Get.isRegistered<PostController>()) {
+      try {
+        final postCtrl = Get.find<PostController>();
+        postCtrl.clearAllCachedData();
+      } catch (_) {}
+    }
+
+    // Add other controllers reset logic here (favorites, etc.) when needed.
   }
 
   void _persistSession(AuthSession session) {

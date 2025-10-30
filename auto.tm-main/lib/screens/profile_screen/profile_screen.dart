@@ -25,6 +25,15 @@ class ProfileScreen extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Obx(() {
         final user = controller.profile.value;
+
+        // During logout, show blank screen to prevent flash
+        if (controller.isLoggingOut.value) {
+          return Container(
+            color: theme.scaffoldBackgroundColor,
+            child: const SizedBox.shrink(),
+          );
+        }
+
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -123,8 +132,12 @@ class ProfileScreen extends StatelessWidget {
                       child: TextButton(
                         style: TextButton.styleFrom(
                           foregroundColor: theme.colorScheme.onSurface,
-                          backgroundColor: theme.colorScheme.surface.withOpacity(0.6),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          backgroundColor: theme.colorScheme.surface
+                              .withOpacity(0.6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -192,7 +205,9 @@ class ProfileScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              color: theme.colorScheme.onSurface.withOpacity(0.55),
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.55,
+                              ),
                             ),
                           ),
                           Text(
@@ -206,7 +221,10 @@ class ProfileScreen extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      Divider(color: theme.colorScheme.outline.withOpacity(0.15), height: 1),
+                      Divider(
+                        color: theme.colorScheme.outline.withOpacity(0.15),
+                        height: 1,
+                      ),
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -216,7 +234,9 @@ class ProfileScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              color: theme.colorScheme.onSurface.withOpacity(0.55),
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.55,
+                              ),
                             ),
                           ),
                           Text(
@@ -229,9 +249,13 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      if (user?.location != null && (user!.location ?? '').isNotEmpty) ...[
+                      if (user?.location != null &&
+                          (user!.location ?? '').isNotEmpty) ...[
                         const SizedBox(height: 12),
-                        Divider(color: theme.colorScheme.outline.withOpacity(0.15), height: 1),
+                        Divider(
+                          color: theme.colorScheme.outline.withOpacity(0.15),
+                          height: 1,
+                        ),
                         const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -241,7 +265,9 @@ class ProfileScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
-                                color: theme.colorScheme.onSurface.withOpacity(0.55),
+                                color: theme.colorScheme.onSurface.withOpacity(
+                                  0.55,
+                                ),
                               ),
                             ),
                             Flexible(
@@ -301,7 +327,9 @@ class ProfileScreen extends StatelessWidget {
                             'alphamotors@gmail.com',
                             style: TextStyle(
                               fontSize: 14,
-                              color: theme.colorScheme.onSurface.withOpacity(0.55),
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.55,
+                              ),
                             ),
                           ),
                         ],
@@ -329,8 +357,12 @@ class ProfileScreen extends StatelessWidget {
                         onPressed: () => controller.logout(),
                         style: TextButton.styleFrom(
                           foregroundColor: theme.colorScheme.onSurface,
-                          backgroundColor: theme.colorScheme.surface.withOpacity(0.6),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          backgroundColor: theme.colorScheme.surface
+                              .withOpacity(0.6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),

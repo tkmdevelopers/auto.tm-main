@@ -594,6 +594,16 @@ class PostController extends GetxController {
   Future<void> startManagedUpload() async {
     if (isPosting.value) return;
 
+    // Guard: Don't start upload while video is compressing
+    if (isCompressingVideo.value) {
+      Get.snackbar(
+        'common_error'.tr,
+        'Please wait for video compression to complete'.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
     final manager = Get.find<UploadManager>();
     final active = manager.currentTask.value;
 
@@ -781,7 +791,27 @@ class PostController extends GetxController {
           );
         }
 
-        posts.assignAll(postDtos);
+        // Filter out posts that are currently being uploaded
+        // (prevents showing incomplete posts with no photos during upload)
+        final filteredPosts = postDtos.where((post) {
+          if (Get.isRegistered<UploadManager>()) {
+            final uploadMgr = Get.find<UploadManager>();
+            final currentlyUploading = uploadMgr.currentTask.value;
+            if (currentlyUploading != null &&
+                currentlyUploading.publishedPostId.value == post.uuid &&
+                !currentlyUploading.isCompleted.value) {
+              if (Get.isLogEnable) {
+                debugPrint(
+                  '[fetchMyPosts] Filtering out uploading post: ${post.uuid}',
+                );
+              }
+              return false; // Hide until upload completes
+            }
+          }
+          return true;
+        }).toList();
+
+        posts.assignAll(filteredPosts);
       } else if (response.statusCode == 406) {
         final refreshed = await refreshAccessToken();
         if (refreshed) {
@@ -821,13 +851,32 @@ class PostController extends GetxController {
       );
 
       if (response.statusCode == 200) {
+        // Remove from local list immediately for instant feedback
         posts.removeWhere((post) => post.uuid == uuid);
-        Get.snackbar('Success', 'Post deleted successfully'.tr);
+
+        Get.snackbar(
+          'Success',
+          'Post deleted successfully'.tr,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+
+        // Refresh list from server to ensure consistency
+        // (catches any other changes that might have happened)
+        await Future.delayed(const Duration(milliseconds: 500));
+        await fetchMyPosts();
       } else {
-        Get.snackbar('Error', 'Failed to delete post'.tr);
+        Get.snackbar(
+          'Error',
+          'Failed to delete post'.tr,
+          snackPosition: SnackPosition.BOTTOM,
+        );
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to delete post: $e'.tr);
+      Get.snackbar(
+        'Error',
+        'Failed to delete post: $e'.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
@@ -1140,6 +1189,13 @@ class PostController extends GetxController {
 
       if (video != null) {
         final file = File(video.path);
+
+        // Check video duration before proceeding
+        final isValid = await _validateVideoDuration(file);
+        if (!isValid) {
+          return; // Validation shows error message, just return
+        }
+
         selectedVideo.value = file;
         originalVideoBytes.value = await file.length();
 
@@ -1534,9 +1590,11 @@ class PostController extends GetxController {
     if (_navigatedToLogin) return;
     _navigatedToLogin = true;
     Future.microtask(() {
-      if (Get.currentRoute != '/login') {
+      if (Get.currentRoute != '/register') {
         try {
-          Get.offAllNamed('/login');
+          Get.offAllNamed(
+            '/register',
+          ); // Fixed: /login doesn't exist, use /register
         } catch (_) {
           // Optionally log
         }
@@ -2165,6 +2223,28 @@ class PostController extends GetxController {
   }
 
   // --- Brand / Model Name Resolution ---
+
+  /// Clear all cached data - called during logout to prevent stale data
+  void clearAllCachedData() {
+    // Clear brand/model lookup caches
+    _brandNameById.clear();
+    _modelNameById.clear();
+    _fetchedBrandModels.clear();
+
+    // Clear brands and models lists
+    brands.clear();
+    models.clear();
+
+    // Clear posts
+    posts.clear();
+
+    // Reset loading states
+    isLoading.value = false;
+
+    // Trigger rebuild for any observers
+    modelNameResolutionTick.value++;
+  }
+
   void _rebuildNameLookups() {
     for (final b in brands) {
       if (b.uuid.isNotEmpty && b.name.isNotEmpty) {
@@ -2211,16 +2291,48 @@ class PostController extends GetxController {
         !_fetchedBrandModels.contains(brandId)) {
       _fetchedBrandModels.add(brandId);
       Future.microtask(() async {
-        fetchModels(brandId, showLoading: false);
-        // Allow fetchModels to complete (heuristic small delay) before rebuilding
-        await Future.delayed(const Duration(milliseconds: 200));
-        _rebuildNameLookups();
+        await _fetchBrandModelsForResolution(brandId);
         if (_modelNameById.containsKey(modelId)) {
           modelNameResolutionTick.value++;
         }
       });
     }
     return modelId;
+  }
+
+  /// Fetch models for a specific brand and add to lookup map without replacing models list
+  Future<void> _fetchBrandModelsForResolution(String brandUuid) async {
+    if (brandUuid.isEmpty) return;
+
+    try {
+      final token = box.read('ACCESS_TOKEN');
+      final uri = Uri.parse('${ApiKey.getModelsKey}?filter=$brandUuid');
+
+      final resp = await http
+          .get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              if (token != null) 'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (resp.statusCode == 200) {
+        final decoded = jsonDecode(resp.body);
+        final List<ModelDto> parsed = _parseModelList(decoded);
+
+        // Add to lookup map WITHOUT replacing the models observable list
+        for (final model in parsed) {
+          if (model.uuid.isNotEmpty && model.name.isNotEmpty) {
+            _modelNameById[model.uuid] = model.name;
+          }
+        }
+      }
+    } catch (e) {
+      // Silent failure for background resolution
+      debugPrint('Failed to fetch models for brand $brandUuid: $e');
+    }
   }
 
   bool _looksLikeUuid(String s) => RegExp(r'^[0-9a-fA-F-]{16,}$').hasMatch(s);
@@ -2313,9 +2425,45 @@ class PostController extends GetxController {
 // Video compression helpers
 extension _VideoCompressionHelpers on PostController {
   static const int _minVideoCompressBytes = 25 * 1024 * 1024; // 25 MB
+  static const int _maxVideoDurationSeconds = 60; // 60 seconds limit
 
   bool _shouldCompressVideo(int sizeBytes) =>
       sizeBytes >= _minVideoCompressBytes;
+
+  /// Validates that video duration is within allowed limits (60 seconds)
+  /// Returns true if valid, false if invalid (shows error to user)
+  Future<bool> _validateVideoDuration(File videoFile) async {
+    try {
+      // Create temporary video player to check duration
+      final tempController = VideoPlayerController.file(videoFile);
+      await tempController.initialize();
+
+      final duration = tempController.value.duration;
+      final durationSeconds = duration.inSeconds;
+
+      // Cleanup
+      await tempController.dispose();
+
+      if (durationSeconds > _maxVideoDurationSeconds) {
+        Get.snackbar(
+          'Video too long'.tr,
+          'Maximum video length is $_maxVideoDurationSeconds seconds. Your video is $durationSeconds seconds.'
+              .tr,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Get.theme.colorScheme.errorContainer,
+          colorText: Get.theme.colorScheme.onErrorContainer,
+          duration: const Duration(seconds: 4),
+        );
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('Error validating video duration: $e');
+      // If we can't check duration, allow upload (don't block user)
+      return true;
+    }
+  }
 
   Future<void> _generateVideoThumbnail(String path) async {
     try {
@@ -2413,6 +2561,9 @@ extension _VideoCompressionHelpers on PostController {
     }
     _videoCompressSub = null;
     isCompressingVideo.value = false;
+
+    // Clean up partial/incomplete compressed file
+    _deleteCompressedFile();
   }
 
   void _deleteCompressedFile() {

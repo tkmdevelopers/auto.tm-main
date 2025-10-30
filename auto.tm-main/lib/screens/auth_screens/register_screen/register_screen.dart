@@ -10,9 +10,8 @@ import 'package:get/get.dart';
 class SRegisterPage extends StatelessWidget {
   SRegisterPage({super.key});
 
-  final RegisterPageController getController = Get.put(
-    RegisterPageController(),
-  );
+  // Use ensure pattern to prevent "Controller not found" errors
+  final RegisterPageController getController = RegisterPageController.ensure();
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +28,10 @@ class SRegisterPage extends StatelessWidget {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back_ios, color: theme.colorScheme.onSurface),
+            icon: Icon(
+              Icons.arrow_back_ios,
+              color: theme.colorScheme.onSurface,
+            ),
             onPressed: () => getController.goBack(),
           ),
         ),
@@ -83,7 +85,6 @@ class SRegisterPage extends StatelessWidget {
 
                 //! phone textfield
                 SLoginTextField(
-                  
                   isObscure: false,
                   controller: getController.phoneController,
                   focusNode: getController.phoneFocus,
@@ -111,23 +112,26 @@ class SRegisterPage extends StatelessWidget {
                     ),
                     Expanded(
                       child: GestureDetector(
-                        onTap:
-                            () => Get.bottomSheet(
-                              Container(height: height * 0.5),
-                              backgroundColor: AppColors.whiteColor,
-                              isDismissible: true,
-                              isScrollControlled: true,
-                            ),
+                        onTap: () => Get.bottomSheet(
+                          Container(height: height * 0.5),
+                          backgroundColor: AppColors.whiteColor,
+                          isDismissible: true,
+                          isScrollControlled: true,
+                        ),
                         child: RichText(
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           text: TextSpan(
                             text: 'Dowam etmek bilen men ',
-                            style: TextStyle(color: theme.colorScheme.onSurface),
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface,
+                            ),
                             children: [
                               TextSpan(
                                 text: 'gizlinlik syýasatyny ',
-                                style: TextStyle(color: theme.colorScheme.onSurface),
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                ),
                               ),
                               TextSpan(
                                 text: 'we ',
@@ -137,7 +141,9 @@ class SRegisterPage extends StatelessWidget {
                               ),
                               TextSpan(
                                 text: 'ulanmak düzgünlerini ',
-                                style: TextStyle(color: theme.colorScheme.onSurface),
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                ),
                               ),
                               TextSpan(
                                 text: 'kabul edýärin',
@@ -161,64 +167,60 @@ class SRegisterPage extends StatelessWidget {
                     title: "Register",
                     buttonColor:
                         (getController.isChecked.value &&
-                                getController.phoneController.text
-                                        .trim()
-                                        .length ==
-                                    8)
-                            ? AppColors.primaryColor
-                            : AppColors.textSecondaryColor,
+                            getController.phoneController.text.trim().length ==
+                                8)
+                        ? AppColors.primaryColor
+                        : AppColors.textSecondaryColor,
                     onTap:
                         getController.isChecked.value &&
-                                getController.phoneController.text
-                                        .trim()
-                                        .length ==
-                                    8
-                            ? () {
-                              getController.registerNewUser();
-                            }
-                            : () {
-                              Get.rawSnackbar(
-                                snackPosition: SnackPosition.TOP,
-                                backgroundColor: AppColors.whiteColor,
-                                borderRadius: 12,
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
+                            getController.phoneController.text.trim().length ==
+                                8
+                        ? () {
+                            getController.registerNewUser();
+                          }
+                        : () {
+                            Get.rawSnackbar(
+                              snackPosition: SnackPosition.TOP,
+                              backgroundColor: AppColors.whiteColor,
+                              borderRadius: 12,
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              padding: const EdgeInsets.all(16),
+                              duration: const Duration(milliseconds: 1800),
+                              animationDuration: const Duration(
+                                milliseconds: 250,
+                              ),
+                              boxShadows: [
+                                BoxShadow(
+                                  color: Colors.black.withAlpha(
+                                    (0.2 * 255).round(),
+                                  ),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
                                 ),
-                                padding: const EdgeInsets.all(16),
-                                duration: const Duration(milliseconds: 1800),
-                                animationDuration: const Duration(
-                                  milliseconds: 250,
-                                ),
-                                boxShadows: [
-                                  BoxShadow(
-                                    color: Colors.black.withAlpha(
-                                      (0.2 * 255).round(),
+                              ],
+                              messageText: Row(
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: AppColors.secondaryColor,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Accept Privacy Policy and enter your valid number to continue'
+                                        .tr,
+                                    style: TextStyle(
+                                      color: AppColors.textPrimaryColor,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
                                     ),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
                                   ),
                                 ],
-                                messageText: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.error_outline,
-                                      color: AppColors.secondaryColor,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Accept Privacy Policy and enter your valid number to continue'
-                                          .tr,
-                                      style: TextStyle(
-                                        color: AppColors.textPrimaryColor,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                              ),
+                            );
+                          },
                   ),
                 ),
                 SizedBox(height: height * 0.01),

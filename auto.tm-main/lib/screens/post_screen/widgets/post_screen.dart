@@ -127,9 +127,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
           final result = await Get.dialog<String>(
             AlertDialog(
               title: Text('post_upload_in_progress'.tr),
-              content: Text(
-                'post_upload_leaving_note'.tr,
-              ),
+              content: Text('post_upload_leaving_note'.tr),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -236,9 +234,9 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
               Obx(() {
                 final saved = postController.isFormSaved.value;
                 final dirty = postController.isDirty.value;
-        final text = !saved
-          ? 'post_unsaved_form'.tr
-          : (dirty ? 'post_unsaved_changes'.tr : 'post_all_saved'.tr);
+                final text = !saved
+                    ? 'post_unsaved_form'.tr
+                    : (dirty ? 'post_unsaved_changes'.tr : 'post_all_saved'.tr);
                 final color = dirty
                     ? theme.colorScheme.error
                     : (saved
@@ -649,9 +647,9 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                             )
                                           : const Icon(Icons.send_outlined),
                                       label: Text(
-                    postController.showOtpField.value
-                      ? 'post_verify_otp'.tr
-                      : 'post_send_otp'.tr,
+                                        postController.showOtpField.value
+                                            ? 'post_verify_otp'.tr
+                                            : 'post_send_otp'.tr,
                                       ),
                                       onPressed:
                                           postController.showOtpField.value
@@ -674,9 +672,15 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                           top: 8.0,
                                         ),
                                         child: Text(
-                                          'post_resend_code_in'.trParams({'seconds': postController.countdown.value.toString()}),
+                                          'post_resend_code_in'.trParams({
+                                            'seconds': postController
+                                                .countdown
+                                                .value
+                                                .toString(),
+                                          }),
                                           style: TextStyle(
-                                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                            color: theme.colorScheme.onSurface
+                                                .withValues(alpha: 0.6),
                                           ),
                                         ),
                                       );
@@ -761,11 +765,13 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                     {'value': 'Manual', 'displayKey': 'Manual'},
                                     {
                                       'value': 'CVT',
-                                      'displayKey': 'transmission_cvt', // localized display
+                                      'displayKey':
+                                          'transmission_cvt', // localized display
                                     },
                                     {
                                       'value': 'Dual-clutch',
-                                      'displayKey': 'transmission_dual_clutch', // localized display
+                                      'displayKey':
+                                          'transmission_dual_clutch', // localized display
                                     },
                                   ],
                                   postController.selectedTransmission,
@@ -946,6 +952,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
       ),
       child: Obx(() {
         final isPosting = postController.isPosting.value;
+        final isCompressing = postController.isCompressingVideo.value;
         final manager = Get.find<UploadManager>();
         final task = manager.currentTask.value;
         final locked = manager.isLocked.value;
@@ -971,10 +978,13 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                         postController.saveForm();
                         final nowComplete = postController.hasMinimumData;
                         final msg = nowComplete
-                            ? 'Form saved'.tr // post_form_saved
+                            ? 'Form saved'
+                                  .tr // post_form_saved
                             : (wasCompleteBefore
-                                ? 'Form saved (still complete)'.tr // post_form_saved_still_complete
-                                : 'Partial form saved'.tr); // post_partial_form_saved
+                                  ? 'Form saved (still complete)'
+                                        .tr // post_form_saved_still_complete
+                                  : 'Partial form saved'
+                                        .tr); // post_partial_form_saved
                         Get.rawSnackbar(
                           message: msg,
                           duration: const Duration(seconds: 2),
@@ -987,9 +997,9 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                 child: Obx(() {
                   final saved = postController.isFormSaved.value;
                   final dirty = postController.isDirty.value;
-          final label = saved
-            ? (dirty ? 'post_save_form'.tr : 'post_saved'.tr)
-            : 'post_save_form'.tr;
+                  final label = saved
+                      ? (dirty ? 'post_save_form'.tr : 'post_saved'.tr)
+                      : 'post_save_form'.tr;
                   return Text(label);
                 }),
               ),
@@ -998,16 +1008,19 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
             Expanded(
               flex: 3,
               child: FilledButton(
-                onPressed: isPosting
+                onPressed: (isPosting || isCompressing)
                     ? null
                     : () async {
                         setState(() {
                           _brandError =
                               postController.selectedBrandUuid.value.isEmpty
-                              ? 'Brand required'.tr // post_brand_required
+                              ? 'Brand required'
+                                    .tr // post_brand_required
                               : null;
-                          _modelError = postController.selectedModelUuid.value.isEmpty
-                              ? 'Model required'.tr // post_model_required
+                          _modelError =
+                              postController.selectedModelUuid.value.isEmpty
+                              ? 'Model required'
+                                    .tr // post_model_required
                               : null;
                         });
                         if (_brandError != null || _modelError != null) {
@@ -1021,7 +1034,8 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                         if (!postController.isPhoneVerified.value) {
                           Get.snackbar(
                             'Error',
-                            'You have to go through OTP verification.'.tr, // post_error_otp_required
+                            'You have to go through OTP verification.'
+                                .tr, // post_error_otp_required
                             snackPosition: SnackPosition.BOTTOM,
                           );
                           return;
@@ -1038,7 +1052,61 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: isPosting
+                child: isCompressing
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              value:
+                                  postController
+                                          .videoCompressionProgress
+                                          .value >
+                                      0
+                                  ? postController
+                                        .videoCompressionProgress
+                                        .value
+                                  : null,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                theme.colorScheme.surface,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Compressing...'.tr, // Shorter text
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (postController
+                                        .videoCompressionProgress
+                                        .value >
+                                    0)
+                                  Text(
+                                    '${(postController.videoCompressionProgress.value * 100).toStringAsFixed(0)}%',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: theme.colorScheme.surface
+                                          .withValues(alpha: 0.8),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      )
+                    : isPosting
                     ? Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -1064,7 +1132,8 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                       )
                     : (locked && failedOrCancelled
                           ? Text(
-                              'Resolve pending upload'.tr, // post_resolve_pending_upload
+                              'Resolve pending upload'
+                                  .tr, // post_resolve_pending_upload
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -1091,7 +1160,10 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                       postController.clearSavedForm();
                       postController.reset();
                       Get.rawSnackbar(
-                        message: hadSaved ? 'Form cleared'.tr : 'Form reset'.tr, // post_form_cleared / post_form_reset
+                        message: hadSaved
+                            ? 'Form cleared'.tr
+                            : 'Form reset'
+                                  .tr, // post_form_cleared / post_form_reset
                         duration: const Duration(seconds: 2),
                       );
                     }
@@ -1644,16 +1716,35 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
   Future<void> _showEnginePowerBottomSheet(BuildContext context) async {
     final theme = Theme.of(context);
     final sizes = <double>[];
-    // Common engine displacements from 0.6L to 10.0L
-    for (double v = 0.6; v <= 2.0; v += 0.1)
-      sizes.add(
-        double.parse(v.toStringAsFixed(1)),
-      ); // finer granularity for small engines
-    for (double v = 2.0; v <= 6.0; v += 0.2)
-      sizes.add(double.parse(v.toStringAsFixed(1))); // mid-range
-    for (double v = 6.5; v <= 10.0; v += 0.5)
-      sizes.add(double.parse(v.toStringAsFixed(1))); // large engines
-    // Deduplicate (2.0 added twice) then sort
+
+    // Optimal engine size ranges with appropriate increments
+    // Small engines (0.6L - 2.0L): 0.1L increments
+    for (double v = 0.6; v <= 2.0; v += 0.1) {
+      sizes.add(double.parse(v.toStringAsFixed(1)));
+    }
+
+    // Common mid-range engines (2.2L - 4.0L): 0.2L increments + critical sizes
+    // Adding 2.2, 2.4, 2.5, 2.7, 3.0, 3.2, 3.5 (CRUCIAL), 3.6, 3.8, 4.0
+    for (double v = 2.2; v <= 4.0; v += 0.2) {
+      sizes.add(double.parse(v.toStringAsFixed(1)));
+    }
+    // Add 3.5L explicitly (crucial size - many popular engines: Toyota, Nissan, Honda V6)
+    sizes.add(3.5);
+    // Add other popular sizes that might be missed
+    sizes.add(2.5);
+    sizes.add(3.0);
+
+    // Large engines (4.0L - 6.0L): 0.3L increments
+    for (double v = 4.3; v <= 6.0; v += 0.3) {
+      sizes.add(double.parse(v.toStringAsFixed(1)));
+    }
+
+    // Very large engines (6.2L - 10.0L): 0.5L increments
+    for (double v = 6.2; v <= 10.0; v += 0.5) {
+      sizes.add(double.parse(v.toStringAsFixed(1)));
+    }
+
+    // Deduplicate and sort
     final setSizes = sizes.toSet().toList()..sort();
     final selectedRaw = postController.enginePower.text;
     await Get.bottomSheet(

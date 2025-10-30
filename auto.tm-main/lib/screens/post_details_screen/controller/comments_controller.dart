@@ -13,7 +13,8 @@ class CommentsController extends GetxController {
   var userId = "".obs;
   var isSending = false.obs; // prevents duplicate rapid sends
 
-  var replyToComment = Rxn<Map<String, dynamic>>(); // Stores selected comment for reply
+  var replyToComment =
+      Rxn<Map<String, dynamic>>(); // Stores selected comment for reply
   // Track expansion state per parent comment uuid
   final threadExpanded = <String, bool>{}.obs;
 
@@ -35,8 +36,8 @@ class CommentsController extends GetxController {
     threadExpanded.refresh();
   }
 
-  bool isThreadExpanded(String parentUuid) => threadExpanded[parentUuid] ?? false;
-
+  bool isThreadExpanded(String parentUuid) =>
+      threadExpanded[parentUuid] ?? false;
 
   // Fetch comments for a specific post
   Future<void> fetchComments(String postId) async {
@@ -57,25 +58,29 @@ class CommentsController extends GetxController {
         final unique = <Map<String, dynamic>>[];
         for (final c in rawList) {
           final id = c['uuid']?.toString();
-            if (id != null) {
-              if (seen.add(id)) {
-                unique.add(c);
-              }
-            } else {
-              unique.add(c); // keep those without uuid just in case
+          if (id != null) {
+            if (seen.add(id)) {
+              unique.add(c);
             }
+          } else {
+            unique.add(c); // keep those without uuid just in case
+          }
         }
         comments.value = unique;
         // Initialize expansion state for any new parents (default collapsed if they have >0 replies)
         final replyMap = <String, int>{};
         for (final c in unique) {
           final parentId = c['replyTo'];
-            if (parentId != null) {
-              replyMap[parentId.toString()] = (replyMap[parentId.toString()] ?? 0) + 1;
-            }
+          if (parentId != null) {
+            replyMap[parentId.toString()] =
+                (replyMap[parentId.toString()] ?? 0) + 1;
+          }
         }
         for (final parentId in replyMap.keys) {
-          threadExpanded.putIfAbsent(parentId, () => false); // collapsed by default
+          threadExpanded.putIfAbsent(
+            parentId,
+            () => false,
+          ); // collapsed by default
         }
         // Debug: log if duplicates were removed
         final removed = rawList.length - unique.length;
@@ -83,10 +88,12 @@ class CommentsController extends GetxController {
           // ignore: avoid_print
           print('[COMMENTS] Removed $removed duplicate comment(s)');
         }
-        Future.delayed(Duration.zero, () { // Schedule for next frame
-        isLoading.value = false;
-      });
-      } if (response.statusCode == 406) {
+        Future.delayed(Duration.zero, () {
+          // Schedule for next frame
+          isLoading.value = false;
+        });
+      }
+      if (response.statusCode == 406) {
         await refreshAccessToken();
         // if (refreshed) {
         //   return fetchBlogs(); // Call fetchBlogs again only if refresh was successful
@@ -97,15 +104,17 @@ class CommentsController extends GetxController {
         //   // Get.offAllNamed('/login');
         // }
       } else {
-Future.delayed(Duration.zero, () { // Schedule for next frame
-        isLoading.value = false;
-      });
-      // isLoading.value = false;
+        Future.delayed(Duration.zero, () {
+          // Schedule for next frame
+          isLoading.value = false;
+        });
+        // isLoading.value = false;
       }
     } catch (e) {
-      Future.delayed(Duration.zero, () { // Schedule for next frame
-      isLoading.value = false;
-    });
+      Future.delayed(Duration.zero, () {
+        // Schedule for next frame
+        isLoading.value = false;
+      });
     } finally {
       // isLoading.value = false;
     }
@@ -117,13 +126,10 @@ Future.delayed(Duration.zero, () { // Schedule for next frame
     //   Get.toNamed('/profile'); // Navigate to Profile Screen if user is not logged in
     //   return;
     // }
-  if (message.isEmpty || isSending.value) return;
-  isSending.value = true;
+    if (message.isEmpty || isSending.value) return;
+    isSending.value = true;
 
-    final commentData = {
-      "postId": postId,
-      "message": message,
-    };
+    final commentData = {"postId": postId, "message": message};
 
     // If replying, attach `replyTo` UUID
     if (replyToComment.value != null) {
@@ -143,12 +149,14 @@ Future.delayed(Duration.zero, () { // Schedule for next frame
       if (response.statusCode == 200 || response.statusCode == 201) {
         final newComment = jsonDecode(response.body);
         final id = newComment['uuid']?.toString();
-        final exists = id != null && comments.any((c) => c['uuid']?.toString() == id);
+        final exists =
+            id != null && comments.any((c) => c['uuid']?.toString() == id);
         if (!exists) {
           comments.add(newComment); // Add new unique comment to list
         }
         replyToComment.value = null; // Clear reply after sending
-      } if (response.statusCode == 406) {
+      }
+      if (response.statusCode == 406) {
         await refreshAccessToken();
         // if (refreshed) {
         //   return fetchBlogs(); // Call fetchBlogs again only if refresh was successful
@@ -158,8 +166,7 @@ Future.delayed(Duration.zero, () { // Schedule for next frame
         //   // Optionally navigate to the login screen if refresh consistently fails
         //   // Get.offAllNamed('/login');
         // }
-      } else {
-      }
+      } else {}
     } catch (e) {
       // ignore error silently
     } finally {
@@ -175,7 +182,7 @@ Future.delayed(Duration.zero, () { // Schedule for next frame
         Uri.parse(ApiKey.refreshTokenKey),
         headers: {
           "Content-Type": "application/json",
-          'Authorization': 'Bearer $refreshToken'
+          'Authorization': 'Bearer $refreshToken',
         },
       );
 
@@ -189,8 +196,9 @@ Future.delayed(Duration.zero, () { // Schedule for next frame
         } else {
           return false; // Indicate failed refresh
         }
-      } if (response.statusCode == 406) {
-        Get.offAllNamed('/login');
+      }
+      if (response.statusCode == 406) {
+        Get.offAllNamed('/register'); // Fixed: /login doesn't exist
         return false; // Indicate failed refresh
       } else {
         return false; // Indicate failed refresh

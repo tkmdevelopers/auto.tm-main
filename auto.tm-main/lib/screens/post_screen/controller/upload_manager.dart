@@ -208,9 +208,9 @@ class UploadManager extends GetxService {
           if (payload != null && payload.startsWith('post:')) {
             final id = payload.substring(5);
             if (id.isNotEmpty) {
-              // Navigate if possible
+              // Navigate directly - PostDetailsScreen will handle status display
+              // User can see the post details and understand why it's not public yet
               if (Get.isRegistered<PostController>()) {
-                // Consistent navigation style across app
                 Get.to(() => PostDetailsScreen(), arguments: id);
               }
             }
@@ -543,6 +543,8 @@ class UploadManager extends GetxService {
         weight: wFinalize,
         phase: UploadPhase.finalizing,
         run: () async {
+          // Small delay to ensure backend has processed all associations
+          await Future.delayed(const Duration(milliseconds: 500));
           await controller.fetchMyPosts();
         },
         retry: 1,
@@ -582,7 +584,7 @@ class UploadManager extends GetxService {
     _update(
       task,
       overall: 1.0,
-  status: 'common_success'.tr,
+      status: 'common_success'.tr,
       phase: UploadPhase.complete,
     );
     _handleSuccess(controller, task);
@@ -615,7 +617,11 @@ class UploadManager extends GetxService {
         return true;
       } on _Cancelled {
         task.isCancelled.value = true;
-  _update(task, status: 'post_upload_cancelled_hint'.tr, phase: UploadPhase.cancelled);
+        _update(
+          task,
+          status: 'post_upload_cancelled_hint'.tr,
+          phase: UploadPhase.cancelled,
+        );
         _clearPersisted();
         return false;
       } catch (e) {
@@ -642,7 +648,11 @@ class UploadManager extends GetxService {
     task.status.value = 'Cancelled (needs retry)';
     task.error.value = 'User cancelled';
     _persist(task); // keep snapshot so user can retry or discard later
-    _update(task, status: 'post_upload_cancelled_hint'.tr, phase: UploadPhase.cancelled);
+    _update(
+      task,
+      status: 'post_upload_cancelled_hint'.tr,
+      phase: UploadPhase.cancelled,
+    );
     _showNotif(
       title: 'post_upload_cancelled_hint'.tr,
       body: 'post_upload_cancelled_hint'.tr,
@@ -681,7 +691,10 @@ class UploadManager extends GetxService {
     // Classify error
     task.failureType.value = _classifyFailure(task.error.value);
     _persist(task); // keep snapshot so user can retry
-  _showNotif(title: 'common_error'.tr, body: _friendlyError(task)); // body already user-friendly, could map to keys
+    _showNotif(
+      title: 'common_error'.tr,
+      body: _friendlyError(task),
+    ); // body already user-friendly, could map to keys
     // Do NOT auto-clear; user decides retry/discard
   }
 

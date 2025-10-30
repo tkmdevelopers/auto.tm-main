@@ -3,7 +3,7 @@ import 'package:auto_tm/screens/favorites_screen/favorites_screen.dart';
 import 'package:auto_tm/screens/home_screen/controller/home_controller.dart';
 import 'package:auto_tm/screens/home_screen/home_screen.dart';
 import 'package:auto_tm/screens/post_screen/post_check_page.dart';
-import 'package:auto_tm/screens/profile_screen/profile_check_page.dart';
+import 'package:auto_tm/screens/profile_screen/profile_screen.dart';
 import 'package:auto_tm/ui_components/images.dart';
 import 'package:auto_tm/services/token_service/token_service.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +12,7 @@ import 'package:get/get.dart';
 class BottomNavController extends GetxController {
   var selectedIndex = 0.obs;
   final tokenService = Get.put(TokenService());
-  
+
   void changeIndex(int index) {
     // Prevent reopening or navigating if already on the selected tab
     if (selectedIndex.value == index) {
@@ -30,6 +30,7 @@ class BottomNavController extends GetxController {
     if (index == 2 || index == 4) {
       final token = tokenService.getToken();
       if (token == null || token.isEmpty) {
+        // Navigate to register and don't change tab
         Get.toNamed('/register');
         return; // Don't change selectedIndex if redirecting
       }
@@ -40,20 +41,21 @@ class BottomNavController extends GetxController {
   }
 
   // New order: Home (0), Favourites (1), Post (2 - center), Blog (3), Profile (4)
+  // Removed ProfileCheckPage wrapper - ProfileScreen handles auth state internally
   final List<Widget> pages = [
     HomeScreen(),
     MyFavouritesScreen(),
     PostCheckPage(),
     BlogScreen(),
-    ProfileCheckPage(),
+    ProfileScreen(), // Direct use - cleaner, no flash
   ];
 
   final List selectedIcons = [
-    AppImages.searchF,     // home
-    AppImages.favouriteF,  // favourites
-    AppImages.postF,       // post (center)
-    AppImages.chatF,       // blog
-    AppImages.profileO,    // profile
+    AppImages.searchF, // home
+    AppImages.favouriteF, // favourites
+    AppImages.postF, // post (center)
+    AppImages.chatF, // blog
+    AppImages.profileO, // profile
   ];
   final List unSelectedIcons = [
     AppImages.searchO,

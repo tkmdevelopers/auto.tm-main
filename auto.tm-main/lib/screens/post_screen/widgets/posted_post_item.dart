@@ -198,16 +198,36 @@ class PostedPostItem extends StatelessWidget {
         if (status == true) {
           _navigateToPostDetails(uuid);
         } else {
+          // Show appropriate message based on status
+          final String title;
+          final String message;
+          final IconData icon;
+          final Color bgColor;
+
+          if (status == null) {
+            // Pending
+            title = 'post_pending_title'.tr;
+            message = 'post_pending_message'.tr;
+            icon = Icons.hourglass_top_rounded;
+            bgColor = Colors.orange;
+          } else {
+            // Declined
+            title = 'post_declined_title'.tr;
+            message = 'post_declined_message'.tr;
+            icon = Icons.cancel_outlined;
+            bgColor = Colors.red;
+          }
+
           Get.closeAllSnackbars();
           Get.snackbar(
-            'post_inactive_title'.tr,
-            'post_inactive_message'.tr,
+            title,
+            message,
             snackPosition: SnackPosition.BOTTOM,
             margin: const EdgeInsets.all(12),
-            backgroundColor: Colors.black.withValues(alpha: 0.85),
+            backgroundColor: bgColor.withValues(alpha: 0.9),
             colorText: Colors.white,
-            duration: const Duration(seconds: 3),
-            icon: const Icon(Icons.info_outline, color: Colors.white),
+            duration: const Duration(seconds: 4),
+            icon: Icon(icon, color: Colors.white),
           );
         }
       },
@@ -253,15 +273,34 @@ class PostedPostItem extends StatelessWidget {
             const SizedBox(height: 12),
             // Title
             Obx(() {
-              final resolvedBrand = postController.resolveBrandName(brand);
+              final resolvedBrand = postController.resolveBrandName(
+                (brandId?.isNotEmpty ?? false) ? brandId! : brand,
+              );
               final _ = postController.modelNameResolutionTick.value;
               final resolvedModel = postController.resolveModelWithBrand(
                 (modelId?.isNotEmpty ?? false) ? modelId! : model,
                 (brandId?.isNotEmpty ?? false) ? brandId! : brand,
               );
-              final title =
-                  "${(resolvedBrand.isEmpty ? 'Unknown' : resolvedBrand)} ${(resolvedModel.isEmpty ? '' : resolvedModel)}"
-                      .trim();
+
+              // Helper to check if string looks like UUID
+              bool looksLikeUuid(String s) =>
+                  s.length > 16 && RegExp(r'^[0-9a-fA-F-]{16,}$').hasMatch(s);
+
+              // Show loading indicator if still resolving (UUID not yet converted to name)
+              final brandText = resolvedBrand.isEmpty
+                  ? 'Unknown'
+                  : looksLikeUuid(resolvedBrand)
+                  ? '...'
+                  : resolvedBrand;
+
+              final modelText = resolvedModel.isEmpty
+                  ? ''
+                  : looksLikeUuid(resolvedModel)
+                  ? '...'
+                  : resolvedModel;
+
+              final title = "$brandText ${modelText}".trim();
+
               return Text(
                 title,
                 style: TextStyle(

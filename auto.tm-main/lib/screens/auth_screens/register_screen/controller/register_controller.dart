@@ -15,6 +15,18 @@ import 'package:get_storage/get_storage.dart';
 import 'package:auto_tm/utils/logger.dart';
 
 class RegisterPageController extends GetxController {
+  /// Ensures a RegisterPageController instance exists in GetX registry.
+  /// Reuses existing instance if found, creates new one if not.
+  /// This prevents "Controller not found" errors when navigating between auth screens.
+  static RegisterPageController ensure() {
+    if (Get.isRegistered<RegisterPageController>()) {
+      AppLogger.d('Reusing existing RegisterPageController');
+      return Get.find<RegisterPageController>();
+    }
+    AppLogger.d('Creating new RegisterPageController');
+    return Get.put(RegisterPageController(), permanent: false);
+  }
+
   final tokenService = Get.put(TokenService());
   final notificationService = Get.find<NotificationService>();
   final TextEditingController phoneController = TextEditingController();
@@ -47,25 +59,28 @@ class RegisterPageController extends GetxController {
   Future<void> requestOtp({bool navigateToOtp = false}) async {
     final sub = phoneController.text.trim();
     if (!PhoneFormatter.isValidSubscriber(sub)) {
-      Get.snackbar('Nädogry', 'Telefon belgi formaty ýalňyş');
+      _showError('Nädogry', 'Telefon belgi formaty ýalňyş');
       return;
     }
     try {
       isLoading.value = true;
+      AppLogger.d('Requesting OTP for subscriber: $sub');
+
       final result = await AuthService.to.sendOtp(sub);
+
       if (result.success) {
+        AppLogger.i('OTP sent successfully');
         if (navigateToOtp) {
           Get.toNamed('/checkOtp');
         } else {
-          Get.snackbar('Ugratdyk', 'OTP kody ugradyldy');
+          _showSuccess('Ugratdyk', 'OTP kody ugradyldy');
         }
       } else {
-        Get.snackbar(
-          'Ýalňyşlyk',
-          result.message ?? 'OTP ugratmak başa barmady',
-        );
+        AppLogger.w('OTP send failed: ${result.message}');
+        _showError('Ýalňyşlyk', result.message ?? 'OTP ugratmak başa barmady');
       }
-    } on SocketException {
+    } on SocketException catch (e) {
+      AppLogger.e('Network error during OTP request', error: e);
       Get.defaultDialog(
         title: 'Aragatnaşyk ýitdi',
         middleText:
@@ -75,6 +90,13 @@ class RegisterPageController extends GetxController {
           child: const Text('OK'),
         ),
       );
+    } catch (e, st) {
+      AppLogger.e(
+        'Unexpected error during OTP request',
+        error: e,
+        stackTrace: st,
+      );
+      _showError('Ýalňyşlyk', 'Näbelli ýalňyşlyk ýüze çykdy');
     } finally {
       isLoading.value = false;
     }
@@ -124,7 +146,8 @@ class RegisterPageController extends GetxController {
         storage.write('user_phone', sub); // store subscriber only
         // Ensure default location persisted for brand new users
         final existingLoc = storage.read('user_location');
-        if (existingLoc == null || (existingLoc is String && existingLoc.isEmpty)) {
+        if (existingLoc == null ||
+            (existingLoc is String && existingLoc.isEmpty)) {
           storage.write('user_location', ProfileController.defaultLocation);
         }
         // Notify custom handler first
@@ -132,40 +155,8 @@ class RegisterPageController extends GetxController {
           onVerified();
         }
         if (!_suppressInternalNavigation) {
-          // Strategy:
-          // 1. Close OTP screen.
-          // 2. Close Register (number input) screen.
-          // 3. Prefer returning specifically to captured origin route if named.
-          try {
-            int popAttempts = 0;
-            while (popAttempts < 2 && Get.key.currentState?.canPop() == true) {
-              NavigationUtils.closeGlobal();
-              popAttempts++;
-            }
-            // If we have a stored origin route name and we're not there yet, try to unwind further until matched.
-            if (_originRoute != null && _originRoute!.isNotEmpty) {
-              bool matched = false;
-              Get.until((route) {
-                final hit = route.settings.name == _originRoute;
-                if (hit) matched = true;
-                return hit;
-              });
-              if (!matched) {
-                // Could not match by name (perhaps anonymous routes). Fallback to navView if stack shallow.
-                if (Get.key.currentState?.canPop() != true) {
-                  Get.offAllNamed('/navView');
-                }
-              }
-            } else {
-              // No named origin captured. If nothing left to pop, ensure user lands somewhere valid.
-              if (Get.key.currentState?.canPop() != true) {
-                Get.offAllNamed('/navView');
-              }
-            }
-          } catch (_) {
-            // Safe fallback in case of any routing irregularities
-            Get.offAllNamed('/navView');
-          }
+          // Professional navigation strategy after successful OTP verification
+          _navigateAfterSuccess();
         }
       } else {
         Get.snackbar('Şowsuz', result.message ?? 'Registrasiýa başa barmady');
@@ -176,6 +167,90 @@ class RegisterPageController extends GetxController {
   }
 
   bool _suppressInternalNavigation = false;
+
+  /// Professional navigation after successful OTP verification.
+  /// Handles edge cases and ensures user lands at the right screen.
+  void _navigateAfterSuccess() {
+    try {
+      AppLogger.d('Starting post-OTP navigation. Origin: $_originRoute');
+
+      // Strategy 1: If we have a valid origin route, try to return there
+      if (_originRoute != null &&
+          _originRoute!.isNotEmpty &&
+          _originRoute != '/register' &&
+          _originRoute != '/checkOtp') {
+        AppLogger.d('Attempting to return to origin: $_originRoute');
+
+        try {
+          // Pop until we reach the origin route
+          bool foundOrigin = false;
+          Get.until((route) {
+            if (route.settings.name == _originRoute) {
+              foundOrigin = true;
+              return true;
+            }
+            return false;
+          });
+
+          if (foundOrigin) {
+            AppLogger.i('Successfully returned to origin route: $_originRoute');
+            return;
+          }
+        } catch (e) {
+          AppLogger.w('Failed to navigate to origin route: $e');
+        }
+      }
+
+      // Strategy 2: Safe pop - close OTP and Register screens
+      AppLogger.d('Using safe pop strategy');
+      int poppedCount = 0;
+      const maxPops = 3; // Prevent infinite loops
+
+      while (poppedCount < maxPops &&
+          (Get.key.currentState?.canPop() ?? false)) {
+        final currentRoute = Get.currentRoute;
+
+        // Stop if we've reached a main screen
+        if (currentRoute == '/navView' ||
+            currentRoute == '/home' ||
+            currentRoute == '/profile') {
+          AppLogger.d('Reached main screen: $currentRoute');
+          break;
+        }
+
+        NavigationUtils.closeGlobal();
+        poppedCount++;
+        AppLogger.d('Popped screen $poppedCount/$maxPops');
+      }
+
+      // Strategy 3: If nothing to pop, ensure we're at a valid screen
+      if (!(Get.key.currentState?.canPop() ?? false)) {
+        final currentRoute = Get.currentRoute;
+
+        // Only navigate if we're not already at a valid screen
+        if (currentRoute != '/navView' &&
+            currentRoute != '/home' &&
+            currentRoute != '/profile') {
+          AppLogger.d('No valid screen found, navigating to /navView');
+          Get.offAllNamed('/navView');
+        } else {
+          AppLogger.d('Already at valid screen: $currentRoute');
+        }
+      }
+
+      AppLogger.i('Post-OTP navigation completed');
+    } catch (e, st) {
+      // Fallback: Ensure user doesn't get stuck
+      AppLogger.e('Navigation error, using fallback', error: e, stackTrace: st);
+
+      try {
+        Get.offAllNamed('/navView');
+      } catch (fallbackError) {
+        AppLogger.e('Fallback navigation also failed', error: fallbackError);
+      }
+    }
+  }
+
   // Public API for external flows wanting control over navigation.
   Future<bool> verifyExternally() async {
     _suppressInternalNavigation = true;
@@ -232,5 +307,44 @@ class RegisterPageController extends GetxController {
 
     // Navigate back to the previous screen
     NavigationUtils.closeGlobal();
+  }
+
+  // ==================== UI Helper Methods ====================
+
+  void _showError(String title, String message) {
+    Get.snackbar(
+      title,
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Get.theme.colorScheme.error.withOpacity(0.9),
+      colorText: Get.theme.colorScheme.onError,
+      duration: const Duration(seconds: 3),
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+    );
+  }
+
+  void _showSuccess(String title, String message) {
+    Get.snackbar(
+      title,
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Get.theme.colorScheme.primary.withOpacity(0.9),
+      colorText: Get.theme.colorScheme.onPrimary,
+      duration: const Duration(seconds: 2),
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+    );
+  }
+
+  @override
+  void onClose() {
+    // Properly dispose of text controllers and focus nodes
+    phoneController.dispose();
+    otpController.dispose();
+    phoneFocus.dispose();
+    otpFocus.dispose();
+    AppLogger.d('RegisterPageController disposed');
+    super.onClose();
   }
 }

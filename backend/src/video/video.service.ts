@@ -118,6 +118,18 @@ export class VideoService {
 
   async uploadVideo(postId: string, file: Express.Multer.File) {
     try {
+      // Validate video duration before accepting upload
+      const duration = await this.getVideoDuration(file.path);
+      const maxDurationSeconds = 60;
+      
+      if (duration > maxDurationSeconds) {
+        // Delete the uploaded file since it's invalid
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+        throw new Error(`Video duration (${Math.round(duration)}s) exceeds maximum allowed duration (${maxDurationSeconds}s)`);
+      }
+      
       const normalizedPath = file.path.replace(/\\/g, '/');
       const uploadsIndex = normalizedPath.lastIndexOf('uploads');
       const relative = uploadsIndex !== -1
@@ -131,5 +143,18 @@ export class VideoService {
     } catch (error) {
       throw new Error(`Failed to upload video: ${error.message}`);
     }
+  }
+
+  private async getVideoDuration(filePath: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(filePath, (err, metadata) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        const duration = metadata.format.duration || 0;
+        resolve(duration);
+      });
+    });
   }
 }

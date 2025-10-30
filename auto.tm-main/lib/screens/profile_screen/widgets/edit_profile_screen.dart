@@ -18,9 +18,9 @@ class EditProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-  // Attempt a prefill from existing data sources (profile -> reactive -> storage).
-  // Do NOT force if we already populated once; late profile arrival listener in controller will re-run with force.
-  controller.ensureFormFieldPrefill();
+    // Attempt a prefill from existing data sources (profile -> reactive -> storage).
+    // Do NOT force if we already populated once; late profile arrival listener in controller will re-run with force.
+    controller.ensureFormFieldPrefill();
 
     // Trigger profile fetch+populate only if not already loaded or currently fetching.
     if (!(controller.hasLoadedProfile.value ||
@@ -39,23 +39,58 @@ class EditProfileScreen extends StatelessWidget {
         ),
         automaticallyImplyLeading: true,
         actions: [
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: theme.colorScheme.onSurface,
-              backgroundColor: theme.colorScheme.surface.withOpacity(0.6),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          Obx(
+            () => TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: controller.isLoadingN.value
+                    ? theme.colorScheme.onSurface.withOpacity(0.4)
+                    : theme.colorScheme.onSurface,
+                backgroundColor: controller.isLoadingN.value
+                    ? theme.colorScheme.surface.withOpacity(0.3)
+                    : theme.colorScheme.surface.withOpacity(0.6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-            ),
-            onPressed: controller.uploadProfile,
-            child: Text(
-              'Done'.tr,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface,
-              ),
+              onPressed: controller.isLoadingN.value
+                  ? null
+                  : controller.uploadProfile,
+              child: controller.isLoadingN.value
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          height: 14,
+                          width: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              theme.colorScheme.onSurface.withOpacity(0.6),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Saving...'.tr,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      'Done'.tr,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
             ),
           ),
         ],

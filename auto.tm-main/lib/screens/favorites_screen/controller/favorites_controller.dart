@@ -42,7 +42,9 @@ class FavoritesController extends GetxController {
   }
 
   Future<void> handleBrandSubscriptionToggle(
-      String brandUuid, bool newValue) async {
+    String brandUuid,
+    bool newValue,
+  ) async {
     if (newValue) {
       await subscribeToBrand(brandUuid);
     } else {
@@ -57,7 +59,7 @@ class FavoritesController extends GetxController {
     }
   }
 
-// Save Favorites to GetStorage
+  // Save Favorites to GetStorage
   void saveFavorites() {
     box.write('favorites', favorites.toList());
   }
@@ -75,7 +77,7 @@ class FavoritesController extends GetxController {
         headers: {
           // "Accept": "application/json",
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}'
+          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
         },
         body: json.encode({
           "uuids": favorites,
@@ -89,10 +91,12 @@ class FavoritesController extends GetxController {
         final data = json.decode(response.body);
 
         if (data is List) {
-          favoriteProducts
-              .assignAll(data.map((item) => Post.fromJson(item)).toList());
+          favoriteProducts.assignAll(
+            data.map((item) => Post.fromJson(item)).toList(),
+          );
         }
-      } if (response.statusCode == 406) {
+      }
+      if (response.statusCode == 406) {
         await refreshAccessToken();
       }
       // ignore: empty_catches
@@ -175,7 +179,7 @@ class FavoritesController extends GetxController {
         Uri.parse(ApiKey.refreshTokenKey),
         headers: {
           "Content-Type": "application/json",
-          'Authorization': 'Bearer $refreshToken'
+          'Authorization': 'Bearer $refreshToken',
         },
       );
 
@@ -188,8 +192,9 @@ class FavoritesController extends GetxController {
         } else {
           return false;
         }
-      } if (response.statusCode == 406) {
-        Get.offAllNamed('/login');
+      }
+      if (response.statusCode == 406) {
+        Get.offAllNamed('/register'); // Fixed: /login doesn't exist
         return false;
       } else {
         return false;
@@ -203,16 +208,14 @@ class FavoritesController extends GetxController {
 
   Future<void> subscribeToBrand(String brandUuid) async {
     try {
-      final Map<String, dynamic> requestdata = {
-        'uuid': brandUuid,
-      };
+      final Map<String, dynamic> requestdata = {'uuid': brandUuid};
 
       final response = await http.post(
         Uri.parse(ApiKey.subscribeToBrandKey),
         headers: {
           // "Accept": "application/json",
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}'
+          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
         },
         body: json.encode(requestdata),
       );
@@ -226,7 +229,8 @@ class FavoritesController extends GetxController {
         );
         addToSubscribes(brandUuid);
         fetchBrandSubscribes();
-      } if (response.statusCode == 406) {
+      }
+      if (response.statusCode == 406) {
         final refreshed = await refreshAccessToken();
         if (refreshed) {
           return subscribeToBrand(brandUuid);
@@ -245,19 +249,17 @@ class FavoritesController extends GetxController {
       isLoadingSubscribedBrands.value = false;
     }
   }
-  
+
   Future<void> unSubscribeFromBrand(String brandUuid) async {
     try {
-      final Map<String, dynamic> requestdata = {
-        'uuid': brandUuid,
-      };
+      final Map<String, dynamic> requestdata = {'uuid': brandUuid};
 
       final response = await http.post(
         Uri.parse(ApiKey.unsubscribeToBrandKey),
         headers: {
           // "Accept": "application/json",
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}'
+          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
         },
         body: json.encode(requestdata),
       );
@@ -271,11 +273,13 @@ class FavoritesController extends GetxController {
         );
         removeFromSubscribes(brandUuid);
         fetchBrandSubscribes(); // Обновляем список после удаления
-      } if (response.statusCode == 406) {
+      }
+      if (response.statusCode == 406) {
         final refreshed = await refreshAccessToken();
         if (refreshed) {
           return unSubscribeFromBrand(
-              brandUuid); // Call fetchBlogs again only if refresh was successful
+            brandUuid,
+          ); // Call fetchBlogs again only if refresh was successful
         } else {
           Get.snackbar(
             'common_error'.tr,
@@ -294,8 +298,9 @@ class FavoritesController extends GetxController {
 
   String formatDate(String isoDate) {
     DateTime dateTime = DateTime.parse(isoDate); // Convert string to DateTime
-    String formattedDate =
-        DateFormat('dd.MM.yyyy').format(dateTime); // Format to dd.MM.yyyy
+    String formattedDate = DateFormat(
+      'dd.MM.yyyy',
+    ).format(dateTime); // Format to dd.MM.yyyy
     return formattedDate;
   }
 
@@ -304,8 +309,9 @@ class FavoritesController extends GetxController {
   }
 
   Future<void> loadStoredSubscribes() async {
-    List<String>? storedHistory =
-        box.read<List>('brand_subscribes')?.cast<String>();
+    List<String>? storedHistory = box
+        .read<List>('brand_subscribes')
+        ?.cast<String>();
     if (storedHistory != null) {
       lastSubscribes.assignAll(storedHistory);
     }
@@ -332,25 +338,22 @@ class FavoritesController extends GetxController {
           "Content-Type": "application/json",
           // 'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}'
         },
-        body: json.encode({
-          "uuids": lastSubscribes,
-          'post' : true,
-        }),
+        body: json.encode({"uuids": lastSubscribes, 'post': true}),
       );
       if (response.statusCode == 200) {
         // final data = json.decode(response.body);
-          final jsonData = json.decode(response.body);
+        final jsonData = json.decode(response.body);
         subscribedBrands.value = await Isolate.run(() {
           return List<Map<String, dynamic>>.from(jsonData);
         });
         final List<Post> allPosts = [];
 
-      for (final brand in jsonData) {
-        final posts = brand['posts'] as List<dynamic>;
-        allPosts.addAll(posts.map((postJson) => Post.fromJson(postJson)));
-      }
+        for (final brand in jsonData) {
+          final posts = brand['posts'] as List<dynamic>;
+          allPosts.addAll(posts.map((postJson) => Post.fromJson(postJson)));
+        }
 
-      subscribeBrandPosts.value = allPosts;
+        subscribeBrandPosts.value = allPosts;
         // final posts =
         //     await Isolate.run(() => parsePostsFromBrands(response.body));
         // subscribeBrandPosts.value = posts;

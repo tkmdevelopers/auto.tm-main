@@ -28,21 +28,22 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
     } else {
       controller = Get.put(PostController());
     }
-    // Preload brand/model caches (don't await UI) then fetch posts.
-    controller
-        .ensureBrandModelCachesLoaded()
-        .whenComplete(() {
-          if (mounted) {
-            controller.fetchMyPosts();
-          }
-        })
-        .catchError((e) {
-          // If cache loading fails, still fetch posts (names may not resolve but posts will show)
-          debugPrint('Cache loading failed: $e');
-          if (mounted) {
-            controller.fetchMyPosts();
-          }
+
+    // Fetch posts immediately on screen open
+    // Load brand/model caches FIRST to prevent ID glitch
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (mounted) {
+        // Load caches first (for name resolution) - prevents showing IDs
+        await controller.ensureBrandModelCachesLoaded().catchError((e) {
+          debugPrint('Cache loading failed (non-critical): $e');
         });
+
+        // Fetch posts after cache is ready
+        if (mounted) {
+          controller.fetchMyPosts();
+        }
+      }
+    });
   }
 
   @override
@@ -53,118 +54,131 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // Adopt HomeScreen SliverAppBar concept
-            SliverAppBar(
-              backgroundColor: theme.colorScheme.surface.withOpacity(0.85),
-              surfaceTintColor: Colors.transparent,
-              pinned: true,
-              floating: true,
-              centerTitle: true,
-              elevation: 0,
-              automaticallyImplyLeading: false,
-              title: Text(
-                'post_my_posts'.tr,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
+        child: Obx(() {
+          // Disable pull-to-refresh when uploading to prevent state conflicts
+          final isUploading = Get.isRegistered<UploadManager>()
+              ? Get.find<UploadManager>().hasActive
+              : false;
+
+          return RefreshIndicator(
+            // Disable refresh during upload to maintain upload state integrity
+            onRefresh: isUploading
+                ? () async {
+                    // Show message instead of refreshing
+                    Get.rawSnackbar(
+                      message: 'Cannot refresh while upload is in progress'.tr,
+                      duration: const Duration(seconds: 2),
+                    );
+                  }
+                : controller.refreshData,
+            child: CustomScrollView(
+              slivers: [
+                // Adopt HomeScreen SliverAppBar concept
+                SliverAppBar(
+                  backgroundColor: theme.colorScheme.surface.withOpacity(0.85),
+                  surfaceTintColor: Colors.transparent,
+                  pinned: true,
+                  floating: true,
+                  centerTitle: true,
+                  elevation: 0,
+                  automaticallyImplyLeading: false,
+                  title: Text(
+                    'post_my_posts'.tr,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  actions: [
+                    // Add new post button
+                    Obx(() {
+                      final locked = Get.isRegistered<UploadManager>()
+                          ? Get.find<UploadManager>().isLocked.value
+                          : false;
+                      final Color bg = locked
+                          ? theme.colorScheme.onSurface.withValues(alpha: 0.25)
+                          : theme.colorScheme.primary;
+                      final Color fg = locked
+                          ? theme.colorScheme.onSurface.withValues(alpha: 0.5)
+                          : theme.colorScheme.onPrimary;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12.0, left: 4.0),
+                        child: SizedBox(
+                          height: 40,
+                          width: 40,
+                          child: Material(
+                            color: bg,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: locked
+                                  ? null
+                                  : () => Get.to(() => const PostScreen()),
+                              child: Icon(Icons.add, color: fg, size: 24),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
                 ),
-              ),
-              actions: [
+                const SliverToBoxAdapter(child: UploadStatusBanner()),
                 Obx(() {
-                  final locked = Get.isRegistered<UploadManager>()
-                      ? Get.find<UploadManager>().isLocked.value
-                      : false;
-                  final Color bg = locked
-                      ? theme.colorScheme.onSurface.withValues(alpha: 0.25)
-                      : theme.colorScheme.primary;
-                  final Color fg = locked
-                      ? theme.colorScheme.onSurface.withValues(alpha: 0.5)
-                      : theme.colorScheme.onPrimary;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    child: SizedBox(
-                      height: 40,
-                      width: 40,
-                      child: Material(
-                        color: bg,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
-                          onTap: locked
-                              ? null
-                              : () => Get.to(() => const PostScreen()),
-                          child: Icon(Icons.add, color: fg, size: 24),
-                        ),
+                  // Show shimmer only after 300ms delay (prevents flash on fast loads)
+                  if (controller.showShimmer.value) {
+                    return SliverPadding(
+                      padding: const EdgeInsets.all(16),
+                      sliver: SliverList.separated(
+                        itemCount: 5,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          return const PostedPostItemShimmer();
+                        },
                       ),
+                    );
+                  }
+                  if (controller.posts.isEmpty) {
+                    return SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _buildEmptyState(context),
+                    );
+                  }
+                  return SliverPadding(
+                    padding: const EdgeInsets.all(16),
+                    sliver: SliverList.separated(
+                      itemCount: controller.posts.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final post = controller.posts[index];
+                        // Pass raw IDs to widget - let it handle resolution in Obx
+                        return PostedPostItem(
+                          uuid: post.uuid,
+                          brand: post.brand,
+                          model: post.model,
+                          brandId: post.brandId,
+                          modelId: post.modelId,
+                          price: post.price,
+                          photoPath: post.photoPath,
+                          year: post.year,
+                          milleage: post.milleage,
+                          currency: post.currency,
+                          createdAt: post.createdAt,
+                          status: post.status,
+                        );
+                      },
                     ),
                   );
                 }),
+                // Removed bottom spacer (no floating button now)
               ],
             ),
-            const SliverToBoxAdapter(child: UploadStatusBanner()),
-            Obx(() {
-              // Show shimmer only after 300ms delay (prevents flash on fast loads)
-              if (controller.showShimmer.value) {
-                return SliverPadding(
-                  padding: const EdgeInsets.all(16),
-                  sliver: SliverList.separated(
-                    itemCount: 5,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 16),
-                    itemBuilder: (context, index) {
-                      return const PostedPostItemShimmer();
-                    },
-                  ),
-                );
-              }
-              if (controller.posts.isEmpty) {
-                return SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _buildEmptyState(context),
-                );
-              }
-              return SliverPadding(
-                padding: const EdgeInsets.all(16),
-                sliver: SliverList.separated(
-                  itemCount: controller.posts.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 16),
-                  itemBuilder: (context, index) {
-                    final post = controller.posts[index];
-                    final resolvedBrand = controller.resolveBrandName(
-                      post.brand,
-                    );
-                    // Attempt model resolution with brand context
-                    final resolvedModel = controller.resolveModelWithBrand(
-                      post.modelId.isNotEmpty ? post.modelId : post.model,
-                      post.brandId.isNotEmpty ? post.brandId : post.brand,
-                    );
-                    return PostedPostItem(
-                      uuid: post.uuid,
-                      brand: resolvedBrand,
-                      model: resolvedModel,
-                      brandId: post.brandId,
-                      modelId: post.modelId,
-                      price: post.price,
-                      photoPath: post.photoPath,
-                      year: post.year,
-                      milleage: post.milleage,
-                      currency: post.currency,
-                      createdAt: post.createdAt,
-                      status: post.status,
-                    );
-                  },
-                ),
-              );
-            }),
-            // Removed bottom spacer (no floating button now)
-          ],
-        ),
+          );
+        }),
       ),
     );
   }
