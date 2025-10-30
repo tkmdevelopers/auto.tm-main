@@ -7,10 +7,16 @@ class PostDetailsShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return SingleChildScrollView(
       child: Shimmer.fromColors(
-        baseColor: theme.colorScheme.primaryContainer,
-        highlightColor: Colors.grey[600]!,
+        baseColor: isDark
+            ? theme.colorScheme.surfaceVariant.withOpacity(0.3)
+            : theme.colorScheme.surfaceVariant.withOpacity(0.5),
+        highlightColor: isDark
+            ? theme.colorScheme.surfaceVariant.withOpacity(0.5)
+            : theme.colorScheme.surface.withOpacity(0.8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -18,7 +24,10 @@ class PostDetailsShimmer extends StatelessWidget {
             Container(
               height: 300,
               width: double.infinity,
-              color: Colors.white,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(0),
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -104,8 +113,8 @@ class PostDetailsShimmer extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(8),
       ),
     );
   }
