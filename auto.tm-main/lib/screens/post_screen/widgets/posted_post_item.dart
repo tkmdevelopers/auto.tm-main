@@ -19,9 +19,11 @@ class PostedPostItemShimmer extends StatelessWidget {
     final shimmerColor = theme.colorScheme.onSurface.withValues(alpha: 0.1);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12), // Match the actual post item padding
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(
+          16,
+        ), // Match the actual post item radius
         color: theme.colorScheme.surfaceContainer,
         border: Border.all(
           color: theme.colorScheme.outline.withValues(alpha: 0.1),
@@ -34,8 +36,9 @@ class PostedPostItemShimmer extends StatelessWidget {
           // Image placeholder
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            child: AspectRatio(
-              aspectRatio: 4 / 3,
+            child: SizedBox(
+              width: double.infinity,
+              height: 180, // Match the actual post item fixed height
               child: Container(color: shimmerColor),
             ),
           ),
@@ -125,6 +128,7 @@ class PostedPostItem extends StatelessWidget {
   final String currency;
   final String createdAt;
   final bool? status;
+  final int? commentCount; // Number of comments on this post
 
   PostedPostItem({
     super.key,
@@ -140,6 +144,7 @@ class PostedPostItem extends StatelessWidget {
     required this.currency,
     required this.createdAt,
     this.status,
+    this.commentCount,
   });
 
   // Use existing instance if available; do not create a new controller per item
@@ -149,14 +154,16 @@ class PostedPostItem extends StatelessWidget {
 
   Widget _buildNetworkOrPlaceholder(ThemeData theme) {
     // Use the new buildPostImage method for better handling
+    // Container is full width with 180px height
+    // BoxFit.cover will crop to fill the container regardless of source aspect ratio
     return CachedImageHelper.buildPostImage(
       photoPath: photoPath,
       baseUrl: ApiKey.ip,
-      width: 120, // Increased from 100 for better quality
-      height: 120,
-      fit: BoxFit.cover,
-      fallbackUrl: 'https://placehold.co/120x120/e0e0e0/666666?text=No+Image',
-      isThumbnail: true, // Use 4x multiplier for thumbnails (480×480 cached)
+      width: 320, // Approximate width for typical mobile screen
+      height: 180, // Fixed height matches container
+      fit: BoxFit.cover, // Covers the container, crops if needed
+      fallbackUrl: 'https://placehold.co/320x180/e0e0e0/666666?text=No+Image',
+      isThumbnail: true, // Use 4x multiplier for thumbnails (1280×720 cached)
     );
   }
 
@@ -210,9 +217,11 @@ class PostedPostItem extends StatelessWidget {
       // Uses surfaceContainer for a layered look, a subtle border, and softer shadows
       // to create a sense of depth without being distracting.
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(
+          12,
+        ), // Reduced from 16 for more compact look
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16), // Slightly smaller radius
           color: theme.colorScheme.surfaceContainer,
           border: Border.all(
             color: theme.colorScheme.outline.withValues(alpha: 0.1),
@@ -236,8 +245,9 @@ class PostedPostItem extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: AspectRatio(
-                    aspectRatio: 4 / 3,
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 180, // Fixed height - allows natural aspect ratio
                     child: _buildNetworkOrPlaceholder(theme),
                   ),
                 ),
@@ -245,81 +255,170 @@ class PostedPostItem extends StatelessWidget {
                 Positioned(top: 12, right: 12, child: _buildActionMenu(theme)),
               ],
             ),
-            const SizedBox(height: 12),
-            // Title
-            Obx(() {
-              final resolvedBrand = postController.resolveBrandName(
-                (brandId?.isNotEmpty ?? false) ? brandId! : brand,
-              );
-              final _ = postController.modelNameResolutionTick.value;
-              final resolvedModel = postController.resolveModelWithBrand(
-                (modelId?.isNotEmpty ?? false) ? modelId! : model,
-                (brandId?.isNotEmpty ?? false) ? brandId! : brand,
-              );
-
-              // Helper to check if string looks like UUID
-              bool looksLikeUuid(String s) =>
-                  s.length > 16 && RegExp(r'^[0-9a-fA-F-]{16,}$').hasMatch(s);
-
-              // Show loading indicator if still resolving (UUID not yet converted to name)
-              final brandText = resolvedBrand.isEmpty
-                  ? 'Unknown'
-                  : looksLikeUuid(resolvedBrand)
-                  ? '...'
-                  : resolvedBrand;
-
-              final modelText = resolvedModel.isEmpty
-                  ? ''
-                  : looksLikeUuid(resolvedModel)
-                  ? '...'
-                  : resolvedModel;
-
-              final title = "$brandText ${modelText}".trim();
-
-              return Text(
-                title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              );
-            }),
-            const SizedBox(height: 6),
-            // Price and Year / Mileage row
+            const SizedBox(height: 10),
+            // Two-column layout: Left (Brand, Model, Price, Date) | Right (Year, Mileage, Comments)
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Left column
                 Expanded(
-                  child: Text(
-                    "${price.toStringAsFixed(0)} $currency",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      // Green if accepted, otherwise default onSurface
-                      color: (s == true)
-                          ? acceptedGreen
-                          : theme.colorScheme.onSurface,
-                    ),
+                  flex: 6,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Brand and Model
+                      Obx(() {
+                        final resolvedBrand = postController.resolveBrandName(
+                          (brandId?.isNotEmpty ?? false) ? brandId! : brand,
+                        );
+                        final _ = postController.modelNameResolutionTick.value;
+                        final resolvedModel = postController
+                            .resolveModelWithBrand(
+                              (modelId?.isNotEmpty ?? false) ? modelId! : model,
+                              (brandId?.isNotEmpty ?? false) ? brandId! : brand,
+                            );
+
+                        // Helper to check if string looks like UUID
+                        bool looksLikeUuid(String s) =>
+                            s.length > 16 &&
+                            RegExp(r'^[0-9a-fA-F-]{16,}$').hasMatch(s);
+
+                        final brandText = resolvedBrand.isEmpty
+                            ? 'Unknown'
+                            : looksLikeUuid(resolvedBrand)
+                            ? '...'
+                            : resolvedBrand;
+
+                        final modelText = resolvedModel.isEmpty
+                            ? ''
+                            : looksLikeUuid(resolvedModel)
+                            ? '...'
+                            : resolvedModel;
+
+                        final title = "$brandText ${modelText}".trim();
+
+                        return Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        );
+                      }),
+                      const SizedBox(height: 8),
+                      // Price
+                      Text(
+                        "${price.toStringAsFixed(0)} $currency",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: (s == true)
+                              ? acceptedGreen
+                              : theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Posted date
+                      Text(
+                        'post_card_posted_at'.trParams({
+                          'date': _formatDate(createdAt),
+                        }),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w400,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.6,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                // Removed secondary year badge here to avoid duplicate year (year already shown in detail chips)
+                const SizedBox(width: 12),
+                // Right column
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Year
+                    _buildDetailChip(
+                      theme,
+                      svgAsset: AppImages.car,
+                      label: year.toStringAsFixed(0),
+                    ),
+                    const SizedBox(height: 8),
+                    // Mileage
+                    _buildDetailChip(
+                      theme,
+                      icon: Icons.speed_outlined,
+                      label: "${milleage.toStringAsFixed(0)} km",
+                    ),
+                    const SizedBox(height: 8),
+                    // Comments (if available)
+                    if (status == true &&
+                        commentCount != null &&
+                        commentCount! > 0)
+                      Container(
+                        constraints: const BoxConstraints(minWidth: 60),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Icon(
+                              Icons.chat_bubble_outline,
+                              size: 14,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$commentCount',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
               ],
-            ),
-            const SizedBox(height: 10),
-            _buildCarDetailsRow(theme),
-            const SizedBox(height: 10),
-            Text(
-              'post_card_posted_at'.trParams({'date': _formatDate(createdAt)}),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Builds a comment preview chip for accepted posts
+  Widget _buildCommentPreview(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.chat_bubble_outline,
+            size: 14,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            commentCount == 1 ? '1 comment' : '$commentCount comments',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -344,15 +443,15 @@ class PostedPostItem extends StatelessWidget {
 
   /// Builds the row of car details like year and mileage.
   Widget _buildCarDetailsRow(ThemeData theme) {
-    return Wrap(
-      spacing: 8.0,
-      runSpacing: 8.0,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end, // Align to the right
       children: [
         _buildDetailChip(
           theme,
           svgAsset: AppImages.car,
           label: year.toStringAsFixed(0),
         ),
+        const SizedBox(width: 8),
         _buildDetailChip(
           theme,
           icon: Icons.speed_outlined,

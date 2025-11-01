@@ -10,6 +10,7 @@ import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/images.dart';
 import 'package:auto_tm/ui_components/styles.dart';
+import 'package:auto_tm/utils/cached_image_helper.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
@@ -71,69 +72,28 @@ class PostDetailsScreen extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surface,
                               ),
-                              child: CarouselSlider(
-                                items: post.value?.photoPaths.map((photo) {
-                                  return GestureDetector(
-                                    onTap: () {
-                                      final photos = post.value?.photoPaths;
-                                      if (photos != null) {
-                                        Get.to(
-                                          () => ViewPostPhotoScreen(
-                                            imageUrls: photos,
-                                            currentIndex: detailsController
-                                                .currentPage
-                                                .value,
-                                            postUuid: uuid,
-                                            heroGroupTag:
-                                                uuid, // align hero tags with potential carousel usage
-                                          ),
-                                          transition: Transition.fadeIn,
-                                          curve: Curves.easeInOut,
-                                          duration: const Duration(
-                                            milliseconds: 220,
-                                          ),
-                                        );
-                                      }
-                                    },
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(
-                                        10,
-                                      ), // Optional: round corners
-                                      child: photo.isNotEmpty
-                                          ? Image.network(
-                                              '${ApiKey.ip}$photo',
-                                              // fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (
-                                                    context,
-                                                    error,
-                                                    stackTrace,
-                                                  ) => Image.asset(
-                                                    AppImages.defaultImagePng,
-                                                    height: 180,
-                                                    width: double.infinity,
-                                                    fit: BoxFit.fitWidth,
-                                                  ),
-                                            )
-                                          : Image.asset(
-                                              AppImages.defaultImagePng,
-                                              height: 180,
-                                              width: double.infinity,
-                                              // color: ,
-                                              fit: BoxFit.fitWidth,
-                                            ),
-                                    ),
+                              child: CarouselSlider.builder(
+                                itemCount: post.value?.photoPaths.length ?? 0,
+                                itemBuilder: (context, index, realIndex) {
+                                  final photo = post.value!.photoPaths[index];
+                                  final photos = post.value!.photoPaths;
+
+                                  return _CarouselImageItem(
+                                    key: PageStorageKey('carousel_img_$index'),
+                                    photo: photo,
+                                    photos: photos,
+                                    index: index,
+                                    uuid: uuid,
+                                    theme: theme,
                                   );
-                                }).toList(),
+                                },
                                 options: CarouselOptions(
                                   height: 300,
                                   enlargeCenterPage: false,
                                   enableInfiniteScroll: false,
                                   autoPlay: false,
-                                  aspectRatio: 16 / 9,
-                                  // clipBehavior: Clip.none,
-                                  // viewportFraction: 0.4,
                                   viewportFraction: 1,
+                                  disableCenter: true,
                                   onPageChanged: (index, reason) {
                                     detailsController.setCurrentPage(index);
                                   },
@@ -1080,4 +1040,85 @@ class _CharacteristicEntry {
     required this.label,
     required this.value,
   });
+}
+
+/// Carousel image item with AutomaticKeepAliveClientMixin
+/// to prevent disposal and re-initialization when scrolling
+class _CarouselImageItem extends StatefulWidget {
+  final String photo;
+  final List<String> photos;
+  final int index;
+  final String uuid;
+  final ThemeData theme;
+
+  const _CarouselImageItem({
+    super.key,
+    required this.photo,
+    required this.photos,
+    required this.index,
+    required this.uuid,
+    required this.theme,
+  });
+
+  @override
+  State<_CarouselImageItem> createState() => _CarouselImageItemState();
+}
+
+class _CarouselImageItemState extends State<_CarouselImageItem>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true; // Keep widget alive when off-screen!
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+
+    // Wrap in AutomaticKeepAlive to ensure proper keep-alive behavior
+    return AutomaticKeepAlive(
+      child: GestureDetector(
+        onTap: () {
+          if (widget.photos.isNotEmpty) {
+            Get.to(
+              () => ViewPostPhotoScreen(
+                imageUrls: widget.photos,
+                currentIndex: widget.index,
+                postUuid: widget.uuid,
+                heroGroupTag: widget.uuid,
+              ),
+              transition: Transition.fadeIn,
+              curve: Curves.easeInOut,
+              duration: const Duration(milliseconds: 220),
+            );
+          }
+        },
+        child: Container(
+          width: double.infinity,
+          height: 300,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: widget.theme.colorScheme.surfaceContainerHighest,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: widget.photo.isNotEmpty
+                ? CachedImageHelper.buildPostImage(
+                    photoPath: widget.photo,
+                    baseUrl: ApiKey.ip,
+                    width: 800,
+                    height: 600,
+                    fit: BoxFit.contain,
+                    isThumbnail: false,
+                    fallbackUrl: AppImages.defaultImagePng,
+                  )
+                : Image.asset(
+                    AppImages.defaultImagePng,
+                    height: 300,
+                    width: double.infinity,
+                    fit: BoxFit.contain,
+                  ),
+          ),
+        ),
+      ), // Close AutomaticKeepAlive
+    );
+  }
 }

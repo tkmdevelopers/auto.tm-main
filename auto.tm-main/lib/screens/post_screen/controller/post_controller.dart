@@ -73,6 +73,7 @@ class PostDto {
   final String createdAt;
   final bool?
   status; // nullable: null -> pending moderation, true -> active, false -> declined/inactive
+  final int? commentCount; // Number of comments on this post
 
   PostDto({
     required this.uuid,
@@ -87,6 +88,7 @@ class PostDto {
     required this.currency,
     required this.createdAt,
     required this.status,
+    this.commentCount,
   });
 
   factory PostDto.fromJson(Map<String, dynamic> json) => PostDto(
@@ -102,6 +104,8 @@ class PostDto {
     currency: json['currency']?.toString() ?? '',
     createdAt: json['createdAt']?.toString() ?? '',
     status: json.containsKey('status') ? json['status'] as bool? : null,
+    commentCount:
+        json['commentCount'] as int? ?? json['_count']?['comments'] as int?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -117,6 +121,7 @@ class PostDto {
     'currency': currency,
     'createdAt': createdAt,
     'status': status,
+    if (commentCount != null) 'commentCount': commentCount,
   };
 }
 

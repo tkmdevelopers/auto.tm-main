@@ -169,6 +169,7 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
                           currency: post.currency,
                           createdAt: post.createdAt,
                           status: post.status,
+                          commentCount: post.commentCount,
                         );
                       },
                     ),

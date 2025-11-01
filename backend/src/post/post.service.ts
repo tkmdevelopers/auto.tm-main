@@ -15,7 +15,7 @@ import {
 import { Request, Response } from 'express';
 import { stringToBoolean } from 'src/utils/functions/stringBool';
 import { FindOptions } from 'sequelize/types/model';
-import { and, Op, where } from 'sequelize';
+import { and, Op, where, Sequelize } from 'sequelize';
 import { Photo } from 'src/photo/photo.entity';
 import { Categories } from 'src/categories/categories.entity';
 import { v4 as uuidv4 } from 'uuid';
@@ -484,13 +484,43 @@ export class PostService {
 
   async me(req: Request | any, res: Response) {
     try {
+      // First, get the posts with their relations
       const posts = await this.posts.findAll({
         where: { userId: req?.uuid },
         include: ['photo', 'brand', 'model'],
         order: [['createdAt', 'DESC']], // Newest first
       });
-      if (!posts) throw new HttpException('Empty', HttpStatus.NOT_FOUND);
-      return res.status(200).json(posts);
+      
+      if (!posts || posts.length === 0) {
+        throw new HttpException('Empty', HttpStatus.NOT_FOUND);
+      }
+
+      // Get comment counts for all posts in a single query
+      const postUuids = posts.map((p) => p.uuid);
+      const commentCounts = await this.comments.findAll({
+        where: { postId: { [Op.in]: postUuids } },
+        attributes: [
+          'postId',
+          [Sequelize.fn('COUNT', Sequelize.col('uuid')), 'count'],
+        ],
+        group: ['postId'],
+        raw: true,
+      });
+
+      // Create a map of postId -> count for quick lookup
+      const countMap = new Map<string, number>();
+      commentCounts.forEach((item: any) => {
+        countMap.set(item.postId, parseInt(item.count, 10) || 0);
+      });
+
+      // Add comment counts to posts
+      const postsWithCommentCount = posts.map((post) => {
+        const postJson = post.toJSON();
+        postJson.commentCount = countMap.get(post.uuid) || 0;
+        return postJson;
+      });
+
+      return res.status(200).json(postsWithCommentCount);
     } catch (error) {
       if (!error.status) {
         console.log(error);

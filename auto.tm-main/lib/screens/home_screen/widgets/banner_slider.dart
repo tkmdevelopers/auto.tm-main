@@ -2,6 +2,7 @@ import 'package:auto_tm/global_controllers/theme_controller.dart';
 import 'package:auto_tm/screens/home_screen/controller/banner_controller.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/images.dart';
+import 'package:auto_tm/utils/cached_image_helper.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
@@ -156,45 +157,43 @@ class BannerSlider extends StatelessWidget {
                     ),
                     child: Stack(
                       children: [
-                        // Banner Image
+                        // Banner Image with Caching
                         ClipRRect(
                           borderRadius: BorderRadius.circular(20),
-                          child: Image.network(
-                            "${ApiKey.ip}${banner.imagePath}",
+                          child: CachedImageHelper.buildCachedImage(
+                            imageUrl: "${ApiKey.ip}${banner.imagePath}",
                             height: imageHeight,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            errorBuilder:
-                                (context, error, stackTrace) => Container(
-                                  height: imageHeight,
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        theme.colorScheme.primary.withOpacity(
-                                          0.1,
-                                        ),
-                                        theme.colorScheme.primaryContainer
-                                            .withOpacity(0.3),
-                                      ],
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: SvgPicture.asset(
-                                      AppImages.defaultImageSvg,
-                                      height: 60,
-                                      width: 60,
-                                      colorFilter: ColorFilter.mode(
-                                        theme.colorScheme.primary.withOpacity(
-                                          0.3,
-                                        ),
-                                        BlendMode.srcIn,
-                                      ),
-                                    ),
+                            cacheWidth: (imageHeight * 5)
+                                .toInt(), // 5x for high quality
+                            cacheHeight: (imageHeight * 5).toInt(),
+                            errorWidget: Container(
+                              height: imageHeight,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    theme.colorScheme.primary.withOpacity(0.1),
+                                    theme.colorScheme.primaryContainer
+                                        .withOpacity(0.3),
+                                  ],
+                                ),
+                              ),
+                              child: Center(
+                                child: SvgPicture.asset(
+                                  AppImages.defaultImageSvg,
+                                  height: 60,
+                                  width: 60,
+                                  colorFilter: ColorFilter.mode(
+                                    theme.colorScheme.primary.withOpacity(0.3),
+                                    BlendMode.srcIn,
                                   ),
                                 ),
+                              ),
+                            ),
                           ),
                         ),
 
@@ -292,34 +291,29 @@ class BannerSlider extends StatelessWidget {
                   width: controller.currentPage.value == index ? 24 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    gradient:
-                        controller.currentPage.value == index
-                            ? LinearGradient(
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                              colors: [
-                                theme.colorScheme.primary,
-                                theme.colorScheme.primary.withOpacity(0.8),
-                              ],
-                            )
-                            : null,
-                    color:
-                        controller.currentPage.value == index
-                            ? null
-                            : theme.colorScheme.outline.withOpacity(0.3),
+                    gradient: controller.currentPage.value == index
+                        ? LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              theme.colorScheme.primary,
+                              theme.colorScheme.primary.withOpacity(0.8),
+                            ],
+                          )
+                        : null,
+                    color: controller.currentPage.value == index
+                        ? null
+                        : theme.colorScheme.outline.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(4),
-                    boxShadow:
-                        controller.currentPage.value == index
-                            ? [
-                              BoxShadow(
-                                color: theme.colorScheme.primary.withOpacity(
-                                  0.3,
-                                ),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                            : null,
+                    boxShadow: controller.currentPage.value == index
+                        ? [
+                            BoxShadow(
+                              color: theme.colorScheme.primary.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
                   ),
                 );
               }),
