@@ -35,6 +35,28 @@ export class Photo extends Model {
   path: { small: string; medium: string; large: string } | null;
   @Column({allowNull:true})
   originalPath:string;
+
+  // Aspect ratio metadata fields
+  @ApiProperty({ description: 'Aspect ratio category (16:9, 4:3, 1:1, 9:16, 3:4, custom)', required: false })
+  @Column({ type: DataType.STRING(20), allowNull: true })
+  aspectRatio: string | null;
+
+  @ApiProperty({ description: 'Original image width in pixels', required: false })
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  width: number | null;
+
+  @ApiProperty({ description: 'Original image height in pixels', required: false })
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  height: number | null;
+
+  @ApiProperty({ description: 'Decimal aspect ratio (width/height)', required: false })
+  @Column({ type: DataType.FLOAT, allowNull: true })
+  ratio: number | null;
+
+  @ApiProperty({ description: 'Image orientation (landscape, portrait, square)', required: false })
+  @Column({ type: DataType.STRING(20), allowNull: true })
+  orientation: string | null;
+
   @ApiProperty()
   @BelongsTo(() => Banners, {
     foreignKey: 'bannerId',

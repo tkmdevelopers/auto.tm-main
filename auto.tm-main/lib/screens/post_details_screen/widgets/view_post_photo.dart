@@ -1,27 +1,29 @@
 import 'package:auto_tm/utils/cached_image_helper.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
+import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:auto_tm/screens/favorites_screen/controller/favorites_controller.dart';
 
-/// Fullscreen immersive media viewer for post images
+/// Fullscreen immersive media viewer for post images with adaptive aspect ratio support
 /// - Dark backdrop
 /// - Swipe between images (PageView)
 /// - Pinch zoom & pan (InteractiveViewer)
 /// - Overlay controls: Back & Favorite (matching post details style, no AppBar)
 /// - Optional hero animation continuity if caller wraps images with same tag pattern
+/// - Uses Photo metadata for optimal image quality and caching
 class ViewPostPhotoScreen extends StatefulWidget {
   const ViewPostPhotoScreen({
     super.key,
-    required this.imageUrls,
+    required this.photos,
     this.currentIndex = 0,
     this.heroGroupTag,
     this.postUuid,
   });
 
-  final List<String> imageUrls;
+  final List<Photo> photos;
   final int currentIndex;
   final String? heroGroupTag; // to align hero tags with carousel if provided
   final String? postUuid; // for favorite toggle
@@ -45,7 +47,7 @@ class _ViewPostPhotoScreenState extends State<ViewPostPhotoScreen>
     super.initState();
     _index = widget.currentIndex.clamp(
       0,
-      widget.imageUrls.isEmpty ? 0 : widget.imageUrls.length - 1,
+      widget.photos.isEmpty ? 0 : widget.photos.length - 1,
     );
     _pageController = PageController(initialPage: _index);
     // obtain favorites controller
@@ -63,7 +65,7 @@ class _ViewPostPhotoScreenState extends State<ViewPostPhotoScreen>
       }
     });
 
-    // ✅ FIX: Precache after widget is built (using post-frame callback)
+    // ✅ Precache after widget is built (using post-frame callback)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _precacheAdjacentImages(_index);
@@ -71,59 +73,128 @@ class _ViewPostPhotoScreenState extends State<ViewPostPhotoScreen>
     });
   }
 
-  /// Precache images adjacent to current index for smooth swiping
+  /// Precache images adjacent to current index for smooth swiping with adaptive dimensions
   void _precacheAdjacentImages(int currentIndex) {
-    if (widget.imageUrls.isEmpty || !mounted) return;
+    if (widget.photos.isEmpty || !mounted) return;
+
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
 
     // Precache next image
-    if (currentIndex + 1 < widget.imageUrls.length) {
-      final rawPath = widget.imageUrls[currentIndex + 1];
-      final normalizedPath = rawPath.replaceAll('\\', '/');
+    if (currentIndex + 1 < widget.photos.length) {
+      final photo = widget.photos[currentIndex + 1];
+      final rawPath = photo.bestPath;
 
-      final cleanBaseUrl = ApiKey.ip.endsWith('/')
-          ? ApiKey.ip.substring(0, ApiKey.ip.length - 1)
-          : ApiKey.ip;
-      final cleanPath = normalizedPath.startsWith('/')
-          ? normalizedPath
-          : '/$normalizedPath';
-      final nextImageUrl = '$cleanBaseUrl$cleanPath';
+      if (rawPath.isNotEmpty) {
+        final normalizedPath = rawPath.replaceAll('\\', '/');
 
-      // ✅ Use SAME dimensions as display (800x600 -> 4800x3600)
-      precacheImage(
-        CachedNetworkImageProvider(
-          nextImageUrl,
-          maxWidth: 4800,
-          maxHeight: 3600,
-        ),
-        context,
-      ).catchError((e) {
-        debugPrint('[ViewPostPhoto] ❌ Failed to precache next: $e');
-      });
+        final cleanBaseUrl = ApiKey.ip.endsWith('/')
+            ? ApiKey.ip.substring(0, ApiKey.ip.length - 1)
+            : ApiKey.ip;
+        final cleanPath = normalizedPath.startsWith('/')
+            ? normalizedPath
+            : '/$normalizedPath';
+        final nextImageUrl = '$cleanBaseUrl$cleanPath';
+
+        // Use adaptive dimensions based on photo's aspect ratio
+        final dimensions = _calculateAdaptiveDimensions(
+          photo,
+          screenWidth,
+          screenHeight,
+        );
+
+        precacheImage(
+          CachedNetworkImageProvider(
+            nextImageUrl,
+            maxWidth: dimensions.$1,
+            maxHeight: dimensions.$2,
+          ),
+          context,
+        ).catchError((e) {
+          debugPrint('[ViewPostPhoto] ❌ Failed to precache next: $e');
+        });
+      }
     }
 
     // Precache previous image
     if (currentIndex - 1 >= 0) {
-      final rawPath = widget.imageUrls[currentIndex - 1];
-      final normalizedPath = rawPath.replaceAll('\\', '/');
+      final photo = widget.photos[currentIndex - 1];
+      final rawPath = photo.bestPath;
 
-      final cleanBaseUrl = ApiKey.ip.endsWith('/')
-          ? ApiKey.ip.substring(0, ApiKey.ip.length - 1)
-          : ApiKey.ip;
-      final cleanPath = normalizedPath.startsWith('/')
-          ? normalizedPath
-          : '/$normalizedPath';
-      final prevImageUrl = '$cleanBaseUrl$cleanPath';
+      if (rawPath.isNotEmpty) {
+        final normalizedPath = rawPath.replaceAll('\\', '/');
 
-      precacheImage(
-        CachedNetworkImageProvider(
-          prevImageUrl,
-          maxWidth: 4800,
-          maxHeight: 3600,
-        ),
-        context,
-      ).catchError((e) {
-        debugPrint('[ViewPostPhoto] ❌ Failed to precache prev: $e');
-      });
+        final cleanBaseUrl = ApiKey.ip.endsWith('/')
+            ? ApiKey.ip.substring(0, ApiKey.ip.length - 1)
+            : ApiKey.ip;
+        final cleanPath = normalizedPath.startsWith('/')
+            ? normalizedPath
+            : '/$normalizedPath';
+        final prevImageUrl = '$cleanBaseUrl$cleanPath';
+
+        // Use adaptive dimensions based on photo's aspect ratio
+        final dimensions = _calculateAdaptiveDimensions(
+          photo,
+          screenWidth,
+          screenHeight,
+        );
+
+        precacheImage(
+          CachedNetworkImageProvider(
+            prevImageUrl,
+            maxWidth: dimensions.$1,
+            maxHeight: dimensions.$2,
+          ),
+          context,
+        ).catchError((e) {
+          debugPrint('[ViewPostPhoto] ❌ Failed to precache prev: $e');
+        });
+      }
+    }
+  }
+
+  /// Calculate adaptive cache dimensions based on photo metadata and screen size
+  (int, int) _calculateAdaptiveDimensions(
+    Photo photo,
+    double screenWidth,
+    double screenHeight,
+  ) {
+    // Use ratio from photo metadata if available
+    if (photo.ratio != null && photo.ratio! > 0) {
+      final ratio = photo.ratio!;
+      double width = screenWidth;
+      double height = width / ratio;
+
+      if (height > screenHeight) {
+        height = screenHeight;
+        width = height * ratio;
+      }
+
+      // 6x multiplier for high quality
+      return ((width * 6).toInt(), (height * 6).toInt());
+    }
+
+    // Fallback to aspect ratio string
+    switch (photo.aspectRatio) {
+      case '16:9':
+        return (screenWidth > screenHeight)
+            ? ((screenWidth * 6).toInt(), (screenWidth * 6 / 16 * 9).toInt())
+            : ((screenHeight * 16 / 9 * 6).toInt(), (screenHeight * 6).toInt());
+      case '4:3':
+        return (screenWidth > screenHeight)
+            ? ((screenWidth * 6).toInt(), (screenWidth * 6 / 4 * 3).toInt())
+            : ((screenHeight * 4 / 3 * 6).toInt(), (screenHeight * 6).toInt());
+      case '1:1':
+        final size = screenWidth < screenHeight ? screenWidth : screenHeight;
+        return ((size * 6).toInt(), (size * 6).toInt());
+      case '9:16':
+        return (screenWidth > screenHeight)
+            ? ((screenHeight * 9 / 16 * 6).toInt(), (screenHeight * 6).toInt())
+            : ((screenWidth * 6).toInt(), (screenWidth * 6 / 9 * 16).toInt());
+      default:
+        // Default 4:3 ratio
+        return ((screenWidth * 6).toInt(), (screenWidth * 6 / 4 * 3).toInt());
     }
   }
 
@@ -158,32 +229,36 @@ class _ViewPostPhotoScreenState extends State<ViewPostPhotoScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final images = widget.imageUrls;
+    final photos = widget.photos;
+    final screenSize = MediaQuery.of(context).size;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // PageView with zoomable images
+          // PageView with zoomable images using adaptive display
           PageView.builder(
             controller: _pageController,
-            itemCount: images.length,
+            itemCount: photos.length,
             onPageChanged: (i) {
               setState(() => _index = i);
-              // ✅ FIX: Precache adjacent when swiping
+              // Precache adjacent when swiping
               _precacheAdjacentImages(i);
             },
             physics: const BouncingScrollPhysics(),
             itemBuilder: (ctx, i) {
-              final path = images[i];
+              final photo = photos[i];
               final tc = _getTc(i);
               return _FullscreenImageItem(
                 key: PageStorageKey('fullscreen_img_$i'),
-                path: path,
+                photo: photo,
                 index: i,
                 heroTag:
-                    'post-media-${widget.heroGroupTag ?? hashCode}-$i-${path.hashCode}',
+                    'post-media-${widget.heroGroupTag ?? hashCode}-$i-${photo.bestPath.hashCode}',
                 onDoubleTap: () => _handleDoubleTap(i),
                 transformationController: tc,
+                screenWidth: screenSize.width,
+                screenHeight: screenSize.height,
               );
             },
           ),
@@ -227,7 +302,7 @@ class _ViewPostPhotoScreenState extends State<ViewPostPhotoScreen>
           ),
 
           // Bottom index indicator
-          if (images.length > 1)
+          if (photos.length > 1)
             Positioned(
               bottom: 28,
               left: 0,
@@ -244,7 +319,7 @@ class _ViewPostPhotoScreenState extends State<ViewPostPhotoScreen>
                     border: Border.all(color: Colors.white24, width: .8),
                   ),
                   child: Text(
-                    '${_index + 1} / ${images.length}',
+                    '${_index + 1} / ${photos.length}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -296,22 +371,26 @@ class _OverlayButton extends StatelessWidget {
   }
 }
 
-/// Fullscreen image item with AutomaticKeepAliveClientMixin
+/// Fullscreen image item with AutomaticKeepAliveClientMixin and adaptive aspect ratio
 /// to prevent disposal and keep images cached when swiping
 class _FullscreenImageItem extends StatefulWidget {
-  final String path;
+  final Photo photo;
   final int index;
   final String heroTag;
   final VoidCallback onDoubleTap;
   final TransformationController transformationController;
+  final double screenWidth;
+  final double screenHeight;
 
   const _FullscreenImageItem({
     super.key,
-    required this.path,
+    required this.photo,
     required this.index,
     required this.heroTag,
     required this.onDoubleTap,
     required this.transformationController,
+    required this.screenWidth,
+    required this.screenHeight,
   });
 
   @override
@@ -338,14 +417,14 @@ class _FullscreenImageItemState extends State<_FullscreenImageItem>
           child: Hero(
             tag: widget.heroTag,
             flightShuttleBuilder: (c, anim, dir, from, to) => to.widget,
-            // ✅ FIX: Use SAME dimensions as carousel (800x600 -> 4800x3600)
-            child: CachedImageHelper.buildPostImage(
-              photoPath: widget.path,
+            // ✅ Use adaptive dimensions based on photo aspect ratio metadata
+            child: CachedImageHelper.buildAdaptivePostImage(
+              photo: widget.photo,
               baseUrl: ApiKey.ip,
-              width: 800, // Same as carousel!
-              height: 600, // Same as carousel!
+              containerWidth: widget.screenWidth,
+              containerHeight: widget.screenHeight,
               fit: BoxFit.contain,
-              isThumbnail: false, // 6x multiplier = 4800x3600
+              isThumbnail: false, // 6x multiplier for high quality
             ),
           ),
         ),

@@ -16,6 +16,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:auto_tm/services/auth/auth_service.dart';
 
+import 'package:auto_tm/models/image_metadata.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_compress/video_compress.dart';
@@ -365,7 +366,7 @@ class PostController extends GetxController {
   final RxBool exchange = false.obs;
 
   // Media state
-  final RxList<Uint8List> selectedImages = <Uint8List>[].obs;
+  final RxList<ImageMetadata> selectedImages = <ImageMetadata>[].obs;
   final Rxn<File> selectedVideo = Rxn<File>();
   final Rxn<File> compressedVideoFile = Rxn<File>();
   final RxInt originalVideoBytes = 0.obs;
@@ -1035,6 +1036,17 @@ class PostController extends GetxController {
       _activeCancelToken = dio.CancelToken();
       int lastSent = 0;
 
+      // Extract metadata for this photo index
+      final aspectRatio = index < snap.photoAspectRatios.length
+          ? snap.photoAspectRatios[index]
+          : null;
+      final width = index < snap.photoWidths.length
+          ? snap.photoWidths[index]
+          : null;
+      final height = index < snap.photoHeights.length
+          ? snap.photoHeights[index]
+          : null;
+
       await client.post(
         ApiKey.postPhotosKey,
         data: dio.FormData.fromMap({
@@ -1044,6 +1056,10 @@ class PostController extends GetxController {
             filename:
                 'photo_${index + 1}_${DateTime.now().millisecondsSinceEpoch}.jpg',
           ),
+          // Send aspect ratio metadata
+          if (aspectRatio != null) 'aspectRatio': aspectRatio,
+          if (width != null) 'width': width.toString(),
+          if (height != null) 'height': height.toString(),
         }),
         cancelToken: _activeCancelToken,
         onSendProgress: (sent, total) {
@@ -1177,7 +1193,9 @@ class PostController extends GetxController {
 
       for (final image in images) {
         final bytes = await image.readAsBytes();
-        selectedImages.add(bytes);
+        // Analyze image and create metadata
+        final metadata = await ImageMetadata.fromBytes(bytes);
+        selectedImages.add(metadata);
       }
 
       _rebuildImageSigCache();
@@ -1914,11 +1932,16 @@ class PostController extends GetxController {
         'description': description.text,
         'phone': phoneController.text,
         'images': List.generate(selectedImages.length, (i) {
-          final bytes = selectedImages[i];
+          final metadata = selectedImages[i];
           final sig = i < _imageSigCache.length
               ? _imageSigCache[i]
-              : _ImageSig(bytes);
-          return {'b64': base64Encode(bytes), 'l': sig.length, 'h': sig.hash};
+              : _ImageSig(metadata.bytes);
+          return {
+            'b64': base64Encode(metadata.bytes),
+            'l': sig.length,
+            'h': sig.hash,
+            'metadata': metadata.toStorageJson(),
+          };
         }),
         'videoPath': selectedVideo.value?.path,
         'usedCompressed': usedCompressedVideo.value,
@@ -1939,7 +1962,7 @@ class PostController extends GetxController {
     } catch (_) {}
   }
 
-  void _loadSavedForm() {
+  Future<void> _loadSavedForm() async {
     try {
       final raw = box.read(_savedFormKey);
       if (raw is! Map) return;
@@ -1995,12 +2018,27 @@ class PostController extends GetxController {
       final imgList = (raw['images'] as List?)?.toList() ?? [];
       for (final entry in imgList) {
         if (entry is String) {
+          // Legacy format: just base64 string
           try {
-            selectedImages.add(base64Decode(entry));
+            final bytes = base64Decode(entry);
+            final metadata = await ImageMetadata.fromBytes(bytes);
+            selectedImages.add(metadata);
           } catch (_) {}
         } else if (entry is Map && entry['b64'] is String) {
           try {
-            selectedImages.add(base64Decode(entry['b64'] as String));
+            final bytes = base64Decode(entry['b64'] as String);
+            // Check if metadata exists in the saved data
+            if (entry['metadata'] is Map) {
+              final metadata = ImageMetadata.fromStorageJson(
+                entry['metadata'] as Map<String, dynamic>,
+                bytes,
+              );
+              selectedImages.add(metadata);
+            } else {
+              // Legacy format: re-analyze the image
+              final metadata = await ImageMetadata.fromBytes(bytes);
+              selectedImages.add(metadata);
+            }
           } catch (_) {}
         }
       }
@@ -2137,7 +2175,7 @@ class PostController extends GetxController {
     _recomputeDirty();
   }
 
-  void revertToSavedSnapshot() {
+  Future<void> revertToSavedSnapshot() async {
     try {
       final raw = box.read(_savedFormKey);
       if (raw is! Map) return;
@@ -2191,12 +2229,27 @@ class PostController extends GetxController {
       selectedImages.clear();
       for (final entry in imgList) {
         if (entry is String) {
+          // Legacy format: just base64 string
           try {
-            selectedImages.add(base64Decode(entry));
+            final bytes = base64Decode(entry);
+            final metadata = await ImageMetadata.fromBytes(bytes);
+            selectedImages.add(metadata);
           } catch (_) {}
         } else if (entry is Map && entry['b64'] is String) {
           try {
-            selectedImages.add(base64Decode(entry['b64'] as String));
+            final bytes = base64Decode(entry['b64'] as String);
+            // Check if metadata exists in the saved data
+            if (entry['metadata'] is Map) {
+              final metadata = ImageMetadata.fromStorageJson(
+                entry['metadata'] as Map<String, dynamic>,
+                bytes,
+              );
+              selectedImages.add(metadata);
+            } else {
+              // Legacy format: re-analyze the image
+              final metadata = await ImageMetadata.fromBytes(bytes);
+              selectedImages.add(metadata);
+            }
           } catch (_) {}
         }
       }
@@ -2224,7 +2277,7 @@ class PostController extends GetxController {
   }
 
   void _rebuildImageSigCache() {
-    _imageSigCache = selectedImages.map((e) => _ImageSig(e)).toList();
+    _imageSigCache = selectedImages.map((e) => _ImageSig(e.bytes)).toList();
   }
 
   // --- Brand / Model Name Resolution ---

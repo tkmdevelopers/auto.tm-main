@@ -7,6 +7,7 @@ import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
 import 'package:flutter/foundation.dart'; // for compute
 import 'package:get_storage/get_storage.dart';
 import 'package:uuid/uuid.dart';
+import 'package:auto_tm/models/image_metadata.dart';
 import 'post_controller.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../../global_controllers/connection_controller.dart';
@@ -33,6 +34,10 @@ class PostUploadSnapshot {
   final String modelName;
   final List<int> photoBytesLengths; // size metadata only
   final List<String> photoBase64; // persisted for retry after app restart
+  final List<String?>
+  photoAspectRatios; // aspect ratio per photo ('16:9', '4:3', etc.)
+  final List<int?> photoWidths; // original width per photo
+  final List<int?> photoHeights; // original height per photo
   final bool hasVideo;
   final File? videoFile; // reference only (not copied)
   final bool usedCompressedVideo;
@@ -49,6 +54,9 @@ class PostUploadSnapshot {
     required this.modelName,
     required this.photoBytesLengths,
     required this.photoBase64,
+    required this.photoAspectRatios,
+    required this.photoWidths,
+    required this.photoHeights,
     required this.hasVideo,
     required this.videoFile,
     required this.usedCompressedVideo,
@@ -67,6 +75,9 @@ class PostUploadSnapshot {
     'modelName': modelName,
     'photoBytesLengths': photoBytesLengths,
     'photoBase64': photoBase64,
+    'photoAspectRatios': photoAspectRatios,
+    'photoWidths': photoWidths,
+    'photoHeights': photoHeights,
     'hasVideo': hasVideo,
     'videoPath': videoFile?.path,
     'usedCompressedVideo': usedCompressedVideo,
@@ -78,33 +89,40 @@ class PostUploadSnapshot {
     'draftId': draftId,
   };
 
-  factory PostUploadSnapshot.fromMap(Map<String, dynamic> m) =>
-      PostUploadSnapshot(
-        brandUuid: m['brandUuid'] as String?,
-        modelUuid: m['modelUuid'] as String?,
-        brandName: (m['brandName'] ?? '') as String,
-        modelName: (m['modelName'] ?? '') as String,
-        photoBytesLengths:
-            (m['photoBytesLengths'] as List?)?.whereType<int>().toList() ?? [],
-        photoBase64:
-            (m['photoBase64'] as List?)?.whereType<String>().toList() ?? [],
-        hasVideo: m['hasVideo'] == true,
-        videoFile:
-            m['videoPath'] != null && (m['videoPath'] as String).isNotEmpty
-            ? File(m['videoPath'])
-            : null,
-        usedCompressedVideo: m['usedCompressedVideo'] == true,
-        compressedVideoFile:
-            m['compressedVideoPath'] != null &&
-                (m['compressedVideoPath'] as String).isNotEmpty
-            ? File(m['compressedVideoPath'])
-            : null,
-        originalVideoBytes: (m['originalVideoBytes'] ?? 0) as int,
-        compressedVideoBytes: (m['compressedVideoBytes'] ?? 0) as int,
-        price: (m['price'] ?? '') as String,
-        description: (m['description'] ?? '') as String,
-        draftId: (m['draftId'] ?? '') as String,
-      );
+  factory PostUploadSnapshot.fromMap(
+    Map<String, dynamic> m,
+  ) => PostUploadSnapshot(
+    brandUuid: m['brandUuid'] as String?,
+    modelUuid: m['modelUuid'] as String?,
+    brandName: (m['brandName'] ?? '') as String,
+    modelName: (m['modelName'] ?? '') as String,
+    photoBytesLengths:
+        (m['photoBytesLengths'] as List?)?.whereType<int>().toList() ?? [],
+    photoBase64:
+        (m['photoBase64'] as List?)?.whereType<String>().toList() ?? [],
+    photoAspectRatios:
+        (m['photoAspectRatios'] as List?)?.map((e) => e as String?).toList() ??
+        [],
+    photoWidths:
+        (m['photoWidths'] as List?)?.map((e) => e as int?).toList() ?? [],
+    photoHeights:
+        (m['photoHeights'] as List?)?.map((e) => e as int?).toList() ?? [],
+    hasVideo: m['hasVideo'] == true,
+    videoFile: m['videoPath'] != null && (m['videoPath'] as String).isNotEmpty
+        ? File(m['videoPath'])
+        : null,
+    usedCompressedVideo: m['usedCompressedVideo'] == true,
+    compressedVideoFile:
+        m['compressedVideoPath'] != null &&
+            (m['compressedVideoPath'] as String).isNotEmpty
+        ? File(m['compressedVideoPath'])
+        : null,
+    originalVideoBytes: (m['originalVideoBytes'] ?? 0) as int,
+    compressedVideoBytes: (m['compressedVideoBytes'] ?? 0) as int,
+    price: (m['price'] ?? '') as String,
+    description: (m['description'] ?? '') as String,
+    draftId: (m['draftId'] ?? '') as String,
+  );
 }
 
 class UploadTask {
@@ -253,11 +271,15 @@ class UploadManager extends GetxService {
     }
     // Copy image list locally to avoid mutation during async work
     final images = controller.selectedImages.toList();
-    final photoBytesLengths = images.map((e) => e.lengthInBytes).toList();
+    final photoBytesLengths = images.map((e) => e.bytes.lengthInBytes).toList();
+    // Extract aspect ratio metadata from ImageMetadata objects
+    final photoAspectRatios = images.map((e) => e.aspectRatioString).toList();
+    final photoWidths = images.map((e) => e.originalWidth).toList();
+    final photoHeights = images.map((e) => e.originalHeight).toList();
     // Encode in parallel isolates (compute) to keep main thread responsive
     Future<String> encode(Uint8List bytes) async => base64Encode(bytes);
     final photoBase64 = await Future.wait(
-      images.map((img) => compute(encode, img)),
+      images.map((img) => compute(encode, img.bytes)),
     );
     final snap = PostUploadSnapshot(
       brandUuid: controller.selectedBrandUuid.value.isEmpty
@@ -270,6 +292,9 @@ class UploadManager extends GetxService {
       modelName: controller.selectedModel.value,
       photoBytesLengths: photoBytesLengths,
       photoBase64: photoBase64,
+      photoAspectRatios: photoAspectRatios,
+      photoWidths: photoWidths,
+      photoHeights: photoHeights,
       hasVideo: controller.selectedVideo.value != null,
       videoFile: controller.selectedVideo.value,
       usedCompressedVideo: controller.usedCompressedVideo.value,
@@ -916,7 +941,7 @@ class UploadManager extends GetxService {
     if (!task.isFailed.value) return; // only failed tasks retried
 
     // Hydrate controller form/media if empty (best-effort)
-    _hydrateController(controller, task.snapshot);
+    await _hydrateController(controller, task.snapshot);
     // Reset task flags
     task.isFailed.value = false;
     task.error.value = null;
@@ -940,19 +965,26 @@ class UploadManager extends GetxService {
     _runWeightedPipeline(controller, task);
   }
 
-  void _hydrateController(PostController c, PostUploadSnapshot snap) {
+  Future<void> _hydrateController(
+    PostController c,
+    PostUploadSnapshot snap,
+  ) async {
     // Only populate if controller has no images loaded (avoid overwriting user edits)
     if (c.selectedImages.isEmpty && snap.photoBase64.isNotEmpty) {
       try {
-        c.selectedImages.assignAll(
-          snap.photoBase64.map((b64) {
+        // Convert base64 back to ImageMetadata
+        final metadataList = await Future.wait(
+          snap.photoBase64.map((b64) async {
             try {
-              return base64Decode(b64);
+              final bytes = base64Decode(b64);
+              return await ImageMetadata.fromBytes(bytes);
             } catch (_) {
-              return Uint8List(0); // fallback empty
+              // Return a default metadata on error
+              return ImageMetadata.fromBytes(Uint8List(0));
             }
-          }).toList(),
+          }),
         );
+        c.selectedImages.assignAll(metadataList);
       } catch (_) {}
     }
     if (c.selectedVideo.value == null &&

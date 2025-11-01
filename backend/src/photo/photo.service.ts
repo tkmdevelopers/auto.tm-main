@@ -26,6 +26,29 @@ export class PhotoService {
   constructor(@Inject('PHOTO_REPOSITORY') private photo: typeof Photo) {}
 
   /**
+   * Extract and validate aspect ratio metadata from request body
+   * @param body Request body that may contain metadata
+   * @returns Validated metadata object with null values for missing fields
+   */
+  private extractMetadata(body: any): {
+    aspectRatio: string | null;
+    width: number | null;
+    height: number | null;
+    ratio: number | null;
+    orientation: string | null;
+  } {
+    const metadata = body?.metadata || {};
+    
+    return {
+      aspectRatio: metadata.aspectRatio || null,
+      width: metadata.width ? parseInt(metadata.width, 10) : null,
+      height: metadata.height ? parseInt(metadata.height, 10) : null,
+      ratio: metadata.ratio ? parseFloat(metadata.ratio) : null,
+      orientation: metadata.orientation || null,
+    };
+  }
+
+  /**
    * Convert a filesystem path (possibly with backslashes, relative, or absolute) to a
    * public web path served under /uploads. Always returns a string beginning with '/uploads/'.
    */
@@ -114,10 +137,14 @@ export class PhotoService {
           paths[size.name] = this.toPublicPath(resizedFilePath);
         }
 
+        // Extract aspect ratio metadata from request body if provided
+        const metadata = this.extractMetadata(body);
+        
         await this.photo.create({
           uuid: uuid,
           path: paths,
           originalPath,
+          ...metadata,
         });
 
         await PhotoPosts.create({
@@ -449,6 +476,9 @@ export class PhotoService {
         paths[size.name] = resizedFilePath;
       }
 
+      // Extract aspect ratio metadata from request body
+      const metadata = this.extractMetadata(body);
+
       // Try to find an existing user photo row
       const existing = await this.photo.findOne({ where: { userId } });
       if (!existing) {
@@ -457,12 +487,13 @@ export class PhotoService {
           path: paths,
           originalPath,
           userId,
+          ...metadata,
         } as any);
         return res
           .status(200)
           .json({ message: 'OK', paths: created.path, created: true });
       } else {
-        await existing.update({ path: paths, originalPath });
+        await existing.update({ path: paths, originalPath, ...metadata });
         return res
           .status(200)
           .json({ message: 'OK', paths: existing.path, updated: true });
@@ -551,10 +582,14 @@ export class PhotoService {
         paths[size.name] = resizedFilePath;
       }
 
+      // Extract aspect ratio metadata from request body
+      const metadata = this.extractMetadata(body);
+
       const newPhoto = await this.photo.create({
         uuid: uuidv4(),
         originalPath,
         path: paths,
+        ...metadata,
       });
 
       return res.status(200).json({ message: 'OK', uuid: newPhoto });
@@ -626,11 +661,15 @@ export class PhotoService {
         paths[size.name] = resizedFilePath;
       }
 
+      // Extract aspect ratio metadata from request body
+      const metadata = this.extractMetadata(body);
+
       const newPhoto = await this.photo.create({
         uuid: uuidv4(),
         originalPath,
         path: paths,
         brandsId: body?.uuid,
+        ...metadata,
       });
 
       return res.status(200).json({ message: 'OK', uuid: newPhoto });
@@ -702,11 +741,15 @@ export class PhotoService {
         paths[size.name] = resizedFilePath;
       }
 
+      // Extract aspect ratio metadata from request body
+      const metadata = this.extractMetadata(body);
+
       const newPhoto = await this.photo.create({
         uuid: uuidv4(),
         originalPath,
         path: paths,
         modelsId: body?.uuid,
+        ...metadata,
       });
 
       return res.status(200).json({ message: 'OK', uuid: newPhoto });

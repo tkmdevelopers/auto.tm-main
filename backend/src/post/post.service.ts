@@ -117,6 +117,11 @@ export class PostService {
       return res.status(error.status).json(error);
     }
   }
+  /**
+   * Retrieve all posts with filtering, sorting, and pagination
+   * When photo=true, includes photo entities with aspect ratio metadata
+   * (aspectRatio, width, height, ratio, orientation) automatically
+   */
   async findAll(query: FindAllPosts, req: Request, res: Response) {
     try {
       const {
@@ -231,6 +236,11 @@ export class PostService {
       return res.status(error.status).json(error);
     }
   }
+  /**
+   * Retrieve multiple posts by UUID list
+   * When photo=true, includes photo entities with aspect ratio metadata
+   * Useful for batch operations and list views
+   */
   async listOfProducts(req, res, body: listPost) {
     try {
       const { brand, model, uuids, photo } = body;
@@ -262,6 +272,11 @@ export class PostService {
     }
   }
 
+  /**
+   * Retrieve a single post by UUID
+   * When photo=true, includes photo entities with full aspect ratio metadata
+   * (aspectRatio, width, height, ratio, orientation) for adaptive display
+   */
   async findOne(
     query: FindOnePost,
     req: Request,
@@ -326,6 +341,12 @@ export class PostService {
     }
   }
 
+  /**
+   * Create a new post
+   * Note: Photos are uploaded separately via PhotoService.uploadPhoto()
+   * Photo aspect ratio metadata (aspectRatio, width, height, ratio, orientation)
+   * is handled by the PhotoService and automatically included when retrieving posts
+   */
   async create(body: CreatePost, req: Request | any, res: Response) {
     try {
       const {

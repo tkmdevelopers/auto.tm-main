@@ -112,10 +112,8 @@ class PostedPostItemShimmer extends StatelessWidget {
 
 /// A widget that displays a posted car item with a clean, modern, and responsive design,
 /// inspired by Apple's design guidelines. It emphasizes clarity, depth, and a strong
-/// visual hierarchy.
+/// visual hierarchy. Uses adaptive thumbnail sizing for optimal display.
 class PostedPostItem extends StatelessWidget {
-  // Keep track of which UUIDs have already logged an empty photoPath to avoid log spam.
-  static final Set<String> _loggedEmptyPhoto = <String>{};
   final String uuid;
   final String model;
   final String brand;
@@ -152,18 +150,28 @@ class PostedPostItem extends StatelessWidget {
       ? Get.find<PostController>()
       : Get.put(PostController());
 
-  Widget _buildNetworkOrPlaceholder(ThemeData theme) {
-    // Use the new buildPostImage method for better handling
-    // Container is full width with 180px height
+  Widget _buildNetworkOrPlaceholder(ThemeData theme, BuildContext context) {
+    // Get screen width for adaptive sizing
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // Calculate optimal thumbnail dimensions
+    // Assuming typical grid with padding: screenWidth - 32px (16px each side)
+    final containerWidth = screenWidth - 32;
+    const containerHeight = 180.0;
+
+    // Use buildPostImage with adaptive container dimensions
     // BoxFit.cover will crop to fill the container regardless of source aspect ratio
+    // The image helper will cache at appropriate dimensions (4x multiplier for thumbnails)
     return CachedImageHelper.buildPostImage(
       photoPath: photoPath,
       baseUrl: ApiKey.ip,
-      width: 320, // Approximate width for typical mobile screen
-      height: 180, // Fixed height matches container
+      width: containerWidth, // Actual container width
+      height: containerHeight, // Fixed height matches container
       fit: BoxFit.cover, // Covers the container, crops if needed
-      fallbackUrl: 'https://placehold.co/320x180/e0e0e0/666666?text=No+Image',
-      isThumbnail: true, // Use 4x multiplier for thumbnails (1280×720 cached)
+      fallbackUrl:
+          'https://placehold.co/${containerWidth.toInt()}x${containerHeight.toInt()}/e0e0e0/666666?text=No+Image',
+      isThumbnail:
+          true, // Use 4x multiplier for thumbnails (adaptive cached dimensions)
     );
   }
 
@@ -248,7 +256,7 @@ class PostedPostItem extends StatelessWidget {
                   child: SizedBox(
                     width: double.infinity,
                     height: 180, // Fixed height - allows natural aspect ratio
-                    child: _buildNetworkOrPlaceholder(theme),
+                    child: _buildNetworkOrPlaceholder(theme, context),
                   ),
                 ),
                 Positioned(top: 12, left: 12, child: _buildStatusBadge(theme)),
@@ -390,74 +398,6 @@ class PostedPostItem extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  /// Builds a comment preview chip for accepted posts
-  Widget _buildCommentPreview(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.chat_bubble_outline,
-            size: 14,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            commentCount == 1 ? '1 comment' : '$commentCount comments',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Builds a placeholder for the car image.
-  Widget _buildPlaceholderImage(ThemeData theme) {
-    return Container(
-      color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
-      child: Center(
-        child: SvgPicture.asset(
-          AppImages.defaultImageSvg,
-          height: 40,
-          width: 40,
-          colorFilter: ColorFilter.mode(
-            theme.colorScheme.onSurface.withValues(alpha: 0.3),
-            BlendMode.srcIn,
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Builds the row of car details like year and mileage.
-  Widget _buildCarDetailsRow(ThemeData theme) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end, // Align to the right
-      children: [
-        _buildDetailChip(
-          theme,
-          svgAsset: AppImages.car,
-          label: year.toStringAsFixed(0),
-        ),
-        const SizedBox(width: 8),
-        _buildDetailChip(
-          theme,
-          icon: Icons.speed_outlined,
-          label: "${milleage.toStringAsFixed(0)} km",
-        ),
-      ],
     );
   }
 

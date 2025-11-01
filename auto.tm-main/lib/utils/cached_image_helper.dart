@@ -2,8 +2,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
 
 /// Optimized cached network image with automatic memory management
+/// Now with adaptive aspect ratio support for optimal display
 class CachedImageHelper {
   /// Maximum cache size in MB (default 100MB)
   static const int maxCacheSizeMB = 100;
@@ -266,6 +268,188 @@ class CachedImageHelper {
         ],
       ),
     );
+  }
+
+  /// Build adaptive post image using aspect ratio metadata
+  /// Automatically calculates optimal dimensions based on photo metadata
+  /// Includes aspect ratio in cache key for consistency
+  static Widget buildAdaptivePostImage({
+    required Photo photo,
+    required String baseUrl,
+    required double containerWidth,
+    required double containerHeight,
+    BoxFit fit = BoxFit.cover,
+    bool isThumbnail = false,
+  }) {
+    // Get the best available photo path
+    final photoPath = photo.bestPath;
+
+    if (photoPath.isEmpty) {
+      debugPrint('[CachedImageHelper] 📷 No photo path in Photo object');
+      return _buildErrorWidget(containerWidth, containerHeight);
+    }
+
+    // Calculate optimal dimensions based on aspect ratio metadata
+    final dimensions = _calculateOptimalDimensions(
+      photo: photo,
+      containerWidth: containerWidth,
+      containerHeight: containerHeight,
+    );
+
+    // Construct URL with aspect ratio consideration
+    final imageUrl = _constructImageUrl(photoPath, baseUrl);
+
+    debugPrint(
+      '[CachedImageHelper] 🎯 Adaptive image: ${photo.aspectRatio ?? 'unknown'} '
+      '(${photo.width}x${photo.height}) → ${dimensions.width.toInt()}x${dimensions.height.toInt()}',
+    );
+
+    // Choose multiplier based on usage
+    final multiplier = isThumbnail ? 4 : 6;
+
+    return buildCachedImage(
+      imageUrl: imageUrl,
+      width: containerWidth,
+      height: containerHeight,
+      fit: fit,
+      cacheWidth: (dimensions.width * multiplier).toInt(),
+      cacheHeight: (dimensions.height * multiplier).toInt(),
+    );
+  }
+
+  /// Calculate optimal dimensions for display based on aspect ratio metadata
+  /// Returns dimensions that fit within container while maintaining aspect ratio
+  static ({double width, double height}) _calculateOptimalDimensions({
+    required Photo photo,
+    required double containerWidth,
+    required double containerHeight,
+  }) {
+    // If we have ratio metadata, use it for precise calculation
+    if (photo.ratio != null && photo.ratio! > 0) {
+      final ratio = photo.ratio!;
+
+      // Calculate dimensions that fit in container while maintaining ratio
+      double width = containerWidth;
+      double height = width / ratio;
+
+      if (height > containerHeight) {
+        // Height exceeds container, scale down
+        height = containerHeight;
+        width = height * ratio;
+      }
+
+      return (width: width, height: height);
+    }
+
+    // If we have width/height, calculate ratio
+    if (photo.width != null &&
+        photo.height != null &&
+        photo.width! > 0 &&
+        photo.height! > 0) {
+      final ratio = photo.width! / photo.height!;
+
+      double width = containerWidth;
+      double height = width / ratio;
+
+      if (height > containerHeight) {
+        height = containerHeight;
+        width = height * ratio;
+      }
+
+      return (width: width, height: height);
+    }
+
+    // Fallback: use standard aspect ratios based on orientation
+    if (photo.orientation != null) {
+      switch (photo.orientation) {
+        case 'landscape':
+          return _fitToRatio(containerWidth, containerHeight, 16 / 9);
+        case 'portrait':
+          return _fitToRatio(containerWidth, containerHeight, 9 / 16);
+        case 'square':
+          return _fitToRatio(containerWidth, containerHeight, 1.0);
+      }
+    }
+
+    // Ultimate fallback: assume 4:3 (common default)
+    return _fitToRatio(containerWidth, containerHeight, 4 / 3);
+  }
+
+  /// Helper to fit dimensions to a specific ratio within container
+  static ({double width, double height}) _fitToRatio(
+    double containerWidth,
+    double containerHeight,
+    double ratio,
+  ) {
+    double width = containerWidth;
+    double height = width / ratio;
+
+    if (height > containerHeight) {
+      height = containerHeight;
+      width = height * ratio;
+    }
+
+    return (width: width, height: height);
+  }
+
+  /// Construct proper image URL from path and base URL
+  static String _constructImageUrl(String photoPath, String baseUrl) {
+    final normalizedPath = photoPath.replaceAll('\\', '/');
+
+    if (normalizedPath.startsWith('http')) {
+      return normalizedPath;
+    }
+
+    final cleanBaseUrl = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    final cleanPath = normalizedPath.startsWith('/')
+        ? normalizedPath
+        : '/$normalizedPath';
+
+    return '$cleanBaseUrl$cleanPath';
+  }
+
+  /// Get recommended cache dimensions based on aspect ratio category
+  /// Optimizes memory usage by using standard sizes for each ratio
+  static ({int width, int height}) getRecommendedCacheDimensions({
+    String? aspectRatio,
+    double quality = 1.0, // 0.5 = half, 1.0 = standard, 1.5 = high
+  }) {
+    final multiplier = quality;
+
+    switch (aspectRatio) {
+      case '16:9': // Wide landscape (videos, modern monitors)
+        return (
+          width: (1920 * multiplier).toInt(),
+          height: (1080 * multiplier).toInt(),
+        );
+      case '4:3': // Standard landscape (traditional photos)
+        return (
+          width: (1600 * multiplier).toInt(),
+          height: (1200 * multiplier).toInt(),
+        );
+      case '1:1': // Square (Instagram-style)
+        return (
+          width: (1080 * multiplier).toInt(),
+          height: (1080 * multiplier).toInt(),
+        );
+      case '9:16': // Tall portrait (stories, reels)
+        return (
+          width: (1080 * multiplier).toInt(),
+          height: (1920 * multiplier).toInt(),
+        );
+      case '3:4': // Portrait (traditional photos)
+        return (
+          width: (1200 * multiplier).toInt(),
+          height: (1600 * multiplier).toInt(),
+        );
+      default: // Unknown or custom - use balanced 4:3
+        return (
+          width: (1600 * multiplier).toInt(),
+          height: (1200 * multiplier).toInt(),
+        );
+    }
   }
 
   /// Clear specific image from cache

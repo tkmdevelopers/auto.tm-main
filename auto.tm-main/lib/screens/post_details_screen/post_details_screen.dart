@@ -73,10 +73,10 @@ class PostDetailsScreen extends StatelessWidget {
                                 color: theme.colorScheme.surface,
                               ),
                               child: CarouselSlider.builder(
-                                itemCount: post.value?.photoPaths.length ?? 0,
+                                itemCount: post.value?.photos.length ?? 0,
                                 itemBuilder: (context, index, realIndex) {
-                                  final photo = post.value!.photoPaths[index];
-                                  final photos = post.value!.photoPaths;
+                                  final photo = post.value!.photos[index];
+                                  final photos = post.value!.photos;
 
                                   return _CarouselImageItem(
                                     key: PageStorageKey('carousel_img_$index'),
@@ -1045,8 +1045,8 @@ class _CharacteristicEntry {
 /// Carousel image item with AutomaticKeepAliveClientMixin
 /// to prevent disposal and re-initialization when scrolling
 class _CarouselImageItem extends StatefulWidget {
-  final String photo;
-  final List<String> photos;
+  final Photo photo;
+  final List<Photo> photos;
   final int index;
   final String uuid;
   final ThemeData theme;
@@ -1073,6 +1073,10 @@ class _CarouselImageItemState extends State<_CarouselImageItem>
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
 
+    // Get screen dimensions for adaptive sizing
+    final screenWidth = MediaQuery.of(context).size.width;
+    const carouselHeight = 300.0;
+
     // Wrap in AutomaticKeepAlive to ensure proper keep-alive behavior
     return AutomaticKeepAlive(
       child: GestureDetector(
@@ -1080,7 +1084,7 @@ class _CarouselImageItemState extends State<_CarouselImageItem>
           if (widget.photos.isNotEmpty) {
             Get.to(
               () => ViewPostPhotoScreen(
-                imageUrls: widget.photos,
+                photos: widget.photos,
                 currentIndex: widget.index,
                 postUuid: widget.uuid,
                 heroGroupTag: widget.uuid,
@@ -1093,26 +1097,26 @@ class _CarouselImageItemState extends State<_CarouselImageItem>
         },
         child: Container(
           width: double.infinity,
-          height: 300,
+          height: carouselHeight,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             color: widget.theme.colorScheme.surfaceContainerHighest,
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: widget.photo.isNotEmpty
-                ? CachedImageHelper.buildPostImage(
-                    photoPath: widget.photo,
+            child: widget.photo.bestPath.isNotEmpty
+                ? CachedImageHelper.buildAdaptivePostImage(
+                    photo: widget.photo,
                     baseUrl: ApiKey.ip,
-                    width: 800,
-                    height: 600,
+                    containerWidth: screenWidth,
+                    containerHeight: carouselHeight,
                     fit: BoxFit.contain,
-                    isThumbnail: false,
-                    fallbackUrl: AppImages.defaultImagePng,
+                    isThumbnail:
+                        false, // High quality for carousel (6x multiplier)
                   )
                 : Image.asset(
                     AppImages.defaultImagePng,
-                    height: 300,
+                    height: carouselHeight,
                     width: double.infinity,
                     fit: BoxFit.contain,
                   ),

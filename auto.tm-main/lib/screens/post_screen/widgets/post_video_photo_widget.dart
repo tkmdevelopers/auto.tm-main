@@ -1,9 +1,9 @@
 import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
 import 'package:auto_tm/ui_components/colors.dart';
+import 'package:auto_tm/models/image_metadata.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
-import 'dart:typed_data';
 
 class PostMediaScrollableSelectionWidget extends StatelessWidget {
   const PostMediaScrollableSelectionWidget({super.key});
@@ -40,7 +40,7 @@ class PostMediaScrollableSelectionWidget extends StatelessWidget {
               // Photos occupy [0 .. photoCount-1]
               if (index < photoCount) {
                 return _PhotoTile(
-                  bytes: photos[index],
+                  metadata: photos[index],
                   width: tileWidth,
                   onRemove: () => postController.removeImage(index),
                 );
@@ -140,11 +140,11 @@ class _AddPhotoTile extends StatelessWidget {
 }
 
 class _PhotoTile extends StatelessWidget {
-  final Uint8List bytes;
+  final ImageMetadata metadata;
   final double width;
   final VoidCallback onRemove;
   const _PhotoTile({
-    required this.bytes,
+    required this.metadata,
     required this.width,
     required this.onRemove,
   });
@@ -155,7 +155,7 @@ class _PhotoTile extends StatelessWidget {
         _BaseTile(
           width: width,
           child: Image.memory(
-            bytes,
+            metadata.bytes,
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,

@@ -1,3 +1,77 @@
+/// Photo model with aspect ratio metadata
+class Photo {
+  final String uuid;
+  final String? originalPath;
+  final Map<String, String>? paths; // small, medium, large
+
+  // Aspect ratio metadata
+  final String? aspectRatio; // '16:9', '4:3', '1:1', '9:16', '3:4', 'custom'
+  final int? width; // Original image width in pixels
+  final int? height; // Original image height in pixels
+  final double? ratio; // Decimal aspect ratio (width/height)
+  final String? orientation; // 'landscape', 'portrait', 'square'
+
+  Photo({
+    required this.uuid,
+    this.originalPath,
+    this.paths,
+    this.aspectRatio,
+    this.width,
+    this.height,
+    this.ratio,
+    this.orientation,
+  });
+
+  factory Photo.fromJson(Map<String, dynamic> json) {
+    return Photo(
+      uuid: json['uuid'] ?? '',
+      originalPath: json['originalPath'] as String?,
+      paths: json['path'] != null
+          ? {
+              'small': json['path']['small']?.toString() ?? '',
+              'medium': json['path']['medium']?.toString() ?? '',
+              'large': json['path']['large']?.toString() ?? '',
+            }
+          : null,
+      aspectRatio: json['aspectRatio'] as String?,
+      width: json['width'] as int?,
+      height: json['height'] as int?,
+      ratio: json['ratio']?.toDouble(),
+      orientation: json['orientation'] as String?,
+    );
+  }
+
+  /// Get the best available path (originalPath or largest size)
+  String get bestPath {
+    if (originalPath != null && originalPath!.isNotEmpty) {
+      return originalPath!.replaceAll('\\', '/');
+    }
+    if (paths != null) {
+      return (paths!['large'] ?? paths!['medium'] ?? paths!['small'] ?? '')
+          .replaceAll('\\', '/');
+    }
+    return '';
+  }
+
+  /// Get path for specific size
+  String getPath(String size) {
+    return (paths?[size] ?? originalPath ?? '').replaceAll('\\', '/');
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'uuid': uuid,
+      'originalPath': originalPath,
+      'path': paths,
+      'aspectRatio': aspectRatio,
+      'width': width,
+      'height': height,
+      'ratio': ratio,
+      'orientation': orientation,
+    };
+  }
+}
+
 class Post {
   final String uuid;
   final String model;
@@ -24,8 +98,14 @@ class Post {
   final bool? credit;
 
   final String? subscription;
+
+  // Legacy fields for backward compatibility
   final String photoPath;
   final List<String> photoPaths;
+
+  // New: Photo objects with aspect ratio metadata
+  final List<Photo> photos;
+
   // final List<Video>? videos;
   final String? video;
   final FileData? file;
@@ -53,6 +133,7 @@ class Post {
     this.status,
     required this.photoPath,
     required this.photoPaths,
+    required this.photos,
     this.video,
     this.file,
     required this.createdAt,
@@ -87,6 +168,14 @@ class Post {
       // subscription: json['subscription'] != null
       //     ? json['subscription']['photo']['small']
       //     : null,
+      // Parse photos with aspect ratio metadata
+      photos: (json['photo'] != null && json['photo'].isNotEmpty)
+          ? (json['photo'] as List)
+                .map((photoJson) => Photo.fromJson(photoJson))
+                .toList()
+          : [],
+
+      // Legacy fields for backward compatibility
       photoPath: (json['photo'] != null && json['photo'].isNotEmpty)
           ? (json['photo'][0]['originalPath'] ??
                     json['photo'][0]['path']['large'])
