@@ -23,8 +23,17 @@ class FilterController extends GetxController {
   // Tracks whether user has already opened the results page in this session.
   final RxBool hasViewedResults = false.obs;
 
-  // Debounce timer for auto-search
-  Timer? _debounce;
+  // Memory management: limit posts in memory to prevent excessive memory usage
+  static const int maxPostsInMemory = 200;
+  static const int postsToRemoveWhenLimitReached = 20;
+
+  // Scroll position preservation for better UX
+  double? savedScrollPosition;
+
+  // Debounce timers
+  Timer? _debounce; // For auto-search
+  Timer? _scrollDebounceTimer; // For scroll pagination
+
   void debouncedSearch() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
@@ -89,22 +98,60 @@ class FilterController extends GetxController {
     // Initial fetch
     searchProducts();
 
-    // Setup scroll listener
+    // Setup scroll listener with debouncing
     scrollController.addListener(() {
-      if (scrollController.position.pixels >=
-              scrollController.position.maxScrollExtent - 200 &&
-          !isSearchLoading.value) {
-        searchProducts(loadMore: true);
-      }
+      _scrollDebounceTimer?.cancel();
+      _scrollDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+        if (scrollController.position.pixels >=
+                scrollController.position.maxScrollExtent - 200 &&
+            !isSearchLoading.value) {
+          searchProducts(loadMore: true);
+        }
+      });
     });
   }
 
   // Removed onClose disposal to avoid disposing controllers for a permanent instance.
 
+  /// Save current scroll position for restoration after navigation
+  void saveScrollPosition() {
+    if (scrollController.hasClients) {
+      savedScrollPosition = scrollController.offset;
+    }
+  }
+
+  /// Restore scroll position after returning to this screen
+  void restoreScrollPosition() {
+    if (savedScrollPosition != null && scrollController.hasClients) {
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (scrollController.hasClients) {
+          scrollController.jumpTo(savedScrollPosition!);
+        }
+      });
+    }
+  }
+
   void updateSortOption(String newSortOption) {
     if (selectedSortOption.value != newSortOption) {
       selectedSortOption.value = newSortOption;
+      // Scroll to top when changing sort order to show new results clearly
+      if (scrollController.hasClients) {
+        scrollController.jumpTo(0);
+      }
       searchProducts(); // Перезагружаем посты с новой сортировкой
+    }
+  }
+
+  /// Manage memory by limiting posts in memory
+  void _manageMemory() {
+    if (searchResults.length > maxPostsInMemory) {
+      // Remove oldest posts to prevent excessive memory usage
+      searchResults.removeRange(0, postsToRemoveWhenLimitReached);
+      // Adjust offset to reflect removed posts
+      offset = (offset - postsToRemoveWhenLimitReached).clamp(0, offset);
+      debugPrint(
+        'Memory management (filter): Removed $postsToRemoveWhenLimitReached old posts. Current count: ${searchResults.length}',
+      );
     }
   }
 
@@ -367,6 +414,9 @@ class FilterController extends GetxController {
         if (newResults.isNotEmpty) {
           searchResults.addAll(newResults);
           offset += limit;
+
+          // Apply memory management after adding results
+          _manageMemory();
         }
 
         _applyRegionAndCityFilters();

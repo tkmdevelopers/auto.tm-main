@@ -2,10 +2,9 @@ import 'package:auto_tm/global_controllers/theme_controller.dart';
 import 'package:auto_tm/screens/favorites_screen/controller/favorites_controller.dart';
 import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
 import 'package:auto_tm/ui_components/colors.dart';
-import 'package:auto_tm/ui_components/images.dart';
+import 'package:auto_tm/utils/cached_image_helper.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 
 class PostItem extends StatelessWidget {
@@ -63,7 +62,7 @@ class PostItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image Section with Favorite Button & Premium Badge
-            _buildImageSection(theme),
+            _buildImageSection(context, theme),
 
             // Content Section
             Padding(
@@ -85,7 +84,7 @@ class PostItem extends StatelessWidget {
     );
   }
 
-  Widget _buildImageSection(ThemeData theme) {
+  Widget _buildImageSection(BuildContext context, ThemeData theme) {
     return Stack(
       children: [
         // Car Image
@@ -94,28 +93,17 @@ class PostItem extends StatelessWidget {
             topLeft: Radius.circular(16),
             topRight: Radius.circular(16),
           ),
-          child: Image.network(
-            photoPath.isNotEmpty
-                ? '${ApiKey.ip}$photoPath'
-                : 'https://placehold.co/400x250',
+          child: SizedBox(
             height: 200,
             width: double.infinity,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => Container(
+            child: CachedImageHelper.buildPostImage(
+              photoPath: photoPath,
+              baseUrl: ApiKey.ip,
               height: 200,
-              width: double.infinity,
-              color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
-              child: Center(
-                child: SvgPicture.asset(
-                  AppImages.defaultImageSvg,
-                  height: 40,
-                  width: 40,
-                  colorFilter: ColorFilter.mode(
-                    theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                    BlendMode.srcIn,
-                  ),
-                ),
-              ),
+              width: 600, // Wider estimate for better quality
+              fit: BoxFit.cover,
+              fallbackUrl:
+                  'https://placehold.co/600x200/e0e0e0/666666?text=No+Image',
             ),
           ),
         ),

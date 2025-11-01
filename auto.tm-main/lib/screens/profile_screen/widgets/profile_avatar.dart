@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:auto_tm/utils/cached_image_helper.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:flutter/material.dart';
 
@@ -44,7 +45,10 @@ class ProfileAvatar extends StatelessWidget {
     } else if (_hasRemote) {
       final path = remotePath!;
       final url = path.startsWith('http') ? path : '${ApiKey.ip}$path';
-      inner = CircleAvatar(radius: radius, backgroundImage: NetworkImage(url));
+      inner = CachedImageHelper.buildCachedAvatar(
+        imageUrl: url,
+        radius: radius,
+      );
     } else {
       inner = CircleAvatar(
         radius: radius,

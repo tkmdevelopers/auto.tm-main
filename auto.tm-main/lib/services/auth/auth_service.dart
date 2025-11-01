@@ -7,6 +7,7 @@ import 'package:get_storage/get_storage.dart';
 import 'auth_models.dart';
 import 'phone_formatter.dart';
 import '../../utils/key.dart';
+import '../../utils/cached_image_helper.dart';
 import 'package:flutter/foundation.dart';
 
 class AuthService extends GetxService {
@@ -176,6 +177,8 @@ class AuthService extends GetxService {
     // Notify interested controllers (profile, favorites, etc.) to reset if registered
     // We do not erase the entire storage to preserve unrelated preferences (theme, language)
     _notifyControllersOfLogout();
+    // Clear image cache for privacy (prevents next user from seeing cached images)
+    _clearImageCache();
   }
 
   void _notifyControllersOfLogout() {
@@ -203,6 +206,19 @@ class AuthService extends GetxService {
     }
 
     // Add other controllers reset logic here (favorites, etc.) when needed.
+  }
+
+  /// Clear all cached images on logout for privacy
+  /// Runs asynchronously to avoid blocking the logout flow
+  void _clearImageCache() {
+    // Run async without awaiting to prevent logout delay
+    CachedImageHelper.clearAllCache()
+        .then((_) {
+          debugPrint('[AuthService] ✅ Image cache cleared after logout');
+        })
+        .catchError((error) {
+          debugPrint('[AuthService] ⚠️ Error clearing image cache: $error');
+        });
   }
 
   void _persistSession(AuthSession session) {

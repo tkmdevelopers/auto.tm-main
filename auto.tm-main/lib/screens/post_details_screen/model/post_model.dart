@@ -47,8 +47,8 @@ class Post {
     required this.vinCode,
     required this.phoneNumber,
     required this.region,
-  this.exchange,
-  this.credit,
+    this.exchange,
+    this.credit,
     this.subscription,
     this.status,
     required this.photoPath,
@@ -62,7 +62,10 @@ class Post {
     // final small = json['subscription']?['photo']?['originalPath'] as String?;
     final small = json['subscription']?['photo']?['path']?['small'] as String?;
     final personalInfo = json['personalInfo'] as Map<String, dynamic>?;
-    final region = personalInfo?['region']?.toString() ?? personalInfo?['location']?.toString() ?? '';
+    final region =
+        personalInfo?['region']?.toString() ??
+        personalInfo?['location']?.toString() ??
+        '';
     return Post(
       uuid: json['uuid'] ?? '',
       model: json['model']?['name'] ?? '',
@@ -85,23 +88,33 @@ class Post {
       //     ? json['subscription']['photo']['small']
       //     : null,
       photoPath: (json['photo'] != null && json['photo'].isNotEmpty)
-          ? json['photo'][0]['path']['medium']
+          ? (json['photo'][0]['originalPath'] ??
+                    json['photo'][0]['path']['large'])
+                .toString()
+                .replaceAll('\\', '/')
           : '',
       photoPaths: (json['photo'] != null && json['photo'].isNotEmpty)
           ? (json['photo'] as List)
-              .map((photo) => photo['path']['medium'].toString().replaceAll('\\', '/'))
-              .toList()
+                .map(
+                  (photo) => (photo['originalPath'] ?? photo['path']['large'])
+                      .toString()
+                      .replaceAll('\\', '/'),
+                )
+                .toList()
           : [],
       subscription: small,
-    video: json['video'] != null
-      ? ((json['video']['publicUrl'] ?? (json['video']['url'] != null
-        ? (json['video']['url'] as String)
-        : '')) as String).replaceAll('\\', '/')
-      : '',
+      video: json['video'] != null
+          ? ((json['video']['publicUrl'] ??
+                        (json['video']['url'] != null
+                            ? (json['video']['url'] as String)
+                            : ''))
+                    as String)
+                .replaceAll('\\', '/')
+          : '',
       createdAt: json['createdAt'] ?? '',
       region: region,
-  exchange: json['exchange'] as bool?,
-  credit: json['credit'] as bool?,
+      exchange: json['exchange'] as bool?,
+      credit: json['credit'] as bool?,
       // file: json['file'],
       file: json['file'] != null ? FileData.fromJson(json['file']) : null,
     );

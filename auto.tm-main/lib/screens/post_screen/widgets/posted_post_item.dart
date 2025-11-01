@@ -2,6 +2,8 @@
 import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
 import 'package:auto_tm/ui_components/images.dart';
 import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
+import 'package:auto_tm/utils/cached_image_helper.dart';
+import 'package:auto_tm/utils/key.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
@@ -146,42 +148,15 @@ class PostedPostItem extends StatelessWidget {
       : Get.put(PostController());
 
   Widget _buildNetworkOrPlaceholder(ThemeData theme) {
-    final url = postController.buildPostImageUrl(photoPath);
-    if (url.isEmpty) {
-      if (Get.isLogEnable) {
-        if (!_loggedEmptyPhoto.contains(uuid)) {
-          // ignore: avoid_print
-          print(
-            '[PostedPostItem][image] empty photoPath for uuid=$uuid raw="$photoPath"',
-          );
-          _loggedEmptyPhoto.add(uuid);
-        }
-      }
-      return _buildPlaceholderImage(theme);
-    }
-    return Image.network(
-      url,
+    // Use the new buildPostImage method for better handling
+    return CachedImageHelper.buildPostImage(
+      photoPath: photoPath,
+      baseUrl: ApiKey.ip,
+      width: 120, // Increased from 100 for better quality
+      height: 120,
       fit: BoxFit.cover,
-      errorBuilder: (c, e, s) {
-        if (Get.isLogEnable) {
-          // ignore: avoid_print
-          print('[PostedPostItem][image] failed to load url=$url error=$e');
-        }
-        return _buildPlaceholderImage(theme);
-      },
-      loadingBuilder: (c, child, progress) {
-        if (progress == null) return child;
-        return Container(
-          color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
-          child: const Center(
-            child: SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ),
-        );
-      },
+      fallbackUrl: 'https://placehold.co/120x120/e0e0e0/666666?text=No+Image',
+      isThumbnail: true, // Use 4x multiplier for thumbnails (480×480 cached)
     );
   }
 

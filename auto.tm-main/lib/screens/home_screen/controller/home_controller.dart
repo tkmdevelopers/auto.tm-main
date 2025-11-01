@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
@@ -19,21 +20,35 @@ class HomeController extends GetxController {
   var hasMore = true.obs;
   var offset = 0;
 
+  // Memory management: limit posts in memory to prevent excessive memory usage
+  static const int maxPostsInMemory = 200;
+  static const int postsToRemoveWhenLimitReached = 20;
+
+  // Scroll position preservation for better UX
+  double? savedScrollPosition;
+
+  // Debounce timer to prevent rapid scroll-triggered fetches
+  Timer? _scrollDebounceTimer;
+
   @override
   void onInit() {
     fetchInitialData();
-    // Add the listener for pagination
+    // Add the listener for pagination with debouncing
     scrollController.addListener(() {
-      if (scrollController.position.maxScrollExtent ==
-          scrollController.offset) {
-        fetchPosts();
-      }
+      _scrollDebounceTimer?.cancel();
+      _scrollDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+        if (scrollController.position.maxScrollExtent ==
+            scrollController.offset) {
+          fetchPosts();
+        }
+      });
     });
     super.onInit();
   }
 
   @override
   void onClose() {
+    _scrollDebounceTimer?.cancel();
     scrollController.dispose();
     super.onClose();
   }
@@ -46,6 +61,37 @@ class HomeController extends GetxController {
         0.0,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
+      );
+    }
+  }
+
+  /// Save current scroll position for restoration after navigation
+  void saveScrollPosition() {
+    if (scrollController.hasClients) {
+      savedScrollPosition = scrollController.offset;
+    }
+  }
+
+  /// Restore scroll position after returning to this screen
+  void restoreScrollPosition() {
+    if (savedScrollPosition != null && scrollController.hasClients) {
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (scrollController.hasClients) {
+          scrollController.jumpTo(savedScrollPosition!);
+        }
+      });
+    }
+  }
+
+  /// Manage memory by limiting posts in memory
+  void _manageMemory() {
+    if (posts.length > maxPostsInMemory) {
+      // Remove oldest posts to prevent excessive memory usage
+      posts.removeRange(0, postsToRemoveWhenLimitReached);
+      // Adjust offset to reflect removed posts
+      offset = (offset - postsToRemoveWhenLimitReached).clamp(0, offset);
+      debugPrint(
+        'Memory management: Removed $postsToRemoveWhenLimitReached old posts. Current count: ${posts.length}',
       );
     }
   }
@@ -86,6 +132,9 @@ class HomeController extends GetxController {
         if (newPosts.isNotEmpty) {
           posts.addAll(newPosts);
           offset += 20;
+
+          // Apply memory management after adding posts
+          _manageMemory();
         } else {
           hasMore.value = false;
         }
