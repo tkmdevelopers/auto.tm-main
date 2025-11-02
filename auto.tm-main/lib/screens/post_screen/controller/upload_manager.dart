@@ -130,11 +130,9 @@ class PostUploadSnapshot {
             (m['photoBytesLengths'] as List?)?.whereType<int>().toList() ?? [],
         photoBase64:
             (m['photoBase64'] as List?)?.whereType<String>().toList() ?? [],
-        photoAspectRatios:
-            (m['photoAspectRatios'] as List?)
-                ?.map((e) => e == null ? null : (e as num).toDouble())
-                .toList() ??
-            [],
+        photoAspectRatios: _parseLegacyAspectRatios(
+          m['photoAspectRatios'] as List?,
+        ),
         photoWidths:
             (m['photoWidths'] as List?)?.map((e) => e as int?).toList() ?? [],
         photoHeights:
@@ -156,6 +154,42 @@ class PostUploadSnapshot {
         description: (m['description'] ?? '') as String,
         draftId: (m['draftId'] ?? '') as String,
       );
+}
+
+/// Backward compatibility: handle legacy stored aspect ratios that may be string labels.
+List<double?> _parseLegacyAspectRatios(List? raw) {
+  if (raw == null) return [];
+  final out = <double?>[];
+  for (final item in raw) {
+    if (item == null) {
+      out.add(null);
+      continue;
+    }
+    if (item is num) {
+      out.add(item.toDouble());
+      continue;
+    }
+    if (item is String) {
+      final s = item.trim();
+      // Pattern like '16:9'
+      final parts = s.split(':');
+      if (parts.length == 2) {
+        final a = double.tryParse(parts[0]);
+        final b = double.tryParse(parts[1]);
+        if (a != null && b != null && b != 0) {
+          out.add(a / b);
+          continue;
+        }
+      }
+      // Try direct double parse (e.g. '1.78')
+      final d = double.tryParse(s);
+      out.add(d);
+      continue;
+    }
+    // Fallback unknown type
+    out.add(null);
+  }
+  return out;
 }
 
 class UploadTask {

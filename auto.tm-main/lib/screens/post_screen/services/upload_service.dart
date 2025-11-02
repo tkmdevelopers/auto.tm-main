@@ -96,6 +96,24 @@ class UploadService extends GetxService {
     );
   }
 
+  /// Derive a canonical string label from a numeric aspect ratio.
+  /// Uses tolerance matching against common ratios; falls back to formatted value.
+  String _deriveAspectRatioLabel(double ratio) {
+    const tolerance = 0.04; // allow slight floating variance
+    const known = <String, double>{
+      '16:9': 16 / 9,
+      '4:3': 4 / 3,
+      '1:1': 1.0,
+      '9:16': 9 / 16,
+      '3:4': 3 / 4,
+    };
+    for (final entry in known.entries) {
+      if ((ratio - entry.value).abs() <= tolerance) return entry.key;
+    }
+    // Format custom ratio with two decimals (e.g., 1.78)
+    return ratio.toStringAsFixed(2);
+  }
+
   /// Wrapper to execute upload with automatic token refresh on 401/406.
   /// Attempts refresh once; if successful, retries action.
   Future<T> _withTokenRefresh<T>(
@@ -384,7 +402,7 @@ class UploadService extends GetxService {
         // Send numeric ratio for backend 'ratio' column
         formMap['ratio'] = aspectRatio.toString();
         formMap['metadata[ratio]'] = aspectRatio.toString();
-        
+
         // Derive and send string label for backend 'aspectRatio' column
         final label = _deriveAspectRatioLabel(aspectRatio);
         formMap['aspectRatio'] = label;

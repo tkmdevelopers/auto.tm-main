@@ -1,24 +1,32 @@
 # Upload System Documentation Index
 
-**Last Updated**: November 2, 2025  
-**Status**: Phase 0 Complete - Ready for Implementation
+**Last Updated**: November 3, 2025  
+**Status**: Phase 0 Complete; FFmpeg & Aspect Ratio Implementation COMPLETE; Entering Monitoring & Phase E Planning
 
 ---
 
 ## 📚 Quick Navigation
 
-### 🚨 START HERE (Urgent Actions)
+### ✅ START HERE (Current State Overview)
 
-1. **[FFMPEG_INSTALLATION_URGENT.md](./FFMPEG_INSTALLATION_URGENT.md)**
-   - 🔴 P0 CRITICAL BLOCKER
-   - Install FFmpeg on backend server (15 min)
-   - Step-by-step platform-specific guides
-   - Testing checklist included
+1. **[PHASE_0_COMPLETE_SUMMARY.md](./PHASE_0_COMPLETE_SUMMARY.md)**
+  - Executive summary of diagnostics
+  - Historic baseline before fixes
+  - Use for context, not action
 
-2. **[PHASE_0_COMPLETE_SUMMARY.md](./PHASE_0_COMPLETE_SUMMARY.md)**
-   - Executive summary of Phase 0 findings
-   - What works, what's broken, what's next
-   - Quick overview for decision-makers
+2. **[FFMPEG_INSTALLATION_COMPLETE.md](./FFMPEG_INSTALLATION_COMPLETE.md)**
+  - FFmpeg installed (Windows + Docker)
+  - Video uploads now working
+  - Verification & troubleshooting
+
+3. **[IMAGE_ASPECT_RATIO_IMPLEMENTATION.md](./IMAGE_ASPECT_RATIO_IMPLEMENTATION.md)**
+  - Full 15‑phase aspect ratio solution
+  - Adaptive display + metadata storage
+  - Performance & testing outcomes
+
+4. **[ASPECT_RATIO_NUMERIC_FIX_COMPLETE.md](./ASPECT_RATIO_NUMERIC_FIX_COMPLETE.md)**
+  - Numeric ratio propagation fix
+  - Dual-field strategy pending
 
 ---
 
@@ -73,11 +81,21 @@
 - Memory usage excellent (+2.5MB for 3 photos)
 - Authorization headers working
 
-### ❌ Critical Issues (Blocking)
-- **Video uploads 100% failing** - FFmpeg missing (P0)
+### ✅ Resolved / Working
+- Video uploads functioning (FFmpeg available)
+- Photo uploads stable (167–474ms)
+- Aspect ratio (numeric + label) extracted (label derivation in progress)
+- Progress/cancellation & token refresh implemented (Phases A–C)
 
-### ⚠️ Minor Issues (Quick Fixes)
-- **AspectRatio sent as null** - Frontend calculation needed (P1)
+### ⚠️ Minor / In-Progress Items
+- Monitoring metrics formalization (dashboard / script)
+- Phase E specification & acceptance baselines
+- Concurrency throughput baseline capture
+
+### ⏸️ Deferred
+- Token refresh advanced edge cases (multi-refresh backoff)
+- Lazy encoding / memory optimization (Phase E)
+- Enhanced per-photo UX polish
 
 ### ⏸️ Deferred (Not Urgent)
 - Token refresh improvements (Phase 2)
@@ -93,23 +111,21 @@
 - Documents: All Phase 0 files above
 - Key Outcome: Validated assumptions, found real issues
 
-### Next: FFmpeg Installation 🔴 URGENT
-- Priority: P0 - Critical Blocker
-- Time: 15 minutes
-- Guide: FFMPEG_INSTALLATION_URGENT.md
-- Assigned: Backend/DevOps Team
+### Completed Immediate Phases
+- FFmpeg Installation (Video pipeline unblocked)
+- Aspect Ratio Implementation (15 phases)
+- Numeric Ratio Fix (dual transmission design drafted)
 
-### Then: AspectRatio Calculation 🟡 HIGH
-- Priority: P1 - High
-- Time: 15 minutes
-- Changes: Frontend image processing
-- Assigned: Frontend Team
+### Current Focus
+1. Dual aspect ratio transmission (label + ratio numeric)
+2. Backward compatibility parser rollout validation
+3. Monitoring checklist & baseline collection
+4. Phase E scope refinement (resume + lazy encoding)
 
-### After: Retest & Monitor
-- Verify video uploads work
-- Monitor success rates
-- Test multiple formats
-- Validate aspectRatio not null
+### Upcoming (Planning)
+- Resume robustness (persist partial state) – Phase E
+- Lazy encoding & peak memory reduction – Phase E
+- Structured metrics export (optional telemetry phase)
 
 ### Future: Phase 2 (Deferred)
 - Frontend API refactor
@@ -130,37 +146,21 @@
 | Memory Impact | +2.5 MB |
 | Encoding Time | 108ms |
 
-### Video Upload (Currently Broken)
+### Video Upload (Post-Fix Baseline)
 | Metric | Current State |
 |--------|---------------|
-| Success Rate | 0% (100% fail) |
-| Failure Reason | FFmpeg missing |
-| Network Transfer | ✅ Works (23.6 MB) |
-| Backend Processing | ❌ Fails immediately |
+| Success Rate | >95% (baseline sample) |
+| Failure Reason | N/A (monitor for codec edge cases) |
+| Avg Processing Time | To collect (add metric) |
+| Formats Tested | mp4 (need: mov, avi, webm validation) |
 
 ---
 
-## 🎓 Lessons Learned
-
-### Test Before You Fix
-- We almost spent days fixing photos that weren't broken
-- Testing revealed the truth in 2 hours
-- Data beats assumptions
-
-### Infrastructure Matters
-- The real blocker was a missing system dependency (FFmpeg)
-- Not a code architecture problem
-- Check infrastructure first
-
-### Performance May Be Fine
-- Photos already excellent (<500ms)
-- Planned 9 optimization phases
-- Testing showed optimizations not urgent
-
-### Simple Fixes Have Big Impact
-- 15 min to install FFmpeg = unblock all videos
-- 15 min to calculate aspectRatio = complete metadata
-- Total 30 min of fixes vs weeks of refactoring
+### Lessons Learned Recap
+- Diagnostics first prevented wasted backend refactor.
+- Infra dependency (FFmpeg) was single-point failure; treat tooling as part of product.
+- Metadata completeness requires both semantic (label) & numeric representation.
+- Small targeted fixes (PATH + ratio extraction) delivered outsized impact.
 
 ---
 
@@ -218,26 +218,11 @@
 
 ---
 
-## 🎯 Success Criteria
-
-### Phase 0 ✅ COMPLETE
-- [x] Test executed with diagnostic logs
-- [x] All findings documented
-- [x] Action plan revised
-- [x] Team informed
-
-### FFmpeg Installation (Next)
-- [ ] FFmpeg installed on server
-- [ ] `ffprobe -version` succeeds
-- [ ] Backend service restarted
-- [ ] Test video upload returns 200 OK
-- [ ] Video metadata extracted
-
-### AspectRatio Fix (After FFmpeg)
-- [ ] Calculation added to frontend
-- [ ] Test shows non-null value in logs
-- [ ] Backend stores aspectRatio
-- [ ] Visible in photo records
+### Updated Success Criteria Snapshot
+- Aspect ratio numeric + label transmitted for >95% new photos
+- Video uploads multi-format success >95% (collect formats matrix)
+- Monitoring dashboard (log aggregation or manual script) available
+- Phase E specification drafted & approved
 
 ---
 
@@ -247,11 +232,12 @@
 - ✅ Phase 0: Deep Diagnostics (November 2, 2025)
 
 ### In Progress
-- 🔴 FFmpeg Installation (Critical)
+- � Monitoring Checklist Draft
+- 🧠 Phase E (Resume & Memory) Spec
 
 ### Upcoming
-- 🟡 AspectRatio Calculation (High)
-- ⏸️ Video Retest (After FFmpeg)
+- 🧪 Multi-format Video Retest (mov, avi, webm)
+- 🧵 Orientation metadata decision
 - ⏸️ Phase 2 Planning (Future)
 
 ### Cancelled
@@ -280,6 +266,14 @@
 
 ---
 
-**Document Status**: ✅ Up to Date  
-**Last Review**: November 2, 2025  
-**Next Update**: After FFmpeg installation complete
+**Document Status**: ✅ Updated post FFmpeg, Aspect Ratio (dual fields), Progress Throttling  
+**Last Review**: November 3, 2025  
+**Next Planned Update**: After Monitoring Baseline + Phase E Spec published
+
+---
+
+## 🧠 New: Phase E (Resume & Memory) Draft
+See: `PHASE_E_SCOPE_DRAFT.md` – defines goals for resume capability, lazy encoding, snapshot versioning, and memory reduction targets.
+
+## 📊 New: Monitoring Checklist
+See: `MONITORING_CHECKLIST.md` – operational metrics, collection methods, and baseline capture tasks.

@@ -41,9 +41,37 @@ class UploadLogger {
     required int sent,
     required int total,
   }) {
-    // Only log at significant milestones to avoid log spam
-    final percent = total > 0 ? (sent / total * 100).toInt() : 0;
-    if (percent % 25 == 0 || sent == total) {
+    // Improved throttling strategy:
+    //  - Always log first invocation (percent == 0) once
+    //  - Then log when crossing 25%, 50%, 75%, 100%
+    //  - If total < 64KB, also log at 100% only (skip intermediate spam for tiny uploads)
+    //  - Never re-log the same milestone
+    final percent = total > 0 ? (sent / total * 100).clamp(0, 100).toInt() : 0;
+    // Key for internal milestone cache
+    final key = '$taskId|$partType|$partIndex';
+    _milestoneCache ??= <String, int>{};
+    final last = _milestoneCache![key];
+
+    // Determine next milestone points
+    final milestones = <int>{0, 25, 50, 75, 100};
+    final isSmall = total > 0 && total < 64 * 1024; // <64KB
+    bool shouldLog = false;
+
+    if (last == null) {
+      // First ever call for this part
+      shouldLog = true; // log 0% once
+    } else if (percent == 100 && last != 100) {
+      shouldLog = true; // always log completion
+    } else if (!isSmall && milestones.contains(percent) && percent != last) {
+      shouldLog = true; // crossed a milestone
+    }
+
+    if (shouldLog) {
+      _milestoneCache![key] = percent;
+      if (percent == 100) {
+        // cleanup to keep map small
+        _milestoneCache!.remove(key);
+      }
       if (kDebugMode) {
         print(
           '$_tag [PROGRESS] taskId=$taskId partType=$partType '
@@ -125,4 +153,8 @@ class UploadLogger {
       print('$_tag [TASK] taskId=$taskId event=$event$detailsStr');
     }
   }
+
+  /// Internal in-memory cache of last logged percentage milestones per part.
+  /// Key format: taskId|partType|partIndex
+  static Map<String, int>? _milestoneCache;
 }
