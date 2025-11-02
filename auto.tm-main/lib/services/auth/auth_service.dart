@@ -46,6 +46,7 @@ class AuthService extends GetxService {
     ); // 993 + digits
     final uri = Uri.parse('${ApiKey.sendOtpKey}?phone=$full');
     try {
+      final started = DateTime.now();
       final resp = await _client.get(
         uri,
         headers: {
@@ -53,20 +54,46 @@ class AuthService extends GetxService {
           'Content-Type': 'application/json',
         },
       );
+      final elapsedMs = DateTime.now().difference(started).inMilliseconds;
       final body = resp.body.isNotEmpty ? jsonDecode(resp.body) : {};
       if (kDebugMode) {
         // ignore: avoid_print
-        print('[auth] sendOtp status=${resp.statusCode} body=$body');
+        print(
+          '[auth] sendOtp status=${resp.statusCode} elapsed=${elapsedMs}ms size=${resp.body.length} bodyKeys=${body is Map ? (body.keys.toList()) : []} body=$body',
+        );
       }
       final success = _isOtpSendSuccess(body, resp.statusCode);
+      // Derive a clearer message if backend only returns generic text
+      String? message = body['message']?.toString();
+      if (!success) {
+        if (resp.statusCode == 400) {
+          message ??= 'Nädogry telefon belgisi (400)';
+        } else if (resp.statusCode == 404) {
+          message ??= 'OTP hyzmaty tapylmady (404)';
+        } else if (resp.statusCode == 429) {
+          message ??= 'Gaty köp synanyşyk. Birneme garaşyň.';
+        } else if (resp.statusCode == 500) {
+          message ??= 'Serwer näsazlygy (500). Täzeden synanyşyň.';
+        } else if (resp.statusCode == 503) {
+          message ??= 'Hyzmat wagtlaýyn elýeterli däl (503).';
+        } else if (message == null) {
+          message = 'OTP ugratmak başa barmady (status ${resp.statusCode})';
+        }
+      } else {
+        // Success but message missing -> synthesize user-friendly success message
+        message ??= 'OTP ugradyldy';
+      }
       return OtpSendResult(
         success: success,
-        message: body['message']?.toString(),
+        message: message,
         otpId: body['otpId']?.toString(),
         raw: body,
       );
     } catch (e) {
-      return OtpSendResult(success: false, message: 'Exception: $e');
+      return OtpSendResult(
+        success: false,
+        message: 'Aragatnaşyk ýalňyşlygy: $e',
+      );
     }
   }
 
@@ -89,6 +116,7 @@ class AuthService extends GetxService {
     final full = PhoneFormatter.buildFullDigits(subscriberDigits);
     final uri = Uri.parse('${ApiKey.checkOtpKey}?phone=$full&otp=$code');
     try {
+      final started = DateTime.now();
       final resp = await _client.get(
         uri,
         headers: {
@@ -96,10 +124,13 @@ class AuthService extends GetxService {
           'Content-Type': 'application/json',
         },
       );
+      final elapsedMs = DateTime.now().difference(started).inMilliseconds;
       final body = resp.body.isNotEmpty ? jsonDecode(resp.body) : {};
       if (kDebugMode) {
         // ignore: avoid_print
-        print('[auth] verifyOtp status=${resp.statusCode} body=$body');
+        print(
+          '[auth] verifyOtp status=${resp.statusCode} elapsed=${elapsedMs}ms size=${resp.body.length} bodyKeys=${body is Map ? (body.keys.toList()) : []} body=$body',
+        );
       }
       final success = _isOtpVerifySuccess(body, resp.statusCode);
       if (success) {
@@ -123,13 +154,22 @@ class AuthService extends GetxService {
           message: body['message']?.toString(),
         );
       }
+      String? message = body['message']?.toString();
+      if (resp.statusCode == 401 || resp.statusCode == 406) {
+        message ??= 'Nädogry OTP kody';
+      } else if (resp.statusCode == 404) {
+        message ??= 'OTP tapylmady. Täzeden sorap görüň.';
+      } else if (resp.statusCode == 500) {
+        message ??= 'Serwer näsazlygy (500). Soňrak synanyşyň.';
+      } else if (message == null) {
+        message = 'OTP tassyklamak şowsuz (status ${resp.statusCode})';
+      }
+      return OtpVerifyResult(success: false, raw: body, message: message);
+    } catch (e) {
       return OtpVerifyResult(
         success: false,
-        raw: body,
-        message: body['message']?.toString(),
+        message: 'Aragatnaşyk ýalňyşlygy: $e',
       );
-    } catch (e) {
-      return OtpVerifyResult(success: false, message: 'Exception: $e');
     }
   }
 

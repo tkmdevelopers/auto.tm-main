@@ -55,10 +55,19 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Obx(() {
-          // Disable pull-to-refresh when uploading to prevent state conflicts
-          final isUploading = Get.isRegistered<UploadManager>()
-              ? Get.find<UploadManager>().hasActive
-              : false;
+          // ✅ PROFESSIONAL FIX: Cache manager reference and simplify reactive access
+          // Only call Get.find once, then check reactive properties
+          final uploadManager = Get.isRegistered<UploadManager>()
+              ? Get.find<UploadManager>()
+              : null;
+
+          // Access currentTask.value directly (reactive)
+          final task = uploadManager?.currentTask.value;
+          final isUploading =
+              task != null &&
+              !(task.isCompleted.value ||
+                  task.isFailed.value ||
+                  task.isCancelled.value);
 
           return RefreshIndicator(
             // Disable refresh during upload to maintain upload state integrity
@@ -93,9 +102,11 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
                   actions: [
                     // Add new post button
                     Obx(() {
-                      final locked = Get.isRegistered<UploadManager>()
-                          ? Get.find<UploadManager>().isLocked.value
-                          : false;
+                      // ✅ PROFESSIONAL FIX: Cache manager reference
+                      final uploadManager = Get.isRegistered<UploadManager>()
+                          ? Get.find<UploadManager>()
+                          : null;
+                      final locked = uploadManager?.isLocked.value ?? false;
                       final Color bg = locked
                           ? theme.colorScheme.onSurface.withValues(alpha: 0.25)
                           : theme.colorScheme.primary;

@@ -7,7 +7,6 @@ import 'dart:typed_data';
 import 'package:auto_tm/utils/navigation_utils.dart';
 
 import 'package:auto_tm/utils/key.dart';
-import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -218,7 +217,6 @@ class PostController extends GetxController {
   final RxInt _totalBytesSent = 0.obs;
   final RxInt _videoTotalBytes = 0.obs;
   final RxInt _photosTotalBytes = 0.obs;
-  dio.CancelToken? _activeCancelToken;
   String? _activePostUuid;
 
   // Brand/model data
@@ -700,6 +698,7 @@ class PostController extends GetxController {
   Future<bool> uploadSingleVideo(
     String postUuid,
     PostUploadSnapshot snap, {
+    String? taskId,
     void Function(int deltaBytes)? onBytes,
   }) async {
     try {
@@ -717,6 +716,7 @@ class PostController extends GetxController {
       final result = await uploadService.uploadVideo(
         postUuid: postUuid,
         file: file,
+        taskId: taskId, // Phase C: Pass taskId for logging/correlation
         onProgress: (sent, total, delta) {
           // maintain legacy progress accounting
           _videoSentBytes.value += delta;
@@ -736,7 +736,13 @@ class PostController extends GetxController {
       }
       return result.success;
     } catch (e) {
-      uploadError.value = ErrorHandlerService.formatUploadError(e.toString());
+      final raw = e.toString();
+      if (raw.contains('UploadService') && raw.contains('not found')) {
+        uploadError.value =
+            'Upload subsystem not initialized. Please restart the app or try again.';
+      } else {
+        uploadError.value = ErrorHandlerService.formatUploadError(raw);
+      }
       return false;
     }
   }
@@ -746,14 +752,17 @@ class PostController extends GetxController {
     String postUuid,
     PostUploadSnapshot snap,
     int index, {
+    String? taskId,
     void Function(int deltaBytes)? onBytes,
   }) async {
     try {
-      if (snap.photoBase64.isEmpty || index >= snap.photoBase64.length) {
+      // Phase E: Get photo bytes via lazy encoding or cached base64
+      final bytes = await snap.getPhotoBytes(index);
+      if (bytes == null) {
+        // No photo data available at this index
         return true;
       }
-      final b64 = snap.photoBase64[index];
-      final bytes = base64Decode(b64);
+
       final aspectRatio = index < snap.photoAspectRatios.length
           ? snap.photoAspectRatios[index]
           : null;
@@ -768,9 +777,8 @@ class PostController extends GetxController {
         postUuid: postUuid,
         bytes: bytes,
         index: index,
-        aspectRatio: aspectRatio is String
-            ? double.tryParse(aspectRatio)
-            : aspectRatio,
+        taskId: taskId, // Phase C: Pass taskId for logging/correlation
+        aspectRatio: aspectRatio, // Already double, no parsing needed
         width: width,
         height: height,
         onProgress: (sent, total, delta) {
@@ -790,7 +798,13 @@ class PostController extends GetxController {
       }
       return result.success;
     } catch (e) {
-      uploadError.value = ErrorHandlerService.formatUploadError(e.toString());
+      final raw = e.toString();
+      if (raw.contains('UploadService') && raw.contains('not found')) {
+        uploadError.value =
+            'Upload subsystem not initialized. Please restart the app or try again.';
+      } else {
+        uploadError.value = ErrorHandlerService.formatUploadError(raw);
+      }
       return false;
     }
   }
@@ -807,7 +821,12 @@ class PostController extends GetxController {
     uploadStatus.value = 'Cancelling...';
 
     try {
-      _activeCancelToken?.cancel('User cancelled');
+      // Use UploadService direct cancellation if available
+      if (Get.isRegistered<UploadService>()) {
+        try {
+          Get.find<UploadService>().cancelActive('User cancelled');
+        } catch (_) {}
+      }
       isUploadCancelled.value = true;
 
       if (_activePostUuid != null) {

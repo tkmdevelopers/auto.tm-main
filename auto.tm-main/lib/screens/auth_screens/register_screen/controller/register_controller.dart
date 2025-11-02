@@ -8,6 +8,7 @@ import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dar
 import 'package:auto_tm/services/notification_sevice/notification_service.dart';
 import 'package:auto_tm/services/token_service/token_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
@@ -92,11 +93,15 @@ class RegisterPageController extends GetxController {
       );
     } catch (e, st) {
       AppLogger.e(
-        'Unexpected error during OTP request',
+        'Unexpected error during OTP request: $e',
         error: e,
         stackTrace: st,
       );
-      _showError('Ýalňyşlyk', 'Näbelli ýalňyşlyk ýüze çykdy');
+      // Show user-friendly error with technical detail for debugging
+      _showError(
+        'Ýalňyşlyk',
+        'Näbelli ýalňyşlyk ýüze çykdy${kDebugMode ? ": $e" : ""}',
+      );
     } finally {
       isLoading.value = false;
     }

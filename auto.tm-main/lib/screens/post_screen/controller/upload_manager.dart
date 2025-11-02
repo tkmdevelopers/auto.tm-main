@@ -9,6 +9,9 @@ import 'package:get_storage/get_storage.dart';
 import 'package:uuid/uuid.dart';
 import 'package:auto_tm/models/image_metadata.dart';
 import 'post_controller.dart';
+import '../services/upload_service.dart';
+import '../services/upload_logger.dart';
+import 'memory_profiler.dart'; // Phase E: Memory tracking
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../../global_controllers/connection_controller.dart';
 
@@ -27,6 +30,8 @@ enum UploadPhase {
 enum UploadFailureType { network, validation, cancelled, unknown }
 
 /// Immutable snapshot of the form/media at the moment user pressed Post.
+/// Phase E: Supports hybrid storage - raw ImageMetadata for active uploads,
+/// base64 for persistence/recovery.
 class PostUploadSnapshot {
   final String? brandUuid;
   final String? modelUuid;
@@ -34,8 +39,8 @@ class PostUploadSnapshot {
   final String modelName;
   final List<int> photoBytesLengths; // size metadata only
   final List<String> photoBase64; // persisted for retry after app restart
-  final List<String?>
-  photoAspectRatios; // aspect ratio per photo ('16:9', '4:3', etc.)
+  final List<double?>
+  photoAspectRatios; // aspect ratio per photo (numeric, e.g., 1.78)
   final List<int?> photoWidths; // original width per photo
   final List<int?> photoHeights; // original height per photo
   final bool hasVideo;
@@ -47,6 +52,11 @@ class PostUploadSnapshot {
   final String price;
   final String description;
   final String draftId; // can be empty if not tied to an existing draft
+
+  // Phase E: Raw photo references for lazy encoding (not persisted)
+  final List<ImageMetadata>? rawPhotoMetadata;
+  final bool useLazyEncoding; // Feature flag for Phase E optimization
+
   PostUploadSnapshot({
     required this.brandUuid,
     required this.modelUuid,
@@ -66,7 +76,28 @@ class PostUploadSnapshot {
     required this.price,
     required this.description,
     required this.draftId,
+    this.rawPhotoMetadata, // Phase E: optional raw metadata
+    this.useLazyEncoding = false, // Phase E: default to legacy behavior
   });
+
+  /// Phase E: Encode photo on-demand from raw metadata or cached base64.
+  /// Returns null if neither source available.
+  Future<Uint8List?> getPhotoBytes(int index) async {
+    // If lazy encoding enabled and raw metadata available, encode on-demand
+    if (useLazyEncoding && rawPhotoMetadata != null) {
+      if (index >= 0 && index < rawPhotoMetadata!.length) {
+        return rawPhotoMetadata![index].bytes;
+      }
+      return null;
+    }
+
+    // Fallback to cached base64 (legacy behavior)
+    if (index >= 0 && index < photoBase64.length) {
+      return base64Decode(photoBase64[index]);
+    }
+
+    return null;
+  }
 
   Map<String, dynamic> toMap() => {
     'brandUuid': brandUuid,
@@ -89,40 +120,42 @@ class PostUploadSnapshot {
     'draftId': draftId,
   };
 
-  factory PostUploadSnapshot.fromMap(
-    Map<String, dynamic> m,
-  ) => PostUploadSnapshot(
-    brandUuid: m['brandUuid'] as String?,
-    modelUuid: m['modelUuid'] as String?,
-    brandName: (m['brandName'] ?? '') as String,
-    modelName: (m['modelName'] ?? '') as String,
-    photoBytesLengths:
-        (m['photoBytesLengths'] as List?)?.whereType<int>().toList() ?? [],
-    photoBase64:
-        (m['photoBase64'] as List?)?.whereType<String>().toList() ?? [],
-    photoAspectRatios:
-        (m['photoAspectRatios'] as List?)?.map((e) => e as String?).toList() ??
-        [],
-    photoWidths:
-        (m['photoWidths'] as List?)?.map((e) => e as int?).toList() ?? [],
-    photoHeights:
-        (m['photoHeights'] as List?)?.map((e) => e as int?).toList() ?? [],
-    hasVideo: m['hasVideo'] == true,
-    videoFile: m['videoPath'] != null && (m['videoPath'] as String).isNotEmpty
-        ? File(m['videoPath'])
-        : null,
-    usedCompressedVideo: m['usedCompressedVideo'] == true,
-    compressedVideoFile:
-        m['compressedVideoPath'] != null &&
-            (m['compressedVideoPath'] as String).isNotEmpty
-        ? File(m['compressedVideoPath'])
-        : null,
-    originalVideoBytes: (m['originalVideoBytes'] ?? 0) as int,
-    compressedVideoBytes: (m['compressedVideoBytes'] ?? 0) as int,
-    price: (m['price'] ?? '') as String,
-    description: (m['description'] ?? '') as String,
-    draftId: (m['draftId'] ?? '') as String,
-  );
+  factory PostUploadSnapshot.fromMap(Map<String, dynamic> m) =>
+      PostUploadSnapshot(
+        brandUuid: m['brandUuid'] as String?,
+        modelUuid: m['modelUuid'] as String?,
+        brandName: (m['brandName'] ?? '') as String,
+        modelName: (m['modelName'] ?? '') as String,
+        photoBytesLengths:
+            (m['photoBytesLengths'] as List?)?.whereType<int>().toList() ?? [],
+        photoBase64:
+            (m['photoBase64'] as List?)?.whereType<String>().toList() ?? [],
+        photoAspectRatios:
+            (m['photoAspectRatios'] as List?)
+                ?.map((e) => e == null ? null : (e as num).toDouble())
+                .toList() ??
+            [],
+        photoWidths:
+            (m['photoWidths'] as List?)?.map((e) => e as int?).toList() ?? [],
+        photoHeights:
+            (m['photoHeights'] as List?)?.map((e) => e as int?).toList() ?? [],
+        hasVideo: m['hasVideo'] == true,
+        videoFile:
+            m['videoPath'] != null && (m['videoPath'] as String).isNotEmpty
+            ? File(m['videoPath'])
+            : null,
+        usedCompressedVideo: m['usedCompressedVideo'] == true,
+        compressedVideoFile:
+            m['compressedVideoPath'] != null &&
+                (m['compressedVideoPath'] as String).isNotEmpty
+            ? File(m['compressedVideoPath'])
+            : null,
+        originalVideoBytes: (m['originalVideoBytes'] ?? 0) as int,
+        compressedVideoBytes: (m['compressedVideoBytes'] ?? 0) as int,
+        price: (m['price'] ?? '') as String,
+        description: (m['description'] ?? '') as String,
+        draftId: (m['draftId'] ?? '') as String,
+      );
 }
 
 class UploadTask {
@@ -173,6 +206,10 @@ class UploadTask {
   int uploadedPhotoBytes = 0;
   int get uploadedMediaBytes => uploadedVideoBytes + uploadedPhotoBytes;
   int get totalMediaBytes => videoBytes + photosBytes;
+
+  // Phase B: Track which parts have been successfully uploaded (for idempotent retries)
+  final Set<int> uploadedPhotoIndices = {};
+  bool videoUploaded = false;
 }
 
 /// Manages a single active upload task (Phase 1). Future: queue/multiple.
@@ -181,6 +218,10 @@ class UploadManager extends GetxService {
   final RxInt retryCount = 0.obs;
   final RxInt discardCount = 0.obs;
   static UploadManager get to => Get.find<UploadManager>();
+
+  // Phase E: Feature flag for lazy photo encoding (memory optimization)
+  // Set to true to enable on-demand encoding instead of upfront base64
+  static const bool enableLazyEncoding = false; // TODO: Enable after testing
 
   final Rxn<UploadTask> currentTask = Rxn<UploadTask>();
   // Unified lock flag for UI to disable post / edit / delete draft actions
@@ -269,18 +310,47 @@ class UploadManager extends GetxService {
     if (hasActive) {
       throw StateError('An upload is already in progress');
     }
+
+    // Phase E: Memory profiling start
+    MemoryProfiler.mark('upload_start');
+
     // Copy image list locally to avoid mutation during async work
     final images = controller.selectedImages.toList();
     final photoBytesLengths = images.map((e) => e.bytes.lengthInBytes).toList();
-    // Extract aspect ratio metadata from ImageMetadata objects
-    final photoAspectRatios = images.map((e) => e.aspectRatioString).toList();
+    // Extract aspect ratio metadata from ImageMetadata objects (numeric ratio, not string)
+    final photoAspectRatios = images.map((e) => e.ratio).toList();
     final photoWidths = images.map((e) => e.originalWidth).toList();
     final photoHeights = images.map((e) => e.originalHeight).toList();
-    // Encode in parallel isolates (compute) to keep main thread responsive
-    Future<String> encode(Uint8List bytes) async => base64Encode(bytes);
-    final photoBase64 = await Future.wait(
-      images.map((img) => compute(encode, img.bytes)),
-    );
+
+    MemoryProfiler.mark('upload_metadata_extracted');
+
+    // Phase E: Conditional encoding based on feature flag
+    List<String> photoBase64;
+    List<ImageMetadata>? rawPhotoMetadata;
+
+    if (enableLazyEncoding) {
+      // Phase E: Store raw metadata, skip upfront encoding (memory optimization)
+      rawPhotoMetadata = images;
+      photoBase64 = []; // Empty for active upload, will encode on-demand
+      UploadLogger.logTask(
+        taskId: 'pre-task',
+        event: 'LAZY_ENCODING_ENABLED',
+        details: 'Skipping upfront base64 encoding for ${images.length} photos',
+      );
+      MemoryProfiler.mark('upload_lazy_encoding_skipped');
+      MemoryProfiler.delta('upload_start', 'upload_lazy_encoding_skipped');
+    } else {
+      // Legacy: Encode in parallel isolates (compute) to keep main thread responsive
+      MemoryProfiler.mark('upload_encoding_start');
+      Future<String> encode(Uint8List bytes) async => base64Encode(bytes);
+      photoBase64 = await Future.wait(
+        images.map((img) => compute(encode, img.bytes)),
+      );
+      rawPhotoMetadata = null;
+      MemoryProfiler.mark('upload_encoding_complete');
+      MemoryProfiler.delta('upload_encoding_start', 'upload_encoding_complete');
+    }
+
     final snap = PostUploadSnapshot(
       brandUuid: controller.selectedBrandUuid.value.isEmpty
           ? null
@@ -304,6 +374,8 @@ class UploadManager extends GetxService {
       price: controller.price.text,
       description: controller.description.text,
       draftId: draftId,
+      rawPhotoMetadata: rawPhotoMetadata, // Phase E
+      useLazyEncoding: enableLazyEncoding, // Phase E
     );
     final task = UploadTask(id: _uuid.v4(), snapshot: snap);
     // Populate media byte sizes early for speed/ETA calculations
@@ -433,11 +505,87 @@ class UploadManager extends GetxService {
     );
   }
 
+  // ---- Phase D: Concurrent Photo Upload Helper ----
+  /// Upload multiple photos concurrently with a concurrency limit.
+  /// Returns true if all uploads succeeded, false otherwise.
+  Future<bool> _uploadPhotosConcurrent({
+    required PostController controller,
+    required UploadTask task,
+    required String postId,
+    required PostUploadSnapshot snap,
+    required List<int> photoIndices,
+    required int totalPhotos,
+    int concurrencyLimit = 2,
+  }) async {
+    // Track active uploads and their futures
+    final activeFutures = <int, Future<bool>>{};
+    final completedIndices = <int>{};
+    int currentIndex = 0;
+
+    while (completedIndices.length < photoIndices.length) {
+      // Start new uploads up to concurrency limit
+      while (activeFutures.length < concurrencyLimit &&
+          currentIndex < photoIndices.length) {
+        final photoIndex = photoIndices[currentIndex];
+        currentIndex++;
+
+        // Update status for first photo being uploaded
+        task.status.value = 'Uploading photo @current of @total…'.trParams({
+          'current': '${photoIndex + 1}',
+          'total': '$totalPhotos',
+        });
+        _emitMirror(task);
+
+        // Start upload
+        final future = _runWithNetworkWait(
+          controller,
+          task,
+          () => controller.uploadSinglePhoto(
+            postId,
+            snap,
+            photoIndex,
+            taskId: task.id,
+            onBytes: (delta) =>
+                _onMediaDelta(task, deltaBytes: delta, video: false),
+          ),
+        );
+
+        activeFutures[photoIndex] = future;
+      }
+
+      // Wait for at least one upload to complete
+      if (activeFutures.isNotEmpty) {
+        final entries = activeFutures.entries.toList();
+        final completed = await Future.any(
+          entries.map((e) => e.value.then((result) => MapEntry(e.key, result))),
+        );
+
+        activeFutures.remove(completed.key);
+        completedIndices.add(completed.key);
+
+        // Check if upload succeeded
+        if (!completed.value) {
+          // Cancel remaining uploads and fail
+          return false;
+        }
+
+        // Mark photo as uploaded for idempotent retry
+        task.uploadedPhotoIndices.add(completed.key);
+        _persist(task);
+      }
+    }
+
+    return true;
+  }
+
   // ---- Weighted Step Pipeline ----
   Future<void> _runWeightedPipeline(
     PostController controller,
     UploadTask task,
   ) async {
+    // Phase C: Log task start
+    UploadLogger.logTask(taskId: task.id, event: 'TASK_START');
+
     // Dynamic weighting: create (fixed base), media (proportional to bytes), finalize (fixed tail)
     const baseCreate = 0.12;
     const baseFinalize = 0.10;
@@ -482,9 +630,20 @@ class UploadManager extends GetxService {
         weight: wCreate,
         phase: UploadPhase.preparing,
         run: () async {
+          // Phase C: Log phase start
+          UploadLogger.logPhase(
+            taskId: task.id,
+            phase: 'create',
+            status: 'Creating post on backend',
+          );
           final id = await controller.postDetails();
           if (id == null) throw Exception('Failed to create post');
           task.publishedPostId.value = id;
+          UploadLogger.logPhase(
+            taskId: task.id,
+            phase: 'create',
+            status: 'Post created: $id',
+          );
         },
         retry: 2,
       ),
@@ -504,51 +663,83 @@ class UploadManager extends GetxService {
             if (snap.hasVideo &&
                 (snap.compressedVideoFile?.existsSync() == true ||
                     snap.videoFile?.existsSync() == true)) {
-              // Mark explicit phase for UI timeline
-              task.phase.value = UploadPhase.uploadingVideo;
-              task.status.value = 'Uploading video…'.tr;
-              _emitMirror(task);
-              final videoOk = await _runWithNetworkWait(
-                controller,
-                task,
-                () => controller.uploadSingleVideo(
-                  postId,
-                  snap,
-                  onBytes: (delta) =>
-                      _onMediaDelta(task, deltaBytes: delta, video: true),
-                ),
-              );
-              if (!videoOk) {
-                final fallback = 'post_upload_video_failed'.tr;
-                throw Exception(
-                  controller.uploadError.value.isEmpty
-                      ? fallback
-                      : controller.uploadError.value,
+              // Phase B: Skip video if already uploaded (idempotent retry)
+              if (!task.videoUploaded) {
+                // Guard against duplicate video phase logs (observed in logs)
+                bool videoPhaseLogged = false;
+                // Mark explicit phase for UI timeline
+                task.phase.value = UploadPhase.uploadingVideo;
+                task.status.value = 'Uploading video…'.tr;
+                _emitMirror(task);
+                // Phase C: Log phase transition
+                if (!videoPhaseLogged) {
+                  UploadLogger.logPhase(
+                    taskId: task.id,
+                    phase: 'media-video',
+                    status: 'Starting video upload',
+                  );
+                  videoPhaseLogged = true;
+                }
+                final videoOk = await _runWithNetworkWait(
+                  controller,
+                  task,
+                  () => controller.uploadSingleVideo(
+                    postId,
+                    snap,
+                    taskId: task.id, // Phase C: Pass taskId
+                    onBytes: (delta) =>
+                        _onMediaDelta(task, deltaBytes: delta, video: true),
+                  ),
                 );
+                if (!videoOk) {
+                  final fallback = 'post_upload_video_failed'.tr;
+                  throw Exception(
+                    controller.uploadError.value.isEmpty
+                        ? fallback
+                        : controller.uploadError.value,
+                  );
+                }
+                // Mark video as uploaded so retry won't duplicate
+                task.videoUploaded = true;
+                _persist(task);
               }
             }
-            // Photos sequential
+            // Phase D: Photos with limited concurrency (2 simultaneous uploads)
             final totalPhotos = snap.photoBase64.length;
+
+            // Determine which photos need uploading (skip already uploaded)
+            final photosToUpload = <int>[];
             for (var i = 0; i < totalPhotos; i++) {
-              // Switch phase only once (first photo) if we had video or starting photos
+              if (!task.uploadedPhotoIndices.contains(i)) {
+                photosToUpload.add(i);
+              }
+            }
+
+            if (photosToUpload.isNotEmpty) {
+              // Switch phase for UI timeline
               if (task.phase.value != UploadPhase.uploadingPhotos) {
                 task.phase.value = UploadPhase.uploadingPhotos;
+                // Phase C: Log phase transition
+                UploadLogger.logPhase(
+                  taskId: task.id,
+                  phase: 'media-photos',
+                  status:
+                      'Starting concurrent photos upload (total: $totalPhotos, remaining: ${photosToUpload.length})',
+                );
               }
-              task.status.value = 'Uploading photo @current of @total…'
-                  .trParams({'current': '${i + 1}', 'total': '$totalPhotos'});
-              _emitMirror(task);
-              final ok = await _runWithNetworkWait(
-                controller,
-                task,
-                () => controller.uploadSinglePhoto(
-                  postId,
-                  snap,
-                  i,
-                  onBytes: (delta) =>
-                      _onMediaDelta(task, deltaBytes: delta, video: false),
-                ),
+
+              // Upload photos with concurrency limit of 2
+              final allPhotosOk = await _uploadPhotosConcurrent(
+                controller: controller,
+                task: task,
+                postId: postId,
+                snap: snap,
+                photoIndices: photosToUpload,
+                totalPhotos: totalPhotos,
+                concurrencyLimit: 2,
               );
-              if (!ok) {
+
+              if (!allPhotosOk) {
                 final fallback = 'post_upload_photo_failed'.tr;
                 throw Exception(
                   controller.uploadError.value.isEmpty
@@ -568,9 +759,20 @@ class UploadManager extends GetxService {
         weight: wFinalize,
         phase: UploadPhase.finalizing,
         run: () async {
+          // Phase C: Log phase start
+          UploadLogger.logPhase(
+            taskId: task.id,
+            phase: 'finalize',
+            status: 'Finalizing post',
+          );
           // Small delay to ensure backend has processed all associations
           await Future.delayed(const Duration(milliseconds: 500));
           await controller.fetchMyPosts();
+          UploadLogger.logPhase(
+            taskId: task.id,
+            phase: 'finalize',
+            status: 'Post finalized successfully',
+          );
         },
         retry: 1,
       ),
@@ -666,6 +868,20 @@ class UploadManager extends GetxService {
   Future<void> cancelActive(PostController controller) async {
     final task = currentTask.value;
     if (task == null) return;
+
+    // Phase C: Log cancellation
+    UploadLogger.logTask(
+      taskId: task.id,
+      event: 'TASK_CANCEL',
+      details: 'User initiated cancellation',
+    );
+
+    // First cancel network activity directly via UploadService if registered
+    if (Get.isRegistered<UploadService>()) {
+      try {
+        Get.find<UploadService>().cancelActive('User cancelled');
+      } catch (_) {}
+    }
     await controller.cancelOngoingUpload();
     task.isCancelled.value = true;
     task.isFailed.value = true; // treat as retry-able terminal state
@@ -687,6 +903,13 @@ class UploadManager extends GetxService {
   }
 
   void _handleSuccess(PostController controller, UploadTask task) {
+    // Phase C: Log task completion
+    UploadLogger.logTask(
+      taskId: task.id,
+      event: 'TASK_COMPLETE',
+      details: 'postId=${task.publishedPostId.value}',
+    );
+
     task.isCompleted.value = true;
     _clearPersisted();
     _showNotif(
@@ -712,6 +935,13 @@ class UploadManager extends GetxService {
   }
 
   void _handleFailure(UploadTask task) {
+    // Phase C: Log task failure
+    UploadLogger.logTask(
+      taskId: task.id,
+      event: 'TASK_FAILED',
+      details: task.error.value,
+    );
+
     task.isFailed.value = true;
     // Classify error
     task.failureType.value = _classifyFailure(task.error.value);
@@ -884,10 +1114,32 @@ class UploadManager extends GetxService {
   // ---------------- Persistence -----------------
   void _persist(UploadTask task) {
     try {
+      // Phase E: For lazy encoding, we need to encode photos before persisting
+      // This ensures recovery works even if raw metadata is lost
+      final snapshotMap = task.snapshot.toMap();
+
+      // Phase E: If using lazy encoding and base64 is empty, encode now for persistence
+      if (task.snapshot.useLazyEncoding &&
+          task.snapshot.photoBase64.isEmpty &&
+          task.snapshot.rawPhotoMetadata != null) {
+        // Note: This is synchronous encoding - only happens during persist
+        // For recovery purposes, we need base64 in storage
+        final encodedPhotos = task.snapshot.rawPhotoMetadata!
+            .map((img) => base64Encode(img.bytes))
+            .toList();
+        snapshotMap['photoBase64'] = encodedPhotos;
+
+        UploadLogger.logTask(
+          taskId: task.id,
+          event: 'PERSIST_LAZY_ENCODE',
+          details: 'Encoded ${encodedPhotos.length} photos for persistence',
+        );
+      }
+
       final map = {
         'id': task.id,
         'createdAt': task.createdAt.toIso8601String(),
-        'snapshot': task.snapshot.toMap(),
+        'snapshot': snapshotMap,
         'phase': task.phase.value.index,
         'overall': task.overallProgress.value,
         'video': task.videoProgress.value,
@@ -898,6 +1150,9 @@ class UploadManager extends GetxService {
         'isCancelled': task.isCancelled.value,
         'error': task.error.value,
         'failureType': task.failureType.value.index,
+        // Phase B: Persist uploaded part state for idempotent retries
+        'uploadedPhotoIndices': task.uploadedPhotoIndices.toList(),
+        'videoUploaded': task.videoUploaded,
       };
       _box.write(_persistKey, map);
     } catch (_) {}
@@ -929,6 +1184,12 @@ class UploadManager extends GetxService {
               ftIndex < UploadFailureType.values.length) {
             task.failureType.value = UploadFailureType.values[ftIndex];
           }
+          // Phase B: Restore uploaded part state for idempotent retries
+          final photoIndices = raw['uploadedPhotoIndices'];
+          if (photoIndices is List) {
+            task.uploadedPhotoIndices.addAll(photoIndices.whereType<int>());
+          }
+          task.videoUploaded = raw['videoUploaded'] == true;
         }
       }
     } catch (_) {}
@@ -939,6 +1200,13 @@ class UploadManager extends GetxService {
     final task = currentTask.value;
     if (task == null) return;
     if (!task.isFailed.value) return; // only failed tasks retried
+
+    // Phase C: Log retry
+    UploadLogger.logTask(
+      taskId: task.id,
+      event: 'TASK_RETRY',
+      details: 'retryCount=${retryCount.value + 1}',
+    );
 
     // Hydrate controller form/media if empty (best-effort)
     await _hydrateController(controller, task.snapshot);

@@ -37,8 +37,10 @@ class HomeController extends GetxController {
     scrollController.addListener(() {
       _scrollDebounceTimer?.cancel();
       _scrollDebounceTimer = Timer(const Duration(milliseconds: 300), () {
-        if (scrollController.position.maxScrollExtent ==
-            scrollController.offset) {
+        // ✅ FIX: Guard against disposed/unattached scrollController
+        if (scrollController.hasClients &&
+            scrollController.position.maxScrollExtent ==
+                scrollController.offset) {
           fetchPosts();
         }
       });

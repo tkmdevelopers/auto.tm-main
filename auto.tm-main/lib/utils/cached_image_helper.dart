@@ -1,5 +1,7 @@
 // ignore_for_file: depend_on_referenced_packages
 import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
@@ -70,7 +72,13 @@ class CachedImageHelper {
               debugPrint(
                 '[CachedImageHelper] ❌ Error loading: $url\n   Error type: ${error.runtimeType}\n   Error: $error',
               );
-              return _buildErrorWidget(width, height);
+              // Attempt lightweight HEAD validation & single retry for transient network/content-type issues
+              return _RetryImage(
+                originalUrl: url,
+                width: width,
+                height: height,
+                fit: fit,
+              );
             },
       imageBuilder: (context, imageProvider) {
         debugPrint('[CachedImageHelper] ✅ Successfully loaded image');
@@ -471,5 +479,98 @@ class CachedImageHelper {
     } catch (e) {
       debugPrint('[CachedImageHelper] ❌ Error clearing cache: $e');
     }
+  }
+}
+
+/// Internal widget that performs a single delayed retry after validating
+/// that the remote resource looks like an image (basic Content-Type check).
+class _RetryImage extends StatefulWidget {
+  final String originalUrl;
+  final double? width;
+  final double? height;
+  final BoxFit fit;
+
+  const _RetryImage({
+    required this.originalUrl,
+    required this.width,
+    required this.height,
+    required this.fit,
+  });
+
+  @override
+  State<_RetryImage> createState() => _RetryImageState();
+}
+
+class _RetryImageState extends State<_RetryImage> {
+  bool _attempted = false;
+  bool _validImage = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _validateAndRetry();
+  }
+
+  Future<void> _validateAndRetry() async {
+    if (_attempted) return; // safety
+    _attempted = true;
+    try {
+      final uri = Uri.tryParse(widget.originalUrl);
+      if (uri == null) {
+        _validImage = false;
+        return;
+      }
+      // Perform a HEAD request to verify content type if http/https
+      if (uri.scheme.startsWith('http')) {
+        final client = HttpClient();
+        client.connectionTimeout = const Duration(seconds: 3);
+        try {
+          final req = await client.openUrl('HEAD', uri);
+          final resp = await req.close();
+          final ctype = resp.headers.value('content-type') ?? '';
+          debugPrint(
+            '[CachedImageHelper] 🔍 HEAD status=${resp.statusCode} type=$ctype url=${widget.originalUrl}',
+          );
+          if (resp.statusCode >= 400 ||
+              !(ctype.contains('image/') ||
+                  ctype.contains('jpeg') ||
+                  ctype.contains('png'))) {
+            _validImage = false;
+            return;
+          }
+        } catch (e) {
+          debugPrint('[CachedImageHelper] ⚠️ HEAD check failed: $e');
+        } finally {
+          client.close(force: true);
+        }
+      }
+      // Delay then trigger rebuild to attempt CachedNetworkImage again externally (parent won't auto retry itself)
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+      setState(
+        () {},
+      ); // triggers one rebuild; parent CachedNetworkImage already failed so we simulate retry via Image.network
+    } catch (_) {
+      _validImage = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_attempted) {
+      return CachedImageHelper._buildShimmer(widget.width, widget.height);
+    }
+    if (!_validImage) {
+      return CachedImageHelper._buildErrorWidget(widget.width, widget.height);
+    }
+    // Simple direct Image.network fallback (can leverage cache manager again)
+    return Image.network(
+      widget.originalUrl,
+      fit: widget.fit,
+      width: widget.width,
+      height: widget.height,
+      errorBuilder: (_, __, ___) =>
+          CachedImageHelper._buildErrorWidget(widget.width, widget.height),
+    );
   }
 }

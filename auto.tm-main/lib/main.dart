@@ -12,8 +12,8 @@ import 'package:auto_tm/screens/profile_screen/profile_screen.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 import 'package:auto_tm/screens/search_screen/search_screen.dart';
-import 'package:auto_tm/screens/post_screen/controller/upload_manager.dart';
-import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
+import 'package:auto_tm/screens/post_screen/services/upload_service.dart'; // Phase: ensure UploadService registered
+import 'package:auto_tm/screens/post_screen/controller/upload_manager.dart'; // Register UploadManager globally
 import 'package:auto_tm/screens/splash_screen/custom_splash_screen.dart';
 import 'package:auto_tm/services/notification_sevice/notification_service.dart';
 import 'package:auto_tm/services/auth/auth_service.dart';
@@ -75,17 +75,39 @@ Future<void> initServices() async {
   ); // ThemeController is global, so it's initialized here.
   Get.put(ConnectionController());
   Get.put(DownloadController());
-  // Register UploadManager early so background progress / locks are available app-wide.
-  if (!Get.isRegistered<UploadManager>()) {
-    await Get.putAsync(() async => await UploadManager().init());
-  }
-  // Lazily register PostController so any route (like UploadProgressScreen) can resolve it.
-  if (!Get.isRegistered<PostController>()) {
-    Get.lazyPut(() => PostController(), fenix: true);
-  }
-  // Register AuthService (phone OTP + session). Must come after GetStorage.init().
+
+  // ✅ Register AuthService FIRST (before UploadService needs it)
   if (!Get.isRegistered<AuthService>()) {
-    await Get.putAsync(() async => await AuthService().init());
+    await Get.putAsync(() async => AuthService().init(), permanent: true);
+  }
+
+  // ✅ Register UploadManager globally to prevent Obx reactive errors
+  if (!Get.isRegistered<UploadManager>()) {
+    await Get.putAsync(() async => UploadManager().init(), permanent: true);
+  }
+
+  // Register UploadService early so background progress / locks are available app-wide.
+  if (!Get.isRegistered<UploadService>()) {
+    Get.lazyPut(
+      () => UploadService(
+        tokenProvider: () {
+          // Prefer AuthService currentSession token if available
+          if (Get.isRegistered<AuthService>()) {
+            final auth = Get.find<AuthService>();
+            final session = auth.currentSession.value;
+            final access = session?.accessToken;
+            if (access != null && access.isNotEmpty) return access;
+          }
+          // Fallback to persisted storage token
+          final box = GetStorage();
+          final stored = box.read('ACCESS_TOKEN');
+          if (stored is String && stored.isNotEmpty) return stored;
+          // Return empty string (never null) to avoid type mismatch and allow 401-trigger refresh wrapper
+          return '';
+        },
+      ),
+      fenix: true,
+    );
   }
   await Get.putAsync(() async => NotificationService()..init());
   // Register ProfileController globally so UI never creates duplicates.

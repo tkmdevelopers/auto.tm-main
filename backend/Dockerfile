@@ -33,9 +33,9 @@ FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Install minimal postgres client tools and curl (for container healthcheck)
+# Install minimal postgres client tools, curl (for container healthcheck), and ffmpeg (for video processing)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    postgresql-client curl \
+    postgresql-client curl ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy production node_modules & dist & package.json
