@@ -17,47 +17,27 @@ import 'package:http/http.dart' as http;
 import 'package:auto_tm/services/auth/auth_service.dart';
 
 import 'package:auto_tm/models/image_metadata.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:video_compress/video_compress.dart';
 import 'package:video_player/video_player.dart';
-import 'package:video_thumbnail/video_thumbnail.dart';
 
 import 'upload_manager.dart';
+import 'package:auto_tm/utils/hashing.dart';
+import 'package:auto_tm/utils/phone_utils.dart';
+import 'package:auto_tm/screens/post_screen/services/draft_service.dart';
+import 'package:auto_tm/screens/post_screen/model/post_form_state.dart';
+import 'package:auto_tm/screens/post_screen/model/brand_dto.dart';
+import 'package:auto_tm/screens/post_screen/model/model_dto.dart';
+import 'package:auto_tm/screens/post_screen/utils/json_parsers.dart';
+import '../services/media_service.dart';
+import '../services/upload_service.dart';
+import '../services/cache_service.dart';
+import '../services/error_handler_service.dart';
+import '../repository/brand_repository.dart';
+import '../repository/model_repository.dart';
+import '../repository/post_repository.dart';
+import '../repository/repository_exceptions.dart';
 
-/// Simple failure wrapper for error handling
-class Failure {
-  final String? message;
-  Failure(this.message);
-  @override
-  String toString() => message ?? 'Unknown error';
-}
-
-/// Brand data transfer object
-class BrandDto {
-  final String uuid;
-  final String name;
-
-  BrandDto({required this.uuid, required this.name});
-
-  factory BrandDto.fromJson(Map<String, dynamic> json) => BrandDto(
-    uuid: json['uuid']?.toString() ?? '',
-    name: json['name']?.toString() ?? '',
-  );
-}
-
-/// Model data transfer object
-class ModelDto {
-  final String uuid;
-  final String name;
-
-  ModelDto({required this.uuid, required this.name});
-
-  factory ModelDto.fromJson(Map<String, dynamic> json) => ModelDto(
-    uuid: json['uuid']?.toString() ?? '',
-    name: json['name']?.toString() ?? '',
-  );
-}
+// BrandDto & ModelDto extracted to model/brand_dto.dart and model/model_dto.dart
 
 /// Post data transfer object
 class PostDto {
@@ -94,12 +74,12 @@ class PostDto {
 
   factory PostDto.fromJson(Map<String, dynamic> json) => PostDto(
     uuid: json['uuid']?.toString() ?? json['id']?.toString() ?? '',
-    brand: _extractBrand(json),
-    model: _extractModel(json),
+    brand: JsonParsers.extractBrand(json),
+    model: JsonParsers.extractModel(json),
     brandId: json['brandsId']?.toString() ?? '',
     modelId: json['modelsId']?.toString() ?? '',
     price: (json['price'] as num?)?.toDouble() ?? 0.0,
-    photoPath: _extractPhotoPath(json),
+    photoPath: JsonParsers.extractPhotoPath(json),
     year: (json['year'] as num?)?.toDouble() ?? 0.0,
     milleage: (json['milleage'] as num?)?.toDouble() ?? 0.0,
     currency: json['currency']?.toString() ?? '',
@@ -124,169 +104,6 @@ class PostDto {
     'status': status,
     if (commentCount != null) 'commentCount': commentCount,
   };
-}
-
-// --- PostDto parsing helpers ---
-String _extractBrand(Map<String, dynamic> json) {
-  // Prefer explicit name fields first
-  final candidates = [json['brandName'], json['brand'], json['brandsName']];
-  for (final c in candidates) {
-    if (c is String && c.trim().isNotEmpty) return c.trim();
-  }
-  final brands = json['brands'];
-  if (brands is Map) {
-    final name = brands['name'];
-    if (name is String && name.trim().isNotEmpty) return name.trim();
-    // Sometimes API might nest differently
-    final b2 = brands['brand'];
-    if (b2 is String && b2.trim().isNotEmpty) return b2.trim();
-  } else if (brands is String && brands.trim().isNotEmpty) {
-    // Avoid returning full map string representation like {uuid:..., name:...}
-    if (brands.startsWith('{') && brands.contains('name:')) {
-      // Try to extract name via regex
-      final match = RegExp(r'name:([^,}]+)').firstMatch(brands);
-      if (match != null) return match.group(1)!.trim();
-    } else {
-      return brands.trim();
-    }
-  }
-  // Fallback to id (will later be resolved to name)
-  final id = json['brandsId']?.toString();
-  return id ?? '';
-}
-
-String _extractModel(Map<String, dynamic> json) {
-  final candidates = [json['modelName'], json['model'], json['modelsName']];
-  for (final c in candidates) {
-    if (c is String && c.trim().isNotEmpty) return c.trim();
-  }
-  final models = json['models'];
-  if (models is Map) {
-    final name = models['name'];
-    if (name is String && name.trim().isNotEmpty) return name.trim();
-    final m2 = models['model'];
-    if (m2 is String && m2.trim().isNotEmpty) return m2.trim();
-  } else if (models is String && models.trim().isNotEmpty) {
-    if (models.startsWith('{') && models.contains('name:')) {
-      final match = RegExp(r'name:([^,}]+)').firstMatch(models);
-      if (match != null) return match.group(1)!.trim();
-    } else {
-      return models.trim();
-    }
-  }
-  final id = json['modelsId']?.toString();
-  return id ?? '';
-}
-
-String _extractPhotoPath(Map<String, dynamic> json) {
-  final direct = json['photoPath'];
-  if (direct is String && direct.trim().isNotEmpty) return direct.trim();
-
-  final photo = json['photo'];
-  // Case: photo is a List (home feed style)
-  if (photo is List && photo.isNotEmpty) {
-    for (final item in photo) {
-      if (item is Map) {
-        // Typical nested variant map under 'path'
-        final p = item['path'];
-        if (p is Map) {
-          final variant = _pickImageVariant(p);
-          if (variant != null) return variant;
-        }
-        for (final key in ['path', 'photoPath', 'originalPath', 'url']) {
-          final v = item[key];
-          if (v is String && v.trim().isNotEmpty) return v.trim();
-        }
-      } else if (item is String && item.trim().isNotEmpty) {
-        return item.trim();
-      }
-    }
-  }
-
-  if (photo is Map) {
-    for (final key in ['path', 'photoPath', 'originalPath', 'url']) {
-      final v = photo[key];
-      if (v is String && v.trim().isNotEmpty) return v.trim();
-    }
-    final nested = photo['path'];
-    if (nested is Map) {
-      final variant = _pickImageVariant(nested);
-      if (variant != null) return variant;
-    }
-  }
-
-  final photos = json['photos'];
-  if (photos is List && photos.isNotEmpty) {
-    final first = photos.first;
-    if (first is Map) {
-      for (final key in ['path', 'photoPath', 'originalPath', 'url']) {
-        final v = first[key];
-        if (v is String && v.trim().isNotEmpty) return v.trim();
-      }
-      final nested = first['path'];
-      if (nested is Map) {
-        final variant = _pickImageVariant(nested);
-        if (variant != null) return variant;
-      }
-    } else if (first is String && first.trim().isNotEmpty) {
-      return first.trim();
-    }
-  }
-
-  // Deep fallback scan
-  final deep = _deepFindFirstImagePath(json);
-  if (deep != null) return deep;
-
-  if (Get.isLogEnable) {
-    // ignore: avoid_print
-    print(
-      '[PostDto][photo] no photo path keys found (deep fallback also empty) keys=${json.keys}',
-    );
-  }
-  return '';
-}
-
-String? _pickImageVariant(Map variantMap) {
-  const order = ['medium', 'small', 'originalPath', 'original', 'large'];
-  for (final k in order) {
-    final v = variantMap[k];
-    if (v is String && v.trim().isNotEmpty) return v.trim();
-  }
-  for (final value in variantMap.values) {
-    if (value is Map) {
-      final url = value['url'];
-      if (url is String && url.trim().isNotEmpty) return url.trim();
-    } else if (value is String && value.trim().isNotEmpty) {
-      return value.trim();
-    }
-  }
-  return null;
-}
-
-String? _deepFindFirstImagePath(dynamic node, {int depth = 0}) {
-  if (depth > 5) return null;
-  if (node is String) {
-    final s = node.trim();
-    if (s.isNotEmpty && _looksLikeImagePath(s)) return s;
-  } else if (node is Map) {
-    for (final entry in node.entries) {
-      final found = _deepFindFirstImagePath(entry.value, depth: depth + 1);
-      if (found != null) return found;
-    }
-  } else if (node is List) {
-    for (final v in node) {
-      final found = _deepFindFirstImagePath(v, depth: depth + 1);
-      if (found != null) return found;
-    }
-  }
-  return null;
-}
-
-bool _looksLikeImagePath(String s) {
-  return RegExp(
-    r'\.(jpg|jpeg|png|webp|gif)(\?.*)?$',
-    caseSensitive: false,
-  ).hasMatch(s);
 }
 
 /// Tri-state status mapping for nullable boolean status.
@@ -377,7 +194,6 @@ class PostController extends GetxController {
   final RxBool isCompressingVideo = false.obs;
   final RxDouble videoCompressionProgress = 0.0.obs;
   VideoPlayerController? videoPlayerController;
-  var _videoCompressSub;
 
   // Image signature cache for dirty tracking
   List<_ImageSig> _imageSigCache = [];
@@ -418,12 +234,12 @@ class PostController extends GetxController {
   final RxBool isLoadingM = false.obs;
   final RxBool brandsFromCache = false.obs;
   final RxBool modelsFromCache = false.obs;
-  final Map<String, List<ModelDto>> _modelsMemoryCache = {};
+  // Services
+  late final CacheService _cacheService;
 
-  // Cache keys and TTL
-  static const _brandCacheKey = 'BRAND_CACHE_V1';
-  static const _modelCacheKey = 'MODEL_CACHE_V1';
-  static const _cacheTtl = Duration(hours: 6);
+  // Video size and duration constraints
+  static const int _minVideoCompressBytes = 25 * 1024 * 1024; // 25 MB
+  static const int _maxVideoDurationSeconds = 60; // 60 seconds limit
 
   // Phone verification state
   final RxBool isPhoneVerified = false.obs;
@@ -482,6 +298,25 @@ class PostController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    // Ensure MediaService is available (idempotent Put if not registered)
+    if (!Get.isRegistered<MediaService>()) {
+      Get.put(MediaService());
+    }
+    // Ensure CacheService is available
+    if (!Get.isRegistered<CacheService>()) {
+      Get.put(CacheService());
+    }
+    _cacheService = Get.find<CacheService>();
+    // Ensure repositories are available
+    if (!Get.isRegistered<IBrandRepository>()) {
+      Get.put<IBrandRepository>(BrandRepository());
+    }
+    if (!Get.isRegistered<IModelRepository>()) {
+      Get.put<IModelRepository>(ModelRepository());
+    }
+    if (!Get.isRegistered<IPostRepository>()) {
+      Get.put<IPostRepository>(PostRepository());
+    }
     _initializeOriginalPhone();
     _attachProfilePhoneListener();
     _hydrateBrandCache();
@@ -521,9 +356,11 @@ class PostController extends GetxController {
           f.deleteSync();
         }
       } catch (_) {}
-      try {
-        VideoCompress.deleteAllCache();
-      } catch (_) {}
+      if (Get.isRegistered<MediaService>()) {
+        try {
+          Get.find<MediaService>().disposeCompressionCache();
+        } catch (_) {}
+      }
     }
     super.onClose();
   }
@@ -543,7 +380,7 @@ class PostController extends GetxController {
       return;
     }
     if (_originalFullPhone.isNotEmpty &&
-        _stripPlus(_originalFullPhone) == current) {
+        PhoneUtils.stripPlus(_originalFullPhone) == current) {
       if (!isPhoneVerified.value) isPhoneVerified.value = true;
       needsOtp.value = false;
       showOtpField.value = false;
@@ -602,10 +439,8 @@ class PostController extends GetxController {
 
     // Guard: Don't start upload while video is compressing
     if (isCompressingVideo.value) {
-      Get.snackbar(
-        'common_error'.tr,
-        'Please wait for video compression to complete'.tr,
-        snackPosition: SnackPosition.BOTTOM,
+      ErrorHandlerService.showInfo(
+        'Please wait for video compression to complete',
       );
       return;
     }
@@ -641,10 +476,7 @@ class PostController extends GetxController {
     try {
       await manager.startFromController(this, draftId: '');
     } catch (e) {
-      Get.snackbar(
-        'common_error'.tr,
-        'post_upload_start_error'.trParams({'error': e.toString()}),
-      );
+      ErrorHandlerService.handleApiError(e, context: 'Failed to start upload');
       isPosting.value = false;
     }
   }
@@ -681,60 +513,63 @@ class PostController extends GetxController {
   /// Create post details - called by UploadManager
   Future<String?> postDetails() async {
     if (!isPhoneVerified.value) {
-      Get.snackbar('Error', 'You have to go through OTP verification.'.tr);
+      ErrorHandlerService.showOtpRequired();
       return null;
     }
 
     try {
       final token = box.read('ACCESS_TOKEN');
-      final fullPhone = '+' + _buildFullPhoneDigits();
-      final response = await http.post(
-        Uri.parse(ApiKey.postPostsKey),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          // Backend expects brand/model UUID fields named brandsId / modelsId
-          'brandsId': selectedBrandUuid.value,
-          'modelsId': selectedModelUuid.value,
-          'condition': selectedCondition.value,
-          'transmission': selectedTransmission.value,
-          'engineType': selectedEngineType.value,
-          'enginePower': double.tryParse(enginePower.text) ?? 0,
-          'year':
-              int.tryParse(
-                selectedYear.value.isNotEmpty
-                    ? selectedYear.value
-                    : selectedDate.value.year.toString(),
-              ) ??
-              selectedDate.value.year,
-          'credit': credit.value,
-          'exchange': exchange.value,
-          'milleage': double.tryParse(milleage.text) ?? 0,
-          'vin': vinCode.text,
-          'price': double.tryParse(price.text) ?? 0,
-          'currency': selectedCurrency.value,
-          'location': selectedLocation.value,
-          'phone': fullPhone,
-          'description': description.text,
-          // Inject a personalInfo block carrying region semantics. For now region is forced 'Local'.
-          'personalInfo': {
-            'name': Get.isRegistered<ProfileController>()
-                ? Get.find<ProfileController>().name.value
-                : '',
-            'location': selectedLocation.value, // city
-            'phone': fullPhone,
-            'region': 'Local',
-          },
-          // 'subscriptionId': selectedSubscriptionId, // add when implemented
-        }),
-      );
+      final fullPhone =
+          '+' + PhoneUtils.buildFullPhoneDigits(phoneController.text);
+      final postRepo = Get.find<IPostRepository>();
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        return data['uuid']?.toString();
-      }
+      final postData = {
+        // Backend expects brand/model UUID fields named brandsId / modelsId
+        'brandsId': selectedBrandUuid.value,
+        'modelsId': selectedModelUuid.value,
+        'condition': selectedCondition.value,
+        'transmission': selectedTransmission.value,
+        'engineType': selectedEngineType.value,
+        'enginePower': double.tryParse(enginePower.text) ?? 0,
+        'year':
+            int.tryParse(
+              selectedYear.value.isNotEmpty
+                  ? selectedYear.value
+                  : selectedDate.value.year.toString(),
+            ) ??
+            selectedDate.value.year,
+        'credit': credit.value,
+        'exchange': exchange.value,
+        'milleage': double.tryParse(milleage.text) ?? 0,
+        'vin': vinCode.text,
+        'price': double.tryParse(price.text) ?? 0,
+        'currency': selectedCurrency.value,
+        'location': selectedLocation.value,
+        'phone': fullPhone,
+        'description': description.text,
+        // Inject a personalInfo block carrying region semantics. For now region is forced 'Local'.
+        'personalInfo': {
+          'name': Get.isRegistered<ProfileController>()
+              ? Get.find<ProfileController>().name.value
+              : '',
+          'location': selectedLocation.value, // city
+          'phone': fullPhone,
+          'region': 'Local',
+        },
+        // 'subscriptionId': selectedSubscriptionId, // add when implemented
+      };
+
+      return await postRepo.createPost(postData, token: token);
+    } on AuthExpiredException {
+      debugPrint('Post creation: Auth expired');
+      ErrorHandlerService.handleAuthExpired();
+      return null;
+    } on HttpException catch (e) {
+      debugPrint('Post creation HTTP error: ${e.message}');
+      ErrorHandlerService.handleRepositoryError(
+        e,
+        context: 'Failed to create post',
+      );
       return null;
     } catch (e) {
       debugPrint('Post creation error: $e');
@@ -756,87 +591,64 @@ class PostController extends GetxController {
 
     try {
       final token = box.read('ACCESS_TOKEN');
-      final response = await http
-          .get(
-            Uri.parse(ApiKey.getMyPostsKey),
-            headers: {
-              'Content-Type': 'application/json',
-              if (token != null) 'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(const Duration(seconds: 15));
+      final postRepo = Get.find<IPostRepository>();
+      final rawPosts = await postRepo.fetchMyPosts(token: token);
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      // Debug: Print first post to see structure
+      if (Get.isLogEnable && rawPosts.isNotEmpty) {
+        debugPrint('[fetchMyPosts] First post sample: ${rawPosts.first}');
+      }
 
-        // Debug: Print first post to see structure
-        if (Get.isLogEnable && data is List && data.isNotEmpty) {
-          debugPrint('[fetchMyPosts] First post sample: ${data.first}');
-        }
+      final postDtos = rawPosts.map((json) => PostDto.fromJson(json)).toList();
 
-        List<dynamic> rawPosts;
-        if (data is List) {
-          rawPosts = data;
-        } else if (data is Map && data['data'] is List) {
-          rawPosts = data['data'] as List;
-        } else {
-          rawPosts = [];
-        }
-
-        final postDtos = rawPosts
-            .map((json) => PostDto.fromJson(json as Map<String, dynamic>))
-            .toList();
-
-        // Debug: Check how many posts have photos
-        if (Get.isLogEnable) {
-          final withPhotos = postDtos
-              .where((p) => p.photoPath.isNotEmpty)
-              .length;
-          debugPrint(
-            '[fetchMyPosts] Loaded ${postDtos.length} posts, $withPhotos with photos',
-          );
-        }
-
-        // Filter out posts that are currently being uploaded
-        // (prevents showing incomplete posts with no photos during upload)
-        final filteredPosts = postDtos.where((post) {
-          if (Get.isRegistered<UploadManager>()) {
-            final uploadMgr = Get.find<UploadManager>();
-            final currentlyUploading = uploadMgr.currentTask.value;
-            if (currentlyUploading != null &&
-                currentlyUploading.publishedPostId.value == post.uuid &&
-                !currentlyUploading.isCompleted.value) {
-              if (Get.isLogEnable) {
-                debugPrint(
-                  '[fetchMyPosts] Filtering out uploading post: ${post.uuid}',
-                );
-              }
-              return false; // Hide until upload completes
-            }
-          }
-          return true;
-        }).toList();
-
-        posts.assignAll(filteredPosts);
-      } else if (response.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return fetchMyPosts(); // Retry with new token
-        } else {
-          Get.snackbar('Error', 'Session expired. Please login again.');
-        }
-      } else {
-        Get.snackbar(
-          'Error',
-          'Failed to load posts (${response.statusCode})'.tr,
+      // Debug: Check how many posts have photos
+      if (Get.isLogEnable) {
+        final withPhotos = postDtos.where((p) => p.photoPath.isNotEmpty).length;
+        debugPrint(
+          '[fetchMyPosts] Loaded ${postDtos.length} posts, $withPhotos with photos',
         );
       }
+
+      // Filter out posts that are currently being uploaded
+      // (prevents showing incomplete posts with no photos during upload)
+      final filteredPosts = postDtos.where((post) {
+        if (Get.isRegistered<UploadManager>()) {
+          final uploadMgr = Get.find<UploadManager>();
+          final currentlyUploading = uploadMgr.currentTask.value;
+          if (currentlyUploading != null &&
+              currentlyUploading.publishedPostId.value == post.uuid &&
+              !currentlyUploading.isCompleted.value) {
+            if (Get.isLogEnable) {
+              debugPrint(
+                '[fetchMyPosts] Filtering out uploading post: ${post.uuid}',
+              );
+            }
+            return false; // Hide until upload completes
+          }
+        }
+        return true;
+      }).toList();
+
+      posts.assignAll(filteredPosts);
+    } on AuthExpiredException {
+      final session = await AuthService.to.refreshTokens();
+      if (session != null) {
+        return fetchMyPosts(); // Retry with new token
+      } else {
+        ErrorHandlerService.handleAuthExpired();
+      }
+    } on HttpException catch (e) {
+      debugPrint('Fetch my posts HTTP error: ${e.message}');
+      ErrorHandlerService.handleRepositoryError(
+        e,
+        context: 'Failed to load posts',
+      );
     } on TimeoutException {
       debugPrint('Fetch my posts timeout');
-      Get.snackbar('Error', 'Request timed out. Please try again.'.tr);
+      ErrorHandlerService.handleTimeout();
     } catch (e) {
       debugPrint('Fetch my posts error: $e');
-      Get.snackbar('Error', 'Failed to load posts: ${e.toString()}'.tr);
+      ErrorHandlerService.handleApiError(e, context: 'Failed to load posts');
     } finally {
       _shimmerDelayTimer?.cancel();
       isLoadingP.value = false;
@@ -860,29 +672,17 @@ class PostController extends GetxController {
         // Remove from local list immediately for instant feedback
         posts.removeWhere((post) => post.uuid == uuid);
 
-        Get.snackbar(
-          'Success',
-          'Post deleted successfully'.tr,
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        ErrorHandlerService.showSuccess('Post deleted successfully');
 
         // Refresh list from server to ensure consistency
         // (catches any other changes that might have happened)
         await Future.delayed(const Duration(milliseconds: 500));
         await fetchMyPosts();
       } else {
-        Get.snackbar(
-          'Error',
-          'Failed to delete post'.tr,
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        ErrorHandlerService.showError('Failed to delete post');
       }
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to delete post: $e'.tr,
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      ErrorHandlerService.handleApiError(e, context: 'Failed to delete post');
     }
   }
 
@@ -907,10 +707,36 @@ class PostController extends GetxController {
           snap.videoFile == null &&
           snap.compressedVideoFile == null)
         return true;
-
-      return await _uploadVideoPart(postUuid, snap, onBytes: onBytes);
+      final uploadService = Get.find<UploadService>();
+      final file =
+          (snap.usedCompressedVideo
+              ? snap.compressedVideoFile
+              : snap.videoFile) ??
+          selectedVideo.value;
+      if (file == null || !file.existsSync()) return true; // nothing to upload
+      final result = await uploadService.uploadVideo(
+        postUuid: postUuid,
+        file: file,
+        onProgress: (sent, total, delta) {
+          // maintain legacy progress accounting
+          _videoSentBytes.value += delta;
+          _videoTotalBytes.value = total; // total stable
+          // ratio update
+          final ratio = total > 0 ? _videoSentBytes.value / total : 0.0;
+          videoUploadProgress.value = ratio.clamp(0, 1).toDouble();
+          _totalBytesSent.value += delta;
+          onBytes?.call(delta);
+        },
+      );
+      if (!result.success) {
+        uploadError.value = ErrorHandlerService.formatUploadError(
+          result.error,
+          defaultMessage: 'Video upload failed',
+        );
+      }
+      return result.success;
     } catch (e) {
-      uploadError.value = e.toString();
+      uploadError.value = ErrorHandlerService.formatUploadError(e.toString());
       return false;
     }
   }
@@ -926,117 +752,8 @@ class PostController extends GetxController {
       if (snap.photoBase64.isEmpty || index >= snap.photoBase64.length) {
         return true;
       }
-      return await _uploadSinglePhotoPart(
-        postUuid,
-        snap,
-        index,
-        onBytes: onBytes,
-      );
-    } catch (e) {
-      uploadError.value = e.toString();
-      return false;
-    }
-  }
-
-  Future<bool> _uploadVideoPart(
-    String postUuid,
-    PostUploadSnapshot snap, {
-    void Function(int deltaBytes)? onBytes,
-  }) async {
-    try {
-      final file =
-          (snap.usedCompressedVideo
-              ? snap.compressedVideoFile
-              : snap.videoFile) ??
-          selectedVideo.value;
-
-      if (file == null || !file.existsSync()) {
-        return true;
-      }
-
-      final token = box.read('ACCESS_TOKEN');
-      final client = dio.Dio(
-        dio.BaseOptions(
-          headers: {'Authorization': token != null ? 'Bearer $token' : ''},
-          connectTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(minutes: 2),
-        ),
-      );
-
-      _activeCancelToken = dio.CancelToken();
-      int lastSent = 0;
-
-      final form = dio.FormData.fromMap({
-        'postId': postUuid,
-        'uuid': postUuid,
-        'file': await dio.MultipartFile.fromFile(
-          file.path,
-          filename: 'video_${DateTime.now().millisecondsSinceEpoch}.mp4',
-        ),
-      });
-
-      final resp = await client.post(
-        ApiKey.videoUploadKey,
-        data: form,
-        cancelToken: _activeCancelToken,
-        onSendProgress: (sent, total) {
-          final delta = sent - lastSent;
-          lastSent = sent;
-          _videoSentBytes.value += delta;
-          _totalBytesSent.value += delta;
-          if (_videoTotalBytes.value > 0) {
-            videoUploadProgress.value =
-                (_videoSentBytes.value / _videoTotalBytes.value).clamp(0, 1);
-          }
-          if (delta > 0) onBytes?.call(delta);
-        },
-      );
-
-      if (resp.statusCode != null && resp.statusCode! >= 300) {
-        uploadError.value =
-            'common_error'.tr + ' (video ${resp.statusCode}): ${resp.data}';
-        return false;
-      }
-      return true;
-    } on dio.DioException catch (e) {
-      if (dio.CancelToken.isCancel(e)) {
-        uploadError.value = 'post_upload_cancelled_hint'.tr;
-      } else {
-        final status = e.response?.statusCode;
-        final body = e.response?.data;
-        uploadError.value =
-            'Video upload error${status != null ? ' ($status)' : ''}: ${body ?? e.message}';
-      }
-      return false;
-    } catch (e) {
-      uploadError.value = 'Video upload exception: $e';
-      return false;
-    }
-  }
-
-  Future<bool> _uploadSinglePhotoPart(
-    String postUuid,
-    PostUploadSnapshot snap,
-    int index, {
-    void Function(int deltaBytes)? onBytes,
-  }) async {
-    try {
       final b64 = snap.photoBase64[index];
       final bytes = base64Decode(b64);
-      final token = box.read('ACCESS_TOKEN');
-
-      final client = dio.Dio(
-        dio.BaseOptions(
-          headers: {'Authorization': token != null ? 'Bearer $token' : ''},
-          connectTimeout: const Duration(seconds: 25),
-          receiveTimeout: const Duration(seconds: 60),
-        ),
-      );
-
-      _activeCancelToken = dio.CancelToken();
-      int lastSent = 0;
-
-      // Extract metadata for this photo index
       final aspectRatio = index < snap.photoAspectRatios.length
           ? snap.photoAspectRatios[index]
           : null;
@@ -1046,36 +763,34 @@ class PostController extends GetxController {
       final height = index < snap.photoHeights.length
           ? snap.photoHeights[index]
           : null;
-
-      await client.post(
-        ApiKey.postPhotosKey,
-        data: dio.FormData.fromMap({
-          'uuid': postUuid,
-          'file': dio.MultipartFile.fromBytes(
-            bytes,
-            filename:
-                'photo_${index + 1}_${DateTime.now().millisecondsSinceEpoch}.jpg',
-          ),
-          // Send aspect ratio metadata
-          if (aspectRatio != null) 'aspectRatio': aspectRatio,
-          if (width != null) 'width': width.toString(),
-          if (height != null) 'height': height.toString(),
-        }),
-        cancelToken: _activeCancelToken,
-        onSendProgress: (sent, total) {
-          final delta = sent - lastSent;
-          lastSent = sent;
+      final uploadService = Get.find<UploadService>();
+      final result = await uploadService.uploadPhoto(
+        postUuid: postUuid,
+        bytes: bytes,
+        index: index,
+        aspectRatio: aspectRatio is String
+            ? double.tryParse(aspectRatio)
+            : aspectRatio,
+        width: width,
+        height: height,
+        onProgress: (sent, total, delta) {
           _photosSentBytes.value += delta;
+          _photosTotalBytes.value = total;
+          final ratio = total > 0 ? _photosSentBytes.value / total : 0.0;
+          photosUploadProgress.value = ratio.clamp(0, 1).toDouble();
           _totalBytesSent.value += delta;
-          if (_photosTotalBytes.value > 0) {
-            photosUploadProgress.value =
-                (_photosSentBytes.value / _photosTotalBytes.value).clamp(0, 1);
-          }
-          if (delta > 0) onBytes?.call(delta);
+          onBytes?.call(delta);
         },
       );
-      return true;
+      if (!result.success) {
+        uploadError.value = ErrorHandlerService.formatUploadError(
+          result.error,
+          defaultMessage: 'Photo upload failed',
+        );
+      }
+      return result.success;
     } catch (e) {
+      uploadError.value = ErrorHandlerService.formatUploadError(e.toString());
       return false;
     }
   }
@@ -1102,7 +817,7 @@ class PostController extends GetxController {
       await _clearMediaCaches();
       uploadStatus.value = 'post_upload_cancelled_hint'.tr;
     } catch (e) {
-      uploadError.value = 'Cancel cleanup error: $e';
+      uploadError.value = ErrorHandlerService.formatCancelError(e);
     } finally {
       _clearPersistedUploadState();
       isCancellingUpload.value = false;
@@ -1138,23 +853,33 @@ class PostController extends GetxController {
 
   Future<void> _clearMediaCaches() async {
     try {
+      // Clear images
       selectedImages.clear();
+
+      // Cancel any active video compression
       _cancelVideoCompression();
-      _deleteCompressedFile();
 
-      if (selectedVideo.value != null) {
-        selectedVideo.value = null;
-      }
-
-      videoThumbnail.value = null;
-      isVideoInitialized.value = false;
+      // Dispose video player
       videoPlayerController?.dispose();
       videoPlayerController = null;
 
-      try {
-        await VideoCompress.deleteAllCache();
-      } catch (_) {}
-    } catch (_) {}
+      // Clear video state
+      if (selectedVideo.value != null) {
+        selectedVideo.value = null;
+      }
+      videoThumbnail.value = null;
+      isVideoInitialized.value = false;
+
+      // Delete compressed files
+      _deleteCompressedFile();
+
+      // Clean up VideoCompress cache
+      if (Get.isRegistered<MediaService>()) {
+        await Get.find<MediaService>().disposeCompressionCache();
+      }
+    } catch (e) {
+      debugPrint('Error clearing media caches: $e');
+    }
   }
 
   // Persistence for crash recovery
@@ -1185,55 +910,91 @@ class PostController extends GetxController {
     } catch (_) {}
   }
 
-  // Media picking and compression
+  // Media picking delegated to MediaService
   Future<void> pickImages() async {
     try {
-      final picker = ImagePicker();
-      final List<XFile> images = await picker.pickMultiImage();
-
-      for (final image in images) {
-        final bytes = await image.readAsBytes();
-        // Analyze image and create metadata
-        final metadata = await ImageMetadata.fromBytes(bytes);
-        selectedImages.add(metadata);
-      }
-
+      final mediaService = Get.find<MediaService>();
+      final images = await mediaService.pickAndAnalyzeImages();
+      selectedImages.addAll(images);
       _rebuildImageSigCache();
       markFieldChanged();
     } catch (e) {
-      Get.snackbar('Error', 'Failed to pick images: $e');
+      ErrorHandlerService.handleImagePickerError(e);
     }
   }
 
   Future<void> pickVideo() async {
     try {
-      final picker = ImagePicker();
-      final XFile? video = await picker.pickVideo(source: ImageSource.gallery);
+      final mediaService = Get.find<MediaService>();
+      final file = await mediaService.pickVideoFile();
+      if (file == null) return;
 
-      if (video != null) {
-        final file = File(video.path);
+      // Validate video duration before processing
+      final validation = await mediaService.validateVideoDuration(
+        file,
+        maxDurationSeconds: _maxVideoDurationSeconds,
+      );
 
-        // Check video duration before proceeding
-        final isValid = await _validateVideoDuration(file);
-        if (!isValid) {
-          return; // Validation shows error message, just return
-        }
-
-        selectedVideo.value = file;
-        originalVideoBytes.value = await file.length();
-
-        await _generateVideoThumbnail(file.path);
-
-        if (_shouldCompressVideo(originalVideoBytes.value)) {
-          await _compressVideo(file);
-        } else {
-          await _initializeVideoPlayer(file);
-        }
-
-        markFieldChanged();
+      if (!validation.isValid) {
+        final message =
+            validation.errorMessage ??
+            'Maximum video length is $_maxVideoDurationSeconds seconds.';
+        Get.snackbar(
+          'Video too long'.tr,
+          message.tr,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Get.theme.colorScheme.errorContainer,
+          colorText: Get.theme.colorScheme.onErrorContainer,
+          duration: const Duration(seconds: 4),
+        );
+        return;
       }
+
+      // Set initial state
+      selectedVideo.value = file;
+      originalVideoBytes.value = await file.length();
+
+      final shouldCompress = mediaService.shouldCompressVideo(
+        originalVideoBytes.value,
+        thresholdBytes: _minVideoCompressBytes,
+      );
+
+      // Initialize compression state
+      isCompressingVideo.value = shouldCompress;
+      videoCompressionProgress.value = 0;
+
+      // Process video (thumbnail + optional compression)
+      final result = await mediaService.processVideo(
+        video: file,
+        shouldCompress: shouldCompress,
+        onProgress: (progress) {
+          videoCompressionProgress.value = progress;
+        },
+      );
+
+      // Update state with results
+      if (result.thumbnailBytes != null && result.thumbnailBytes!.isNotEmpty) {
+        videoThumbnail.value = result.thumbnailBytes;
+      }
+
+      compressedVideoFile.value = result.compressedFile;
+      usedCompressedVideo.value = result.usedCompressed;
+      compressedVideoBytes.value = result.compressedBytes ?? 0;
+
+      // Initialize video player
+      await _initializeVideoPlayer(result.playbackFile);
+
+      // Complete - reset compression state
+      isCompressingVideo.value = false;
+      videoCompressionProgress.value = 1;
+
+      markFieldChanged();
     } catch (e) {
-      Get.snackbar('Error', 'Failed to pick video: $e');
+      // Clean up on error
+      isCompressingVideo.value = false;
+      videoCompressionProgress.value = 0;
+      selectedVideo.value = null;
+      ErrorHandlerService.handleVideoPickerError(e);
     }
   }
 
@@ -1249,21 +1010,62 @@ class PostController extends GetxController {
   /// Dispose video player and clear video state
   void disposeVideo() {
     try {
+      // Cancel any active compression first
+      _cancelVideoCompression();
+
+      // Dispose video player
       videoPlayerController?.dispose();
       videoPlayerController = null;
+
+      // Clear video state
       selectedVideo.value = null;
       videoThumbnail.value = null;
       isVideoInitialized.value = false;
       usedCompressedVideo.value = false;
-      compressedVideoFile.value = null;
       originalVideoBytes.value = 0;
       compressedVideoBytes.value = 0;
-      _cancelVideoCompression();
+
+      // Delete compressed file
       _deleteCompressedFile();
+
       markFieldChanged();
     } catch (e) {
       debugPrint('Error disposing video: $e');
     }
+  }
+
+  Future<void> _initializeVideoPlayer(File file) async {
+    try {
+      videoPlayerController?.dispose();
+      videoPlayerController = VideoPlayerController.file(file);
+      await videoPlayerController!.initialize();
+      videoPlayerController!.setLooping(false);
+      videoPlayerController!.pause();
+      videoPlayerController!.setVolume(0);
+      isVideoInitialized.value = true;
+    } catch (_) {
+      isVideoInitialized.value = false;
+    }
+  }
+
+  void _cancelVideoCompression() {
+    if (Get.isRegistered<MediaService>()) {
+      Get.find<MediaService>().cancelCompression();
+    }
+    isCompressingVideo.value = false;
+    videoCompressionProgress.value = 0;
+  }
+
+  void _deleteCompressedFile() {
+    try {
+      final f = compressedVideoFile.value;
+      if (f != null && f.existsSync()) {
+        f.deleteSync();
+      }
+    } catch (_) {}
+    compressedVideoFile.value = null;
+    compressedVideoBytes.value = 0;
+    usedCompressedVideo.value = false;
   }
 
   // Brand and model fetching
@@ -1272,52 +1074,41 @@ class PostController extends GetxController {
 
     isLoadingB.value = true;
     try {
-      final token = box.read('ACCESS_TOKEN');
-
-      if (!forceRefresh && brands.isNotEmpty && brandsFromCache.value) {
-        final fresh = _isBrandCacheFresh();
-        if (fresh) {
-          isLoadingB.value = false;
-          return;
-        }
+      if (!forceRefresh &&
+          brands.isNotEmpty &&
+          brandsFromCache.value &&
+          _cacheService.isBrandCacheFresh()) {
+        isLoadingB.value = false;
+        return;
       }
-
-      final resp = await http
-          .get(
-            Uri.parse(ApiKey.getBrandsKey),
-            headers: {
-              'Content-Type': 'application/json',
-              if (token != null) 'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(const Duration(seconds: 10));
-
-      if (resp.statusCode == 200) {
-        final decoded = jsonDecode(resp.body);
-        final List<BrandDto> parsed = _parseBrandList(decoded);
-        brands.assignAll(parsed);
-        brandsFromCache.value = false;
-        _saveBrandCache(parsed);
-      } else if (resp.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return fetchBrands(forceRefresh: forceRefresh);
-        } else {
-          _showFailure('Failed to load brands', Failure('Session expired'));
-          _fallbackBrandCache();
-        }
+      final token = box.read('ACCESS_TOKEN');
+      final brandRepo = Get.find<IBrandRepository>();
+      final parsed = await brandRepo.fetchBrands(token: token);
+      brands.assignAll(parsed);
+      brandsFromCache.value = false;
+      _cacheService.saveBrandCache(parsed);
+    } on AuthExpiredException {
+      final session = await AuthService.to.refreshTokens();
+      if (session != null) {
+        return fetchBrands(forceRefresh: forceRefresh);
       } else {
-        _showFailure(
-          'Failed to load brands',
-          Failure('Status ${resp.statusCode}'),
+        ErrorHandlerService.showError(
+          'Session expired',
+          title: 'Failed to load brands',
         );
         _fallbackBrandCache();
       }
     } on TimeoutException {
-      _showFailure('Failed to load brands', Failure('Request timed out'));
+      ErrorHandlerService.showError(
+        'Request timed out',
+        title: 'Failed to load brands',
+      );
       _fallbackBrandCache();
     } catch (e) {
-      _showFailure('Failed to load brands', Failure(e.toString()));
+      ErrorHandlerService.showError(
+        e.toString(),
+        title: 'Failed to load brands',
+      );
       _fallbackBrandCache();
     } finally {
       isLoadingB.value = false;
@@ -1340,15 +1131,12 @@ class PostController extends GetxController {
     if (showLoading) isLoadingM.value = true;
 
     try {
-      final token = box.read('ACCESS_TOKEN');
-      final uri = Uri.parse('${ApiKey.getModelsKey}?filter=$brandUuid');
-
       if (!forceRefresh) {
-        final cached = _hydrateModelCache(brandUuid);
+        final cached = _cacheService.loadModelCache(brandUuid);
         if (cached != null && cached.isNotEmpty) {
           models.assignAll(cached);
           modelsFromCache.value = true;
-          if (_isModelCacheFresh(brandUuid)) {
+          if (_cacheService.isModelCacheFresh(brandUuid)) {
             isLoadingM.value = false;
             selectedBrandUuid.value = brandUuid;
             return;
@@ -1356,185 +1144,58 @@ class PostController extends GetxController {
         }
       }
 
-      final resp = await http
-          .get(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              if (token != null) 'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(const Duration(seconds: 10));
-
-      if (resp.statusCode == 200) {
-        final decoded = jsonDecode(resp.body);
-        final List<ModelDto> parsed = _parseModelList(decoded);
-        models.assignAll(parsed);
-        selectedBrandUuid.value = brandUuid;
-        modelsFromCache.value = false;
-        _saveModelCache(brandUuid, parsed);
-      } else if (resp.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return fetchModels(
-            brandUuid,
-            forceRefresh: forceRefresh,
-            showLoading: showLoading,
-          );
-        } else {
-          _showFailure('Failed to load models', Failure('Session expired'));
-          _fallbackModelCache(brandUuid);
-        }
+      final token = box.read('ACCESS_TOKEN');
+      final modelRepo = Get.find<IModelRepository>();
+      final parsed = await modelRepo.fetchModels(brandUuid, token: token);
+      models.assignAll(parsed);
+      selectedBrandUuid.value = brandUuid;
+      modelsFromCache.value = false;
+      _cacheService.saveModelCache(brandUuid, parsed);
+    } on AuthExpiredException {
+      final session = await AuthService.to.refreshTokens();
+      if (session != null) {
+        return fetchModels(
+          brandUuid,
+          forceRefresh: forceRefresh,
+          showLoading: showLoading,
+        );
       } else {
-        _showFailure(
-          'Failed to load models',
-          Failure('Status ${resp.statusCode}'),
+        ErrorHandlerService.showError(
+          'Session expired',
+          title: 'Failed to load models',
         );
         _fallbackModelCache(brandUuid);
       }
+    } on HttpException catch (e) {
+      ErrorHandlerService.showError(e.message, title: 'Failed to load models');
+      _fallbackModelCache(brandUuid);
     } on TimeoutException {
-      _showFailure('Failed to load models', Failure('Request timed out'));
+      ErrorHandlerService.showError(
+        'Request timed out',
+        title: 'Failed to load models',
+      );
       _fallbackModelCache(brandUuid);
     } catch (e) {
-      _showFailure('Failed to load models', Failure(e.toString()));
+      ErrorHandlerService.showError(
+        e.toString(),
+        title: 'Failed to load models',
+      );
       _fallbackModelCache(brandUuid);
     } finally {
       if (showLoading) isLoadingM.value = false;
     }
   }
 
-  void _showFailure(String context, Failure failure) {
-    final msg = failure.message ?? failure.toString();
-    Get.snackbar(context, msg, snackPosition: SnackPosition.BOTTOM);
-  }
-
-  List<BrandDto> _parseBrandList(dynamic decoded) {
-    try {
-      final dynamic listCandidate = decoded is List
-          ? decoded
-          : (decoded is Map && decoded['data'] is List)
-          ? decoded['data']
-          : [];
-      if (listCandidate is! List) return [];
-      return listCandidate
-          .whereType<Map>()
-          .map((m) => BrandDto.fromJson(Map<String, dynamic>.from(m)))
-          .where((b) => b.uuid.isNotEmpty && b.name.isNotEmpty)
-          .toList();
-    } catch (_) {
-      return [];
-    }
-  }
-
-  List<ModelDto> _parseModelList(dynamic decoded) {
-    try {
-      final dynamic listCandidate = decoded is List
-          ? decoded
-          : (decoded is Map && decoded['data'] is List)
-          ? decoded['data']
-          : [];
-      if (listCandidate is! List) return [];
-      return listCandidate
-          .whereType<Map>()
-          .map((m) => ModelDto.fromJson(Map<String, dynamic>.from(m)))
-          .where((m) => m.uuid.isNotEmpty && m.name.isNotEmpty)
-          .toList();
-    } catch (_) {
-      return [];
-    }
-  }
-
   // Cache management
-  bool _isBrandCacheFresh() {
-    try {
-      final raw = box.read(_brandCacheKey);
-      if (raw is Map && raw['storedAt'] is String) {
-        final ts = DateTime.tryParse(raw['storedAt']);
-        if (ts == null) return false;
-        return DateTime.now().difference(ts) < _cacheTtl;
-      }
-    } catch (_) {}
-    return false;
-  }
-
-  bool _isModelCacheFresh(String brandUuid) {
-    try {
-      final raw = box.read(_modelCacheKey);
-      if (raw is Map && raw[brandUuid] is Map) {
-        final entry = raw[brandUuid];
-        final ts = DateTime.tryParse(entry['storedAt'] ?? '');
-        if (ts == null) return false;
-        return DateTime.now().difference(ts) < _cacheTtl;
-      }
-    } catch (_) {}
-    return false;
-  }
-
-  void _saveBrandCache(List<BrandDto> list) {
-    try {
-      final map = {
-        'storedAt': DateTime.now().toIso8601String(),
-        'items': list.map((b) => {'uuid': b.uuid, 'name': b.name}).toList(),
-      };
-      box.write(_brandCacheKey, map);
-    } catch (_) {}
-  }
-
-  void _saveModelCache(String brandUuid, List<ModelDto> list) {
-    try {
-      final raw = box.read(_modelCacheKey);
-      Map<String, dynamic> cache = {};
-      if (raw is Map) cache = Map<String, dynamic>.from(raw);
-      cache[brandUuid] = {
-        'storedAt': DateTime.now().toIso8601String(),
-        'items': list.map((m) => {'uuid': m.uuid, 'name': m.name}).toList(),
-      };
-      box.write(_modelCacheKey, cache);
-      _modelsMemoryCache[brandUuid] = list;
-    } catch (_) {}
-  }
-
   void _hydrateBrandCache() {
-    try {
-      final raw = box.read(_brandCacheKey);
-      if (raw is Map && raw['items'] is List) {
-        final fresh = _isBrandCacheFresh();
-        final items = (raw['items'] as List)
-            .whereType<Map>()
-            .map((m) => BrandDto.fromJson(Map<String, dynamic>.from(m)))
-            .where((b) => b.uuid.isNotEmpty)
-            .toList();
-        if (items.isNotEmpty) {
-          brands.assignAll(items);
-          brandsFromCache.value = true;
-          if (!fresh) {
-            Future.microtask(() => fetchBrands(forceRefresh: true));
-          }
-        }
+    final cached = _cacheService.loadBrandCache();
+    if (cached != null && cached.isNotEmpty) {
+      brands.assignAll(cached);
+      brandsFromCache.value = true;
+      if (!_cacheService.isBrandCacheFresh()) {
+        Future.microtask(() => fetchBrands(forceRefresh: true));
       }
-    } catch (_) {}
-  }
-
-  List<ModelDto>? _hydrateModelCache(String brandUuid) {
-    try {
-      if (_modelsMemoryCache.containsKey(brandUuid)) {
-        return _modelsMemoryCache[brandUuid];
-      }
-      final raw = box.read(_modelCacheKey);
-      if (raw is Map && raw[brandUuid] is Map) {
-        final entry = raw[brandUuid];
-        final items =
-            (entry['items'] as List?)
-                ?.whereType<Map>()
-                .map((m) => ModelDto.fromJson(Map<String, dynamic>.from(m)))
-                .where((m) => m.uuid.isNotEmpty)
-                .toList() ??
-            [];
-        _modelsMemoryCache[brandUuid] = items;
-        return items;
-      }
-    } catch (_) {}
-    return null;
+    }
   }
 
   void _fallbackBrandCache() {
@@ -1543,8 +1204,10 @@ class PostController extends GetxController {
 
   void _fallbackModelCache(String brandUuid) {
     if (models.isEmpty) {
-      final cached = _hydrateModelCache(brandUuid) ?? [];
-      if (cached.isNotEmpty) models.assignAll(cached);
+      final cached = _cacheService.loadModelCache(brandUuid);
+      if (cached != null && cached.isNotEmpty) {
+        models.assignAll(cached);
+      }
     }
   }
 
@@ -1577,67 +1240,22 @@ class PostController extends GetxController {
     );
   }
 
-  // Token refresh
-  Future<bool> refreshAccessToken() async {
-    try {
-      final refreshToken = box.read('REFRESH_TOKEN');
-      final response = await http.get(
-        Uri.parse(ApiKey.refreshTokenKey),
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': 'Bearer $refreshToken',
-        },
-      );
-
-      if (response.statusCode == 200 && response.body.isNotEmpty) {
-        final data = jsonDecode(response.body);
-        final newAccessToken = data['accessToken'];
-        if (newAccessToken != null) {
-          box.write('ACCESS_TOKEN', newAccessToken);
-          return true;
-        }
-      }
-
-      if (response.statusCode == 406) {
-        _navigateToLoginOnce();
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // ---- Safe navigation to login (avoid mid-build tree mutation) ----
-  bool _navigatedToLogin = false;
-  void _navigateToLoginOnce() {
-    if (_navigatedToLogin) return;
-    _navigatedToLogin = true;
-    Future.microtask(() {
-      if (Get.currentRoute != '/register') {
-        try {
-          Get.offAllNamed(
-            '/register',
-          ); // Fixed: /login doesn't exist, use /register
-        } catch (_) {
-          // Optionally log
-        }
-      }
-    });
-  }
-
   // Phone verification methods
   Future<void> sendOtp() async {
     isSendingOtp.value = true;
     try {
-      final validationError = _validatePhoneInput();
+      final validationError = PhoneUtils.validatePhoneInput(
+        phoneController.text,
+      );
       if (validationError != null) {
-        Get.snackbar('Invalid phone', validationError);
+        ErrorHandlerService.handlePhoneValidationError(validationError);
         return;
       }
-      final otpPhone =
-          _buildFullPhoneDigits(); // digits-only including 993 prefix
+      final otpPhone = PhoneUtils.buildFullPhoneDigits(
+        phoneController.text,
+      ); // digits-only including 993 prefix
       if (_originalFullPhone.isNotEmpty &&
-          _stripPlus(_originalFullPhone) == otpPhone) {
+          PhoneUtils.stripPlus(_originalFullPhone) == otpPhone) {
         // Original trusted phone: no OTP required
         isPhoneVerified.value = true;
         needsOtp.value = false;
@@ -1656,29 +1274,29 @@ class PostController extends GetxController {
         showOtpField.value = true;
         needsOtp.value = true;
         _startCountdown();
-        Get.snackbar('OTP Sent', 'OTP has been sent to +$otpPhone');
+        ErrorHandlerService.showOtpSent(otpPhone);
       } else {
-        Get.snackbar('Error', result.message ?? 'Failed to send OTP');
+        ErrorHandlerService.handleOtpError(result.message);
       }
     } catch (e) {
-      Get.snackbar('Exception', 'Failed to send OTP: $e');
+      ErrorHandlerService.handleOtpError('Failed to send OTP: $e');
     } finally {
       isSendingOtp.value = false;
     }
   }
 
   Future<void> verifyOtp() async {
-    final phoneError = _validatePhoneInput();
+    final phoneError = PhoneUtils.validatePhoneInput(phoneController.text);
     if (phoneError != null) {
-      Get.snackbar('Invalid phone', phoneError);
+      ErrorHandlerService.handlePhoneValidationError(phoneError);
       return;
     }
     final otp = otpController.text.trim();
     if (!RegExp(r'^\d{5}$').hasMatch(otp)) {
-      Get.snackbar('Invalid', 'OTP must be exactly 5 digits');
+      ErrorHandlerService.showInvalidOtpFormat();
       return;
     }
-    final otpPhone = _buildFullPhoneDigits();
+    final otpPhone = PhoneUtils.buildFullPhoneDigits(phoneController.text);
     try {
       final subscriber = otpPhone.substring(3);
       final result = await AuthService.to.verifyOtp(subscriber, otp);
@@ -1693,15 +1311,14 @@ class PostController extends GetxController {
         needsOtp.value = false;
         showOtpField.value = false;
         _timer?.cancel();
-        Get.snackbar('Success', 'Phone verified successfully');
+        ErrorHandlerService.showPhoneVerified();
       } else {
-        Get.snackbar(
-          'Invalid OTP',
+        ErrorHandlerService.handleOtpVerificationError(
           result.message ?? 'Please check the code and try again',
         );
       }
     } catch (e) {
-      Get.snackbar('Error', 'Error verifying OTP: $e');
+      ErrorHandlerService.handleOtpVerificationError('Error verifying OTP: $e');
     }
   }
 
@@ -1721,35 +1338,6 @@ class PostController extends GetxController {
 
   // --- Phone helper utilities (subscriber-only input) ---
   // User enters only 8 digit subscriber beginning with 6 or 7. Full phone = 993 + subscriber
-  static final RegExp _subscriberPattern = RegExp(r'^[67]\d{7}$');
-  static final RegExp _fullDigitsPattern = RegExp(r'^993[67]\d{7}$');
-
-  String _stripPlus(String v) => v.startsWith('+') ? v.substring(1) : v;
-
-  String _extractSubscriber(String full) {
-    final digits = full.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.startsWith('993') && digits.length >= 11)
-      return digits.substring(3);
-    return digits;
-  }
-
-  String _buildFullPhoneDigits() {
-    final sub = phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (sub.isEmpty) return '';
-    return '993$sub';
-  }
-
-  String? _validatePhoneInput() {
-    final digits = phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isEmpty) return 'Phone number required';
-    if (digits.length != 8) return 'Enter 8 digits (e.g. 6XXXXXXX)';
-    if (!_subscriberPattern.hasMatch(digits)) {
-      if (!RegExp(r'^[67]').hasMatch(digits)) return 'Must start with 6 or 7';
-      return 'Invalid phone digits';
-    }
-    if (!_fullDigitsPattern.hasMatch('993$digits')) return 'Invalid full phone';
-    return null;
-  }
 
   // Date selection method
   Future<void> showDatePickerAndroid(BuildContext context) async {
@@ -1777,7 +1365,7 @@ class PostController extends GetxController {
     description.clear();
     // Re-apply original subscriber digits (not full +993 form) if known
     if (_originalFullPhone.isNotEmpty) {
-      final sub = _extractSubscriber(_originalFullPhone);
+      final sub = PhoneUtils.extractSubscriber(_originalFullPhone);
       phoneController.text = sub.length == 8 ? sub : '';
     } else {
       phoneController.clear();
@@ -1849,7 +1437,7 @@ class PostController extends GetxController {
       final normalized = _normalizeToFullPhone(candidate);
       if (normalized == null) return;
       _originalFullPhone = normalized;
-      final sub = _extractSubscriber(_originalFullPhone);
+      final sub = PhoneUtils.extractSubscriber(_originalFullPhone);
       if (sub.length == 8 && phoneController.text.trim().isEmpty) {
         phoneController.text = sub; // subscriber only in field
       }
@@ -1877,7 +1465,7 @@ class PostController extends GetxController {
 
   void _adoptOriginalPhone(String fullPhone) {
     _originalFullPhone = fullPhone;
-    final sub = _extractSubscriber(fullPhone);
+    final sub = PhoneUtils.extractSubscriber(fullPhone);
     if (phoneController.text.trim().isEmpty && sub.length == 8) {
       phoneController.text = sub;
     }
@@ -1905,220 +1493,172 @@ class PostController extends GetxController {
     }
   }
 
-  // Form persistence and dirty tracking
-  static const _savedFormKey = 'SAVED_POST_FORM_V1';
-
+  // Form persistence now delegated to DraftService while keeping backward-compatible method names.
   void saveForm() {
     try {
-      final map = {
-        'brandUuid': selectedBrandUuid.value,
-        'modelUuid': selectedModelUuid.value,
-        'brand': selectedBrand.value,
-        'model': selectedModel.value,
-        'condition': selectedCondition.value,
-        'transmission': selectedTransmission.value,
-        'engineType': selectedEngineType.value,
-        'year': selectedYear.value.isNotEmpty
-            ? selectedYear.value
-            : selectedDate.value.year.toString(),
-        'price': price.text,
-        'currency': selectedCurrency.value,
-        'location': selectedLocation.value,
-        'credit': credit.value,
-        'exchange': exchange.value,
-        'enginePower': enginePower.text,
-        'milleage': milleage.text,
-        'vin': vinCode.text,
-        'description': description.text,
-        'phone': phoneController.text,
-        'images': List.generate(selectedImages.length, (i) {
-          final metadata = selectedImages[i];
-          final sig = i < _imageSigCache.length
-              ? _imageSigCache[i]
-              : _ImageSig(metadata.bytes);
-          return {
-            'b64': base64Encode(metadata.bytes),
-            'l': sig.length,
-            'h': sig.hash,
-            'metadata': metadata.toStorageJson(),
-          };
-        }),
-        'videoPath': selectedVideo.value?.path,
-        'usedCompressed': usedCompressedVideo.value,
-        'compressedVideoPath': compressedVideoFile.value?.path,
-        'videoThumb': videoThumbnail.value != null
+      final formState = PostFormState(
+        brandUuid: selectedBrandUuid.value,
+        modelUuid: selectedModelUuid.value,
+        brandName: selectedBrand.value,
+        modelName: selectedModel.value,
+        condition: selectedCondition.value,
+        transmission: selectedTransmission.value,
+        engineType: selectedEngineType.value,
+        year: selectedYear.value.isNotEmpty
+            ? int.tryParse(selectedYear.value)
+            : selectedDate.value.year,
+        priceRaw: price.text,
+        currency: selectedCurrency.value,
+        location: selectedLocation.value,
+        credit: credit.value,
+        exchange: exchange.value,
+        enginePowerRaw: enginePower.text,
+        milleageRaw: milleage.text,
+        vin: vinCode.text,
+        description: description.text,
+        phoneRaw: phoneController.text,
+        title: '',
+        phoneVerified: isPhoneVerified.value,
+      );
+      final imagesB64 = selectedImages
+          .map((m) => base64Encode(m.bytes))
+          .toList(growable: false);
+      final draftService = Get.find<DraftService>();
+      draftService.saveFromFormState(
+        id: 'active',
+        formState: formState,
+        imageBase64: imagesB64,
+        originalVideoPath: selectedVideo.value?.path,
+        compressedVideoPath: compressedVideoFile.value?.path,
+        originalVideoBytes: selectedVideo.value?.existsSync() == true
+            ? selectedVideo.value!.lengthSync()
+            : null,
+        compressedVideoBytes: compressedVideoFile.value?.existsSync() == true
+            ? compressedVideoFile.value!.lengthSync()
+            : null,
+        usedCompressed: usedCompressedVideo.value,
+        videoThumbBase64: videoThumbnail.value != null
             ? base64Encode(videoThumbnail.value!)
             : null,
-        '_signature': null,
-      };
-
-      final sig = _computeSignature(map);
-      map['_signature'] = sig;
-      box.write(_savedFormKey, map);
-      // Mark saved even if the form is still incomplete (partial save)
+      );
       isFormSaved.value = true;
-      _lastSavedSignature = sig;
+      _lastSavedSignature = draftService.computeSignature(formState.toMap());
       isDirty.value = false;
-    } catch (_) {}
+    } catch (e) {
+      Get.log('[PostController] saveForm error: $e');
+    }
   }
 
   Future<void> _loadSavedForm() async {
     try {
-      final raw = box.read(_savedFormKey);
-      if (raw is! Map) return;
+      final draftService = Get.find<DraftService>();
+      final draft =
+          draftService.find('active') ?? draftService.loadLatestDraft();
+      if (draft == null) return;
 
-      selectedBrandUuid.value = (raw['brandUuid'] ?? '') as String;
-      selectedModelUuid.value = (raw['modelUuid'] ?? '') as String;
-      selectedBrand.value = (raw['brand'] ?? '') as String;
-      selectedModel.value = (raw['model'] ?? '') as String;
-      selectedCondition.value = (raw['condition'] ?? '') as String;
-      selectedTransmission.value = (raw['transmission'] ?? '') as String;
-      selectedEngineType.value = (raw['engineType'] ?? '') as String;
+      selectedBrandUuid.value = draft.brandUuid;
+      selectedModelUuid.value = draft.modelUuid;
+      selectedBrand.value = draft.brandName;
+      selectedModel.value = draft.modelName;
+      selectedCondition.value = draft.condition;
+      selectedTransmission.value = draft.transmission;
+      selectedEngineType.value = draft.engineType;
 
-      final dateStr = raw['date'] as String?;
-      final yearStr = raw['year'] as String?;
-      if (dateStr != null) {
-        final dt = DateTime.tryParse(dateStr);
-        if (dt != null) selectedDate.value = dt;
-      }
-      if (yearStr != null && yearStr.isNotEmpty) {
-        final yr = int.tryParse(yearStr);
-        if (yr != null) {
-          selectedDate.value = DateTime(
-            yr,
-            selectedDate.value.month,
-            selectedDate.value.day,
-          );
-          selectedYear.value = yr.toString();
-        }
+      // Year/date handling
+      if (draft.year != null) {
+        selectedDate.value = DateTime(
+          draft.year!,
+          selectedDate.value.month,
+          selectedDate.value.day,
+        );
+        selectedYear.value = draft.year!.toString();
       }
 
-      price.text = (raw['price'] ?? '') as String;
-      selectedCurrency.value = (raw['currency'] ?? 'TMT') as String;
-      selectedLocation.value = (raw['location'] ?? '') as String;
-      credit.value = raw['credit'] == true;
-      exchange.value = raw['exchange'] == true;
-      enginePower.text = (raw['enginePower'] ?? '') as String;
-      milleage.text = (raw['milleage'] ?? '') as String;
-      vinCode.text = (raw['vin'] ?? '') as String;
-      description.text = (raw['description'] ?? '') as String;
+      price.text = draft.price?.toString() ?? '';
+      selectedCurrency.value = draft.currency;
+      selectedLocation.value = draft.location;
+      credit.value = draft.credit;
+      exchange.value = draft.exchange;
+      enginePower.text = draft.enginePower?.toString() ?? '';
+      milleage.text = draft.milleage?.toString() ?? '';
+      vinCode.text = draft.vin;
+      description.text = draft.description;
 
-      // Always prefer originalFullPhone subscriber; ignore saved phone to avoid conflicts
+      // Phone: adopt subscriber if original present
       if (_originalFullPhone.isNotEmpty) {
-        final sub = _extractSubscriber(_originalFullPhone);
+        final sub = PhoneUtils.extractSubscriber(_originalFullPhone);
         if (sub.length == 8) phoneController.text = sub;
         isPhoneVerified.value = true;
         isOriginalPhone.value = true;
         needsOtp.value = false;
         showOtpField.value = false;
+      } else if (draft.phone.isNotEmpty) {
+        phoneController.text = draft.phone; // fallback
       }
 
-      // Load images
+      // Images
       selectedImages.clear();
-      final imgList = (raw['images'] as List?)?.toList() ?? [];
-      for (final entry in imgList) {
-        if (entry is String) {
-          // Legacy format: just base64 string
-          try {
-            final bytes = base64Decode(entry);
-            final metadata = await ImageMetadata.fromBytes(bytes);
-            selectedImages.add(metadata);
-          } catch (_) {}
-        } else if (entry is Map && entry['b64'] is String) {
-          try {
-            final bytes = base64Decode(entry['b64'] as String);
-            // Check if metadata exists in the saved data
-            if (entry['metadata'] is Map) {
-              final metadata = ImageMetadata.fromStorageJson(
-                entry['metadata'] as Map<String, dynamic>,
-                bytes,
-              );
-              selectedImages.add(metadata);
-            } else {
-              // Legacy format: re-analyze the image
-              final metadata = await ImageMetadata.fromBytes(bytes);
-              selectedImages.add(metadata);
-            }
-          } catch (_) {}
-        }
+      for (final b64 in draft.imageBase64) {
+        try {
+          final bytes = base64Decode(b64);
+          final metadata = await ImageMetadata.fromBytes(bytes);
+          selectedImages.add(metadata);
+        } catch (_) {}
       }
+      _rebuildImageSigCache();
 
-      // Load video if exists
-      final videoPath = raw['videoPath'] as String?;
-      if (videoPath != null && videoPath.isNotEmpty) {
-        final f = File(videoPath);
+      // Video
+      final vidPath = draft.usedCompressed
+          ? draft.compressedVideoPath
+          : draft.originalVideoPath;
+      if (vidPath != null && vidPath.isNotEmpty) {
+        final f = File(vidPath);
         if (f.existsSync()) {
-          selectedVideo.value = f;
-          final usedComp = raw['usedCompressed'] == true;
-          usedCompressedVideo.value = usedComp;
-
-          final compPath = raw['compressedVideoPath'] as String?;
-          if (compPath != null && compPath.isNotEmpty) {
-            final cf = File(compPath);
+          selectedVideo.value = File(draft.originalVideoPath ?? vidPath);
+          if (draft.compressedVideoPath != null) {
+            final cf = File(draft.compressedVideoPath!);
             if (cf.existsSync()) compressedVideoFile.value = cf;
+            usedCompressedVideo.value = draft.usedCompressed;
           }
-
-          final thumbB64 = raw['videoThumb'] as String?;
-          if (thumbB64 != null) {
+          if (draft.videoThumbnailBase64 != null) {
             try {
-              videoThumbnail.value = base64Decode(thumbB64);
+              videoThumbnail.value = base64Decode(draft.videoThumbnailBase64!);
             } catch (_) {}
           }
-
           _initializeVideoPlayer(
             usedCompressedVideo.value && compressedVideoFile.value != null
                 ? compressedVideoFile.value!
-                : f,
+                : File(draft.originalVideoPath ?? vidPath),
           );
         }
       }
 
-      // Treat any loaded snapshot as a saved (possibly partial) form
       isFormSaved.value = true;
       hydratedFromStorage.value = true;
-
-      if (raw.containsKey('_signature') && raw['_signature'] is String) {
-        _lastSavedSignature = raw['_signature'] as String;
-      } else {
-        final sig = _computeSignature(
-          raw.map((k, v) => MapEntry(k.toString(), v)),
-        );
-        _lastSavedSignature = sig;
-      }
-      // Because we may have modified fields (e.g., phone replaced with subscriber digits) AFTER
-      // reading the raw map, recompute signature from the CURRENT snapshot to align baseline.
-      final currentSig = _computeSignature(_currentSnapshotMap());
-      _lastSavedSignature = currentSig;
+      final draftSig = draftService.computeSignature(_currentSnapshotMap());
+      _lastSavedSignature = draftSig;
       isDirty.value = false;
-    } catch (_) {}
+    } catch (e) {
+      Get.log('[PostController] _loadSavedForm error: $e');
+    }
   }
 
   void clearSavedForm() {
     try {
-      box.remove(_savedFormKey);
-    } catch (_) {}
-    isFormSaved.value = false;
-    hydratedFromStorage.value = false;
-    _lastSavedSignature = null;
-    _recomputeDirty();
+      final draftService = Get.find<DraftService>();
+      draftService.delete('active');
+      isFormSaved.value = false;
+      hydratedFromStorage.value = false;
+      _lastSavedSignature = null;
+      _recomputeDirty();
+    } catch (e) {
+      Get.log('[PostController] clearSavedForm error: $e');
+    }
   }
 
   void dismissHydratedIndicator() => hydratedFromStorage.value = false;
 
-  String _computeSignature(Map<String, dynamic> map) {
-    try {
-      final jsonStr = jsonEncode(map);
-      int hash = 0xcbf29ce484222325;
-      const int prime = 0x100000001b3;
-      for (final codeUnit in jsonStr.codeUnits) {
-        hash ^= codeUnit;
-        hash = (hash * prime) & 0xFFFFFFFFFFFFFFFF;
-      }
-      return hash.toRadixString(16);
-    } catch (_) {
-      return DateTime.now().microsecondsSinceEpoch.toString();
-    }
-  }
+  // Removed legacy _setUploadError after moving upload logic to UploadService.
 
   Map<String, dynamic> _currentSnapshotMap() => {
     'brandUuid': selectedBrandUuid.value,
@@ -2160,7 +1700,7 @@ class PostController extends GetxController {
       isDirty.value = false;
       return;
     }
-    final sig = _computeSignature(_currentSnapshotMap());
+    final sig = HashingUtils.computeSignature(_currentSnapshotMap());
     isDirty.value = sig != _lastSavedSignature;
   }
 
@@ -2176,104 +1716,8 @@ class PostController extends GetxController {
   }
 
   Future<void> revertToSavedSnapshot() async {
-    try {
-      final raw = box.read(_savedFormKey);
-      if (raw is! Map) return;
-
-      selectedBrandUuid.value = (raw['brandUuid'] ?? '') as String;
-      selectedModelUuid.value = (raw['modelUuid'] ?? '') as String;
-      selectedBrand.value = (raw['brand'] ?? '') as String;
-      selectedModel.value = (raw['model'] ?? '') as String;
-      selectedCondition.value = (raw['condition'] ?? '') as String;
-      selectedTransmission.value = (raw['transmission'] ?? '') as String;
-      selectedEngineType.value = (raw['engineType'] ?? '') as String;
-
-      final dateStr = raw['date'] as String?;
-      final yearStr2 = raw['year'] as String?;
-      if (dateStr != null) {
-        final dt = DateTime.tryParse(dateStr);
-        if (dt != null) selectedDate.value = dt;
-      }
-      if (yearStr2 != null && yearStr2.isNotEmpty) {
-        final y2 = int.tryParse(yearStr2);
-        if (y2 != null) {
-          selectedDate.value = DateTime(
-            y2,
-            selectedDate.value.month,
-            selectedDate.value.day,
-          );
-          selectedYear.value = y2.toString();
-        }
-      }
-
-      price.text = (raw['price'] ?? '') as String;
-      selectedCurrency.value = (raw['currency'] ?? 'TMT') as String;
-      selectedLocation.value = (raw['location'] ?? '') as String;
-      credit.value = raw['credit'] == true;
-      exchange.value = raw['exchange'] == true;
-      enginePower.text = (raw['enginePower'] ?? '') as String;
-      milleage.text = (raw['milleage'] ?? '') as String;
-      vinCode.text = (raw['vin'] ?? '') as String;
-      description.text = (raw['description'] ?? '') as String;
-
-      // Restore only subscriber digits (no +993 prefix) to avoid showing full international format
-      if (_originalFullPhone.isNotEmpty) {
-        final sub = _extractSubscriber(_originalFullPhone);
-        phoneController.text = sub.length == 8 ? sub : '';
-      } else {
-        phoneController.text = '';
-      }
-
-      // Load images
-      final imgList = (raw['images'] as List?)?.toList() ?? [];
-      selectedImages.clear();
-      for (final entry in imgList) {
-        if (entry is String) {
-          // Legacy format: just base64 string
-          try {
-            final bytes = base64Decode(entry);
-            final metadata = await ImageMetadata.fromBytes(bytes);
-            selectedImages.add(metadata);
-          } catch (_) {}
-        } else if (entry is Map && entry['b64'] is String) {
-          try {
-            final bytes = base64Decode(entry['b64'] as String);
-            // Check if metadata exists in the saved data
-            if (entry['metadata'] is Map) {
-              final metadata = ImageMetadata.fromStorageJson(
-                entry['metadata'] as Map<String, dynamic>,
-                bytes,
-              );
-              selectedImages.add(metadata);
-            } else {
-              // Legacy format: re-analyze the image
-              final metadata = await ImageMetadata.fromBytes(bytes);
-              selectedImages.add(metadata);
-            }
-          } catch (_) {}
-        }
-      }
-      _rebuildImageSigCache();
-
-      final videoPath = raw['videoPath'] as String?;
-      if (videoPath != null && videoPath.isNotEmpty) {
-        final f = File(videoPath);
-        if (f.existsSync()) {
-          selectedVideo.value = f;
-          final usedComp = raw['usedCompressed'] == true;
-          usedCompressedVideo.value = usedComp;
-
-          final compPath = raw['compressedVideoPath'] as String?;
-          if (compPath != null && compPath.isNotEmpty) {
-            final cf = File(compPath);
-            if (cf.existsSync()) compressedVideoFile.value = cf;
-          }
-        }
-      }
-      // Align baseline signature with the snapshot we just restored (with normalized phone value)
-      _lastSavedSignature = _computeSignature(_currentSnapshotMap());
-      isDirty.value = false;
-    } catch (_) {}
+    // Simply reload the saved draft and overwrite current fields.
+    await _loadSavedForm();
   }
 
   void _rebuildImageSigCache() {
@@ -2364,27 +1808,13 @@ class PostController extends GetxController {
 
     try {
       final token = box.read('ACCESS_TOKEN');
-      final uri = Uri.parse('${ApiKey.getModelsKey}?filter=$brandUuid');
+      final modelRepo = Get.find<IModelRepository>();
+      final parsed = await modelRepo.fetchModels(brandUuid, token: token);
 
-      final resp = await http
-          .get(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              if (token != null) 'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(const Duration(seconds: 10));
-
-      if (resp.statusCode == 200) {
-        final decoded = jsonDecode(resp.body);
-        final List<ModelDto> parsed = _parseModelList(decoded);
-
-        // Add to lookup map WITHOUT replacing the models observable list
-        for (final model in parsed) {
-          if (model.uuid.isNotEmpty && model.name.isNotEmpty) {
-            _modelNameById[model.uuid] = model.name;
-          }
+      // Add to lookup map WITHOUT replacing the models observable list
+      for (final model in parsed) {
+        if (model.uuid.isNotEmpty && model.name.isNotEmpty) {
+          _modelNameById[model.uuid] = model.name;
         }
       }
     } catch (e) {
@@ -2477,179 +1907,5 @@ class PostController extends GetxController {
         isPosting.value = false;
       }
     });
-  }
-}
-
-// Video compression helpers
-extension _VideoCompressionHelpers on PostController {
-  static const int _minVideoCompressBytes = 25 * 1024 * 1024; // 25 MB
-  static const int _maxVideoDurationSeconds = 60; // 60 seconds limit
-
-  bool _shouldCompressVideo(int sizeBytes) =>
-      sizeBytes >= _minVideoCompressBytes;
-
-  /// Validates that video duration is within allowed limits (60 seconds)
-  /// Returns true if valid, false if invalid (shows error to user)
-  Future<bool> _validateVideoDuration(File videoFile) async {
-    try {
-      // Create temporary video player to check duration
-      final tempController = VideoPlayerController.file(videoFile);
-      await tempController.initialize();
-
-      final duration = tempController.value.duration;
-      final durationSeconds = duration.inSeconds;
-
-      // Cleanup
-      await tempController.dispose();
-
-      if (durationSeconds > _maxVideoDurationSeconds) {
-        Get.snackbar(
-          'Video too long'.tr,
-          'Maximum video length is $_maxVideoDurationSeconds seconds. Your video is $durationSeconds seconds.'
-              .tr,
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Get.theme.colorScheme.errorContainer,
-          colorText: Get.theme.colorScheme.onErrorContainer,
-          duration: const Duration(seconds: 4),
-        );
-        return false;
-      }
-
-      return true;
-    } catch (e) {
-      debugPrint('Error validating video duration: $e');
-      // If we can't check duration, allow upload (don't block user)
-      return true;
-    }
-  }
-
-  Future<void> _generateVideoThumbnail(String path) async {
-    try {
-      final thumb = await VideoThumbnail.thumbnailData(
-        video: path,
-        imageFormat: ImageFormat.JPEG,
-        maxWidth: 320,
-        quality: 75,
-      );
-      if (thumb != null && thumb.isNotEmpty) {
-        videoThumbnail.value = thumb;
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _compressVideo(
-    File original, {
-    bool forceTranscode = false,
-  }) async {
-    isCompressingVideo.value = true;
-    videoCompressionProgress.value = 0;
-    usedCompressedVideo.value = false;
-
-    try {
-      _videoCompressSub?.unsubscribe?.call();
-    } catch (_) {
-      try {
-        _videoCompressSub?.cancel();
-      } catch (_) {}
-    }
-
-    _videoCompressSub = VideoCompress.compressProgress$.subscribe((progress) {
-      videoCompressionProgress.value = (progress / 100).clamp(0, 1);
-    });
-
-    try {
-      final result = await VideoCompress.compressVideo(
-        original.path,
-        quality: forceTranscode
-            ? VideoQuality.MediumQuality
-            : VideoQuality.MediumQuality,
-        deleteOrigin: false,
-        includeAudio: true,
-      );
-
-      if (result != null && result.file != null) {
-        compressedVideoFile.value = result.file;
-        try {
-          compressedVideoBytes.value = await result.file!.length();
-        } catch (_) {}
-        usedCompressedVideo.value = true;
-        await _initializeVideoPlayer(result.file!);
-      } else {
-        await _initializeVideoPlayer(original);
-      }
-    } catch (_) {
-      await _initializeVideoPlayer(original);
-    } finally {
-      try {
-        _videoCompressSub?.unsubscribe?.call();
-      } catch (_) {
-        try {
-          _videoCompressSub?.cancel();
-        } catch (_) {}
-      }
-      _videoCompressSub = null;
-      isCompressingVideo.value = false;
-    }
-  }
-
-  Future<void> _initializeVideoPlayer(File file) async {
-    try {
-      videoPlayerController?.dispose();
-      videoPlayerController = VideoPlayerController.file(file);
-      await videoPlayerController!.initialize();
-      videoPlayerController!.setLooping(false);
-      videoPlayerController!.pause();
-      videoPlayerController!.setVolume(0);
-      isVideoInitialized.value = true;
-    } catch (_) {
-      isVideoInitialized.value = false;
-    }
-  }
-
-  void _cancelVideoCompression() {
-    if (isCompressingVideo.value) {
-      VideoCompress.cancelCompression();
-    }
-    try {
-      _videoCompressSub?.unsubscribe?.call();
-    } catch (_) {
-      try {
-        _videoCompressSub?.cancel();
-      } catch (_) {}
-    }
-    _videoCompressSub = null;
-    isCompressingVideo.value = false;
-
-    // Clean up partial/incomplete compressed file
-    _deleteCompressedFile();
-  }
-
-  void _deleteCompressedFile() {
-    try {
-      final f = compressedVideoFile.value;
-      if (f != null && f.existsSync()) {
-        f.deleteSync();
-      }
-    } catch (_) {}
-    compressedVideoFile.value = null;
-    compressedVideoBytes.value = 0;
-    usedCompressedVideo.value = false;
-  }
-}
-
-extension PostControllerImageHelpers on PostController {
-  String buildPostImageUrl(String raw) {
-    if (raw.isEmpty) return '';
-    final trimmedBase = ApiKey.ip.endsWith('/') ? ApiKey.ip : '${ApiKey.ip}';
-    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-    var path = raw.trim();
-    // Common patterns: "/uploads/..", "uploads/...", may include leading domain accidentally
-    if (path.startsWith('/')) path = path.substring(1);
-    // Prevent double host repetition
-    if (path.startsWith(trimmedBase.replaceFirst(RegExp(r'https?://'), ''))) {
-      // Already contains host-like segment, return with schema
-      return path.startsWith('http') ? path : 'http://$path';
-    }
-    return '$trimmedBase$path';
   }
 }
