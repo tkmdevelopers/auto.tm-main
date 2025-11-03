@@ -1,12 +1,14 @@
 import 'package:auto_tm/global_controllers/download_controller.dart';
 import 'package:auto_tm/screens/favorites_screen/controller/favorites_controller.dart';
 import 'package:auto_tm/screens/post_details_screen/controller/post_details_controller.dart';
-import 'package:auto_tm/screens/post_details_screen/widgets/comments.dart';
-import 'package:auto_tm/screens/post_details_screen/widgets/comments_carousel.dart';
 import 'package:auto_tm/screens/post_details_screen/widgets/post_details_shimmer.dart';
+import 'package:auto_tm/screens/post_details_screen/widgets/sections/characteristics_grid_section.dart';
+import 'package:auto_tm/screens/post_details_screen/widgets/sections/seller_comment_section.dart';
+import 'package:auto_tm/screens/post_details_screen/widgets/sections/comments_preview_section.dart';
 import 'package:auto_tm/screens/post_details_screen/widgets/video_player.dart';
 import 'package:auto_tm/screens/post_details_screen/widgets/view_post_photo.dart';
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
+import 'package:auto_tm/screens/post_details_screen/model/post_details_state.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/images.dart';
 import 'package:auto_tm/ui_components/styles.dart';
@@ -14,9 +16,7 @@ import 'package:auto_tm/utils/cached_image_helper.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
-import 'package:auto_tm/utils/navigation_utils.dart';
 
 class PostDetailsScreen extends StatefulWidget {
   PostDetailsScreen({super.key});
@@ -63,16 +63,39 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Obx(() {
-        if (detailsController.isLoading.value) {
-          // return const Center(
-          //   child: CircularProgressIndicator.adaptive(
-          //     backgroundColor: AppColors.primaryColor,
-          //     valueColor: AlwaysStoppedAnimation(AppColors.scaffoldColor),
-          //   ),
-          // );
+        final s = detailsController.state.value;
+        if (s is PostDetailsLoading) {
           return PostDetailsShimmer();
         }
-        final post = detailsController.post;
+        if (s is PostDetailsError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, color: theme.colorScheme.error, size: 48),
+                  const SizedBox(height: 16),
+                  Text('post_details_error_title'.tr, style: AppStyles.f20w5.copyWith(color: theme.colorScheme.onSurface)),
+                  const SizedBox(height: 8),
+                  Text(s.message.tr, textAlign: TextAlign.center, style: AppStyles.f14w4.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => detailsController.fetchProductDetails(uuid),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.textTertiaryColor,
+                      minimumSize: const Size(160, 40),
+                    ),
+                    child: Text('common_retry'.tr, style: AppStyles.f16w5.copyWith(color: AppColors.textSecondaryColor)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        // Ready state
+        final readyState = s as PostDetailsReady;
+        final post = Rxn<Post>(readyState.post);
         // final photos = post.photoPaths;
         // final photos = product.photoPaths;
         return SafeArea(
@@ -141,92 +164,53 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  // Back button matching PostItem style
-                                  GestureDetector(
-                                    onTap: () => NavigationUtils.close(context),
-                                    child: Container(
-                                      width: 44,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        color: theme.colorScheme.surface,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: theme.colorScheme.outline
-                                              .withOpacity(0.1),
-                                          width: 1.2,
-                                        ),
+                                  // Back button
+                                  CircleAvatar(
+                                    radius: 24,
+                                    backgroundColor: theme.colorScheme.onSurface
+                                        .withOpacity(0.6),
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.arrow_back_ios_new_rounded,
+                                        size: 20,
+                                        color: Colors.white,
                                       ),
-                                      child: Center(
-                                        child: Icon(
-                                          Icons.chevron_left,
-                                          size: 20,
-                                          color: theme.colorScheme.onSurface
-                                              .withOpacity(0.7),
-                                        ),
-                                      ),
+                                      onPressed: () => Get.back(),
                                     ),
                                   ),
-                                  // Favorite button re-styled & animated like PostItem
+                                  // Favorite toggle
                                   Obx(() {
-                                    final isFav = favoritesController.favorites
-                                        .contains(uuid);
-                                    return GestureDetector(
-                                      onTap: () => favoritesController
-                                          .toggleFavorite(uuid),
-                                      child: AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 300,
+                                    final postValue =
+                                        detailsController.post.value;
+                                    final uuidVal = postValue?.uuid;
+                                    final isFav =
+                                        uuidVal != null &&
+                                        favoritesController.favorites.contains(
+                                          uuidVal,
+                                        );
+                                    return CircleAvatar(
+                                      radius: 24,
+                                      backgroundColor: theme
+                                          .colorScheme
+                                          .onSurface
+                                          .withOpacity(0.6),
+                                      child: IconButton(
+                                        icon: Icon(
+                                          isFav
+                                              ? Icons.favorite
+                                              : Icons.favorite_border,
+                                          size: 22,
+                                          color: isFav
+                                              ? theme.colorScheme.primary
+                                              : Colors.white,
                                         ),
-                                        curve: Curves.easeInOut,
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          color: theme.colorScheme.surface,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          border: Border.all(
-                                            color: theme.colorScheme.outline
-                                                .withOpacity(0.1),
-                                            width: 1.2,
-                                          ),
-                                          boxShadow: isFav
-                                              ? [
-                                                  BoxShadow(
-                                                    color: theme
-                                                        .colorScheme
-                                                        .primary
-                                                        .withOpacity(0.2),
-                                                    blurRadius: 8,
-                                                    offset: const Offset(0, 3),
-                                                  ),
-                                                ]
-                                              : [],
-                                        ),
-                                        child: Center(
-                                          child: AnimatedSwitcher(
-                                            duration: const Duration(
-                                              milliseconds: 300,
-                                            ),
-                                            transitionBuilder:
-                                                (child, animation) =>
-                                                    ScaleTransition(
-                                                      scale: animation,
-                                                      child: child,
-                                                    ),
-                                            child: Icon(
-                                              isFav
-                                                  ? Icons.favorite
-                                                  : Icons.favorite_border,
-                                              key: ValueKey<bool>(isFav),
-                                              color: isFav
-                                                  ? theme.colorScheme.primary
-                                                  : theme.colorScheme.onSurface
-                                                        .withOpacity(0.7),
-                                              size: 20,
-                                            ),
-                                          ),
-                                        ),
+                                        onPressed: () {
+                                          if (uuidVal != null) {
+                                            favoritesController.toggleFavorite(
+                                              uuidVal,
+                                            );
+                                          }
+                                        },
                                       ),
                                     );
                                   }),
@@ -642,148 +626,16 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
 
                   // Product Info
                   const SizedBox(height: 20),
-                  _DynamicCharacteristics(post: post.value, theme: theme),
+                  CharacteristicsGridSection(post: post.value, theme: theme),
                   // const SizedBox(
                   //   height: 6,
                   // ),
                   // if(post.value?.description != '')
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: theme.scaffoldBackgroundColor,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Seller\'s comment'.tr,
-                          style: AppStyles.f20w5.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Divider(
-                          color: AppColors.textTertiaryColor,
-                          height: 0.5,
-                        ),
-                        SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                post.value?.description.isNotEmpty == true
-                                    ? post
-                                          .value!
-                                          .description // DO NOT translate user text
-                                    : '-',
-                                style: AppStyles.f16w4.copyWith(
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 10),
-                      ],
-                    ),
-                  ),
+                  SellerCommentSection(post: post.value, theme: theme),
                   SizedBox(height: 6),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: theme.scaffoldBackgroundColor,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Comments'.tr,
-                          style: AppStyles.f20w5.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Divider(
-                          color: AppColors.textTertiaryColor,
-                          height: 0.5,
-                        ),
-                        SizedBox(height: 16),
-                        // Row(
-                        //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        //   children: [
-                        //     Text("Comments"),
-                        //     IconButton(
-                        //       icon: Icon(Icons.chevron_right_rounded),
-                        //       onPressed: () {
-                        //         final uuid = post.value?.uuid;
-                        //         if (uuid != null) {
-                        //           Get.to(() => CommentsPage(),
-                        //               arguments: uuid);
-                        //         }
-                        //       },
-                        //     ),
-                        //   ],
-                        // ),
-                        // Fix #3: Consistent null safety
-                        if (post.value != null)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: CommentCarousel(
-                                  postId: post
-                                      .value!
-                                      .uuid, // Safe since we checked != null
-                                ),
-                              ),
-                            ],
-                          ),
-                        const SizedBox(height: 20.0),
-
-                        // ElevatedButton(
-                        //     onPressed: () {
-                        //       final uuid = post.value?.uuid;
-                        //       if (uuid != null) {
-                        //         Get.to(() => CommentsPage(), arguments: uuid);
-                        //       }
-                        //     },
-                        //     child: Text('Show all'.tr)),
-                        ElevatedButton(
-                          onPressed: () {
-                            final uuid = post.value?.uuid;
-                            if (uuid != null) {
-                              Get.to(() => CommentsPage(), arguments: uuid);
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.textTertiaryColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            minimumSize: const Size(double.infinity, 30),
-                          ),
-                          // icon: const Icon(
-                          //   Icons.add,
-                          //   color: AppColors.scaffoldColor,
-                          // ),
-                          child: Text(
-                            'Show all'.tr,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textSecondaryColor,
-                            ),
-                            // style: AppStyles.f16w5
-                            //     .copyWith(color: AppColors.scaffoldColor),
-                          ),
-                        ),
-                      ],
-                    ),
+                  CommentsPreviewSection(
+                    postUuid: post.value?.uuid,
+                    theme: theme,
                   ),
                   SizedBox(height: 80),
                 ],
@@ -869,213 +721,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
   }
 }
 
-class _DynamicCharacteristics extends StatelessWidget {
-  final Post? post;
-  final ThemeData theme;
-  const _DynamicCharacteristics({required this.post, required this.theme});
-
-  bool _isNonEmpty(String? v) => v != null && v.trim().isNotEmpty;
-  bool _isPositive(num? v) => v != null && v > 0;
-
-  @override
-  Widget build(BuildContext context) {
-    if (post == null) return const SizedBox.shrink();
-
-    // Region / location display logic (simplified for backend guarantee):
-    // Backend sends region exactly as one of: 'Local', 'UAE', 'China'.
-    // - Local: show the city (location) if present.
-    // - UAE / China: show that region label directly.
-    // - Anything else: hide.
-    final regionRaw = post!.region.trim();
-    final regionLower = regionRaw.toLowerCase();
-    final locRaw = post!.location;
-    String? displayLocation;
-    if (regionLower == 'local') {
-      if (_isNonEmpty(locRaw)) displayLocation = locRaw.trim();
-    } else if (regionLower == 'uae' || regionLower == 'china') {
-      displayLocation = regionRaw; // Already proper case from backend
-    }
-
-    final characteristics =
-        <_CharacteristicEntry>[
-              _CharacteristicEntry(
-                icon: AppImages.enginePower,
-                label: 'Engine power'.tr,
-                value: _isPositive(post!.enginePower)
-                    ? '${post!.enginePower.toStringAsFixed(0)} L'
-                    : null,
-              ),
-              _CharacteristicEntry(
-                icon: AppImages.transmission,
-                label: 'Transmission'.tr,
-                value: _isNonEmpty(post!.transmission)
-                    ? post!.transmission.tr
-                    : null,
-              ),
-              _CharacteristicEntry(
-                icon: AppImages.year,
-                label: 'Year'.tr,
-                value: _isPositive(post!.year)
-                    ? '${post!.year.toStringAsFixed(0)} y.'.tr
-                    : null,
-              ),
-              _CharacteristicEntry(
-                icon: AppImages.milleage,
-                label: 'Milleage'.tr,
-                value: _isPositive(post!.milleage)
-                    ? '${post!.milleage.toStringAsFixed(0)} km'.tr
-                    : null,
-              ),
-              _CharacteristicEntry(
-                icon: AppImages.carCondition,
-                label: 'Car condition'.tr,
-                value: _isNonEmpty(post!.condition) ? post!.condition.tr : null,
-              ),
-              _CharacteristicEntry(
-                icon: AppImages.engineType,
-                label: 'Engine type'.tr,
-                value: _isNonEmpty(post!.engineType)
-                    ? post!.engineType.tr
-                    : null,
-              ),
-              _CharacteristicEntry(
-                icon: AppImages.vin,
-                label: 'VIN',
-                value: _isNonEmpty(post!.vinCode) ? post!.vinCode : null,
-              ),
-              if (displayLocation != null)
-                _CharacteristicEntry(
-                  icon: AppImages.location,
-                  label: 'Location'.tr,
-                  // Do not translate standardized region names; only translate if it looks like a key.
-                  value: displayLocation,
-                ),
-              // Exchange info (always show) - standardized keys
-              _CharacteristicEntry(
-                icon: AppImages.exchange,
-                label: 'Exchange'.tr,
-                value: (post!.exchange == true)
-                    ? 'post_exchange_possible'.tr
-                    : 'post_exchange_not_possible'.tr,
-              ),
-              // Credit info (always show) - standardized keys
-              _CharacteristicEntry(
-                icon: AppImages.credit,
-                label: 'Credit'.tr,
-                value: (post!.credit == true)
-                    ? 'post_credit_available'.tr
-                    : 'post_credit_not_available'.tr,
-              ),
-            ]
-            .where(
-              (e) =>
-                  e.value != null &&
-                  e.value!.trim().isNotEmpty &&
-                  e.value != '0',
-            )
-            .toList();
-
-    if (characteristics.isEmpty) return const SizedBox.shrink();
-
-    // Build rows of two using Wrap for responsive flow
-    final rows = <Widget>[];
-    for (int i = 0; i < characteristics.length; i += 2) {
-      final first = characteristics[i];
-      final second = (i + 1) < characteristics.length
-          ? characteristics[i + 1]
-          : null;
-      rows.add(
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _buildCharacteristicsItem(first)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: second != null
-                  ? _buildCharacteristicsItem(second)
-                  : const SizedBox(),
-            ),
-          ],
-        ),
-      );
-      if (i + 2 < characteristics.length) rows.add(const SizedBox(height: 10));
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        color: theme.scaffoldBackgroundColor,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Characteristics'.tr,
-            style: AppStyles.f20w5.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Divider(color: AppColors.textTertiaryColor, height: 0.5),
-          const SizedBox(height: 16),
-          ...rows,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCharacteristicsItem(_CharacteristicEntry e) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SvgPicture.asset(
-          e.icon,
-          width: 28,
-          height: 28,
-          colorFilter: ColorFilter.mode(
-            theme.colorScheme.onSurfaceVariant,
-            BlendMode.srcIn,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${e.label}:',
-                style: AppStyles.f16w6.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                maxLines: 2,
-              ),
-              Text(
-                e.value ?? '-',
-                style: AppStyles.f14w4.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CharacteristicEntry {
-  final String icon;
-  final String label;
-  final String? value;
-  _CharacteristicEntry({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-}
+// _DynamicCharacteristics extracted to widgets/sections/characteristics_grid_section.dart
 
 /// Carousel image item with AutomaticKeepAliveClientMixin
 /// to prevent disposal and re-initialization when scrolling

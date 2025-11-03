@@ -1,6 +1,7 @@
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
 
 /// Sealed-style state representation for Post Details screen.
+/// Using simple classes (no pattern matching) for Dart stable compatibility.
 abstract class PostDetailsState {
   const PostDetailsState();
 }

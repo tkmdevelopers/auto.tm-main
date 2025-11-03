@@ -6,13 +6,13 @@ import 'package:auto_tm/screens/post_details_screen/domain/image_prefetch_servic
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/screens/post_details_screen/model/post_details_state.dart';
 import 'package:auto_tm/screens/post_details_screen/widgets/video_player.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:auto_tm/screens/post_details_screen/model/post_details_state.dart';
 
 class PostDetailsController extends GetxController {
   final box = GetStorage();
@@ -20,7 +20,7 @@ class PostDetailsController extends GetxController {
   var post = Rxn<Post>();
   var isLoading = true.obs;
   var currentPage = 0.obs;
-  // Phase 3: unified state
+  // New Phase 3 state
   final Rx<PostDetailsState> state = const PostDetailsLoading().obs;
 
   // Phase 1: Disposal guard to prevent late prefetch calls
@@ -181,8 +181,8 @@ class PostDetailsController extends GetxController {
   // int _currentVideoIndex = 0;
 
   Future<void> fetchProductDetails(String uuid) async {
-  isLoading.value = true; // legacy compatibility
-  state.value = const PostDetailsLoading();
+    isLoading.value = true; // legacy flag maintained temporarily
+    state.value = const PostDetailsLoading();
     try {
       final response = await http.get(
         Uri.parse(
@@ -202,8 +202,9 @@ class PostDetailsController extends GetxController {
             '[PostDetailsController] video section raw: $videoSection',
           );
         }
-  post.value = Post.fromJson(data);
-  state.value = PostDetailsReady(post.value!);
+        final parsed = Post.fromJson(data);
+        post.value = parsed; // keep Rxn for existing consumers
+        state.value = PostDetailsReady(parsed);
         if (kDebugMode)
           debugPrint(
             '[PostDetailsController] parsed post video: ${post.value?.video}',
@@ -232,22 +233,16 @@ class PostDetailsController extends GetxController {
           // Phase 4: Monitor initial load performance for network detection
           _monitorInitialLoadPerformance();
         });
-      }
-      if (response.statusCode == 406) {
-        // await refreshAccesToken(uuid); // ✅ Pass the uuid here
+      } else if (response.statusCode == 406) {
         state.value = const PostDetailsError('token_refresh_required');
-      }
-      if (response.statusCode >= 400 && response.statusCode != 406) {
-        state.value = PostDetailsError('http_${response.statusCode}');
+      } else {
+        state.value = PostDetailsError('fetch_failed_${response.statusCode}');
       }
     } catch (e) {
-      state.value = PostDetailsError('exception');
+      state.value = PostDetailsError('network_exception');
       return;
     } finally {
       isLoading.value = false;
-      if (post.value == null && state.value is! PostDetailsError) {
-        state.value = const PostDetailsError('empty_post');
-      }
     }
   }
 
