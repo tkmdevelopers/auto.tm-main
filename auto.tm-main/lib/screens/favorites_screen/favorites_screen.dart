@@ -52,6 +52,7 @@ class FavoritesScreenTab extends StatelessWidget {
                   model: post.model,
                   price: post.price,
                   photoPath: post.photoPath,
+                  photos: post.photos, // Phase 2.1: Pass aspect ratio metadata
                   year: post.year,
                   milleage: post.milleage,
                   currency: post.currency,
@@ -71,7 +72,9 @@ class FavoritesScreenTab extends StatelessWidget {
 class MyFavouritesScreen extends StatelessWidget {
   MyFavouritesScreen({super.key});
 
-  final FavoritesController favoritesController = Get.put(FavoritesController());
+  final FavoritesController favoritesController = Get.put(
+    FavoritesController(),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -88,9 +91,7 @@ class MyFavouritesScreen extends StatelessWidget {
         ),
       ),
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: FavoritesScreenTab(),
-      ),
+      body: SafeArea(child: FavoritesScreenTab()),
     );
   }
 }

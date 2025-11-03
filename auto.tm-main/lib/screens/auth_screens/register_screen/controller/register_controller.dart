@@ -14,6 +14,8 @@ import 'package:get/get.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:auto_tm/utils/logger.dart';
+import 'package:auto_tm/utils/safe_notify.dart';
+import 'package:auto_tm/utils/error_messages.dart';
 
 class RegisterPageController extends GetxController {
   /// Ensures a RegisterPageController instance exists in GetX registry.
@@ -60,7 +62,7 @@ class RegisterPageController extends GetxController {
   Future<void> requestOtp({bool navigateToOtp = false}) async {
     final sub = phoneController.text.trim();
     if (!PhoneFormatter.isValidSubscriber(sub)) {
-      _showError('Nädogry', 'Telefon belgi formaty ýalňyş');
+      _showError('Nädogry', ErrorMessages.resolve('otp_invalid_format'));
       return;
     }
     try {
@@ -78,7 +80,10 @@ class RegisterPageController extends GetxController {
         }
       } else {
         AppLogger.w('OTP send failed: ${result.message}');
-        _showError('Ýalňyşlyk', result.message ?? 'OTP ugratmak başa barmady');
+        _showError(
+          'Ýalňyşlyk',
+          result.message ?? ErrorMessages.resolve('otp_failed'),
+        );
       }
     } on SocketException catch (e) {
       AppLogger.e('Network error during OTP request', error: e);
@@ -116,11 +121,14 @@ class RegisterPageController extends GetxController {
     final sub = phoneController.text.trim();
     final code = otpValue.value.trim();
     if (!PhoneFormatter.isValidSubscriber(sub)) {
-      Get.snackbar('Nädogry', 'Telefon belgi formaty ýalňyş');
+      SafeNotify.snackbar(
+        'Nädogry',
+        ErrorMessages.resolve('otp_invalid_format'),
+      );
       return;
     }
     if (!RegExp(r'^\d{5}$').hasMatch(code)) {
-      Get.snackbar('Nädogry', 'OTP 5 sany san bolmaly');
+      SafeNotify.snackbar('Nädogry', ErrorMessages.resolve('otp_invalid_code'));
       return;
     }
     try {
@@ -138,15 +146,8 @@ class RegisterPageController extends GetxController {
         unawaited(_registerDeviceToken());
         notificationService.enableNotifications();
         final profileController = ProfileController.ensure();
-        // Kick off fetch if not already running from onInit
-        if (!profileController.hasLoadedProfile.value &&
-            !profileController.isFetchingProfile.value) {
-          AppLogger.d('Starting profile fetch post-OTP');
-          unawaited(profileController.fetchProfile());
-        } else {
-          AppLogger.d('Profile fetch already in progress or loaded');
-        }
-        // Wait briefly for initial load (or timeout) to avoid premature navigation to edit screen
+        // Phase B: Gate fetch after auth token persistence
+        await profileController.maybeFetchAfterAuth();
         await profileController.waitForInitialLoad();
         storage.write('user_phone', sub); // store subscriber only
         // Ensure default location persisted for brand new users
@@ -164,7 +165,10 @@ class RegisterPageController extends GetxController {
           _navigateAfterSuccess();
         }
       } else {
-        Get.snackbar('Şowsuz', result.message ?? 'Registrasiýa başa barmady');
+        SafeNotify.snackbar(
+          'Şowsuz',
+          result.message ?? ErrorMessages.resolve('otp_failed'),
+        );
       }
     } finally {
       isLoading.value = false;
@@ -317,28 +321,24 @@ class RegisterPageController extends GetxController {
   // ==================== UI Helper Methods ====================
 
   void _showError(String title, String message) {
-    Get.snackbar(
+    SafeNotify.snackbar(
       title,
       message,
-      snackPosition: SnackPosition.BOTTOM,
+      position: SnackPosition.BOTTOM,
       backgroundColor: Get.theme.colorScheme.error.withOpacity(0.9),
       colorText: Get.theme.colorScheme.onError,
       duration: const Duration(seconds: 3),
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
     );
   }
 
   void _showSuccess(String title, String message) {
-    Get.snackbar(
+    SafeNotify.snackbar(
       title,
       message,
-      snackPosition: SnackPosition.BOTTOM,
+      position: SnackPosition.BOTTOM,
       backgroundColor: Get.theme.colorScheme.primary.withOpacity(0.9),
       colorText: Get.theme.colorScheme.onPrimary,
       duration: const Duration(seconds: 2),
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
     );
   }
 

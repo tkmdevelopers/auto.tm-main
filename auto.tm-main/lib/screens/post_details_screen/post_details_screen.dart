@@ -18,21 +18,47 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
 
-class PostDetailsScreen extends StatelessWidget {
+class PostDetailsScreen extends StatefulWidget {
   PostDetailsScreen({super.key});
 
-  final String uuid = Get.arguments;
-  final PostDetailsController detailsController = Get.put(
-    PostDetailsController(),
-  );
-  final FavoritesController favoritesController = Get.put(
-    FavoritesController(),
-  );
-  final downloadController = Get.find<DownloadController>();
+  @override
+  State<PostDetailsScreen> createState() => _PostDetailsScreenState();
+}
+
+class _PostDetailsScreenState extends State<PostDetailsScreen> {
+  late final String uuid;
+  late final PostDetailsController detailsController;
+  late final FavoritesController favoritesController;
+  late final DownloadController downloadController;
+
+  @override
+  void initState() {
+    super.initState();
+    uuid = Get.arguments;
+
+    // Use Get.put with unique tag to prevent controller reuse across instances
+    detailsController = Get.put(
+      PostDetailsController(),
+      tag: 'post_details_$uuid',
+    );
+    favoritesController = Get.put(FavoritesController());
+    downloadController = Get.find<DownloadController>();
+
+    // Fetch data ONCE in initState to prevent race conditions
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      detailsController.fetchProductDetails(uuid);
+    });
+  }
+
+  @override
+  void dispose() {
+    // Clean up controller to prevent memory leak (#12)
+    Get.delete<PostDetailsController>(tag: 'post_details_$uuid');
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    detailsController.fetchProductDetails(uuid);
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -75,8 +101,13 @@ class PostDetailsScreen extends StatelessWidget {
                               child: CarouselSlider.builder(
                                 itemCount: post.value?.photos.length ?? 0,
                                 itemBuilder: (context, index, realIndex) {
-                                  final photo = post.value!.photos[index];
-                                  final photos = post.value!.photos;
+                                  // Fix #3: Consistent null safety - safe access
+                                  final photos = post.value?.photos;
+                                  if (photos == null ||
+                                      index >= photos.length) {
+                                    return const SizedBox();
+                                  }
+                                  final photo = photos[index];
 
                                   return _CarouselImageItem(
                                     key: PageStorageKey('carousel_img_$index'),
@@ -88,7 +119,9 @@ class PostDetailsScreen extends StatelessWidget {
                                   );
                                 },
                                 options: CarouselOptions(
-                                  height: 300,
+                                  // Fix #8: Dynamic carousel height based on screen
+                                  height:
+                                      MediaQuery.of(context).size.height * 0.4,
                                   enlargeCenterPage: false,
                                   enableInfiniteScroll: false,
                                   autoPlay: false,
@@ -260,30 +293,24 @@ class PostDetailsScreen extends StatelessWidget {
                               ),
                             ),
                             Obx(() {
-                              // Check if post and video exist and are not empty
+                              // Fix #3: Consistent null safety
+                              final post = detailsController.post.value;
+                              final video = post?.video;
                               final bool hasVideo =
-                                  detailsController.post.value != null &&
-                                  detailsController.post.value!.video != null &&
-                                  detailsController
-                                      .post
-                                      .value!
-                                      .video!
-                                      .isNotEmpty;
+                                  video != null && video.isNotEmpty;
 
                               return Positioned(
-                                bottom:
-                                    -12.0, // Example: Position at the bottom
-                                right: 16.0, // Example: Position to the right
+                                // Fix #11: Position button inside carousel bounds
+                                bottom: 12.0, // Changed from -12.0 to 12.0
+                                right: 16.0,
                                 child: hasVideo
                                     ? GestureDetector(
                                         behavior: HitTestBehavior.opaque,
                                         onTap: () {
+                                          // Safe to use ! here since hasVideo checks it
                                           Get.to(
                                             () => VideoPlayerPage(),
-                                            arguments: detailsController
-                                                .post
-                                                .value!
-                                                .video,
+                                            arguments: video,
                                           );
                                         },
                                         child: Container(
@@ -551,8 +578,8 @@ class PostDetailsScreen extends StatelessWidget {
                             //   },
                             // );
                             SizedBox(width: 20),
-                            if (post.value?.file != null &&
-                                post.value!.file!.path.isNotEmpty)
+                            // Fix #3: Consistent null safety for file download
+                            if (post.value?.file?.path.isNotEmpty == true)
                               Obx(() {
                                 final c = Get.find<DownloadController>();
 
@@ -575,6 +602,13 @@ class PostDetailsScreen extends StatelessWidget {
                                   );
                                 }
 
+                                // Safe to use values here since we checked in if condition
+                                final postValue = post.value!;
+                                final brand = postValue.brand;
+                                final model = postValue.model;
+                                final year = postValue.year;
+                                final filePath = postValue.file!.path;
+
                                 return Expanded(
                                   child: ElevatedButton.icon(
                                     icon: Icon(
@@ -592,9 +626,8 @@ class PostDetailsScreen extends StatelessWidget {
                                     ),
                                     onPressed: () {
                                       final fileName =
-                                          "AutoTM_${post.value!.brand}_${post.value!.model}_${post.value!.year.toStringAsFixed(0)}.pdf";
-                                      final fullUrl =
-                                          "${ApiKey.ip}${post.value!.file!.path}";
+                                          "AutoTM_${brand}_${model}_${year.toStringAsFixed(0)}.pdf";
+                                      final fullUrl = "${ApiKey.ip}$filePath";
                                       c.startDownload(fullUrl, fileName);
                                     },
                                   ),
@@ -697,18 +730,19 @@ class PostDetailsScreen extends StatelessWidget {
                         //     ),
                         //   ],
                         // ),
+                        // Fix #3: Consistent null safety
                         if (post.value != null)
                           Row(
                             children: [
                               Expanded(
                                 child: CommentCarousel(
-                                  postId: post.value != null
-                                      ? post.value!.uuid
-                                      : '',
+                                  postId: post
+                                      .value!
+                                      .uuid, // Safe since we checked != null
                                 ),
                               ),
                             ],
-                          ), // Replace 'YOUR_POST_ID'
+                          ),
                         const SizedBox(height: 20.0),
 
                         // ElevatedButton(
@@ -778,11 +812,13 @@ class PostDetailsScreen extends StatelessWidget {
                     ),
                   ),
                   Obx(() {
-                    final post = detailsController.post;
-                    final priceText =
-                        (post.value?.price != null &&
-                            post.value?.currency != null)
-                        ? '${post.value!.price.toStringAsFixed(0)}${post.value!.currency}'
+                    // Fix #3: Consistent null safety
+                    final postValue = detailsController.post.value;
+                    final price = postValue?.price;
+                    final currency = postValue?.currency;
+
+                    final priceText = (price != null && currency != null)
+                        ? '${price.toStringAsFixed(0)}$currency'
                         : 'N/A';
 
                     return Text(
@@ -799,13 +835,12 @@ class PostDetailsScreen extends StatelessWidget {
               // Add to Cart Button
               ElevatedButton(
                 onPressed: () {
-                  final post = detailsController.post;
-                  if (post.value?.phoneNumber != null &&
-                      post.value!.phoneNumber.isNotEmpty &&
-                      post.value!.phoneNumber != '+993') {
-                    detailsController.makePhoneCall(post.value!.phoneNumber);
-                  } else {
-                    null;
+                  // Fix #3: Consistent null safety
+                  final phoneNumber = detailsController.post.value?.phoneNumber;
+                  if (phoneNumber != null &&
+                      phoneNumber.isNotEmpty &&
+                      phoneNumber != '+993') {
+                    detailsController.makePhoneCall(phoneNumber);
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -1077,52 +1112,51 @@ class _CarouselImageItemState extends State<_CarouselImageItem>
     final screenWidth = MediaQuery.of(context).size.width;
     const carouselHeight = 300.0;
 
-    // Wrap in AutomaticKeepAlive to ensure proper keep-alive behavior
-    return AutomaticKeepAlive(
-      child: GestureDetector(
-        onTap: () {
-          if (widget.photos.isNotEmpty) {
-            Get.to(
-              () => ViewPostPhotoScreen(
-                photos: widget.photos,
-                currentIndex: widget.index,
-                postUuid: widget.uuid,
-                heroGroupTag: widget.uuid,
-              ),
-              transition: Transition.fadeIn,
-              curve: Curves.easeInOut,
-              duration: const Duration(milliseconds: 220),
-            );
-          }
-        },
-        child: Container(
-          width: double.infinity,
-          height: carouselHeight,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            color: widget.theme.colorScheme.surfaceContainerHighest,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: widget.photo.bestPath.isNotEmpty
-                ? CachedImageHelper.buildAdaptivePostImage(
-                    photo: widget.photo,
-                    baseUrl: ApiKey.ip,
-                    containerWidth: screenWidth,
-                    containerHeight: carouselHeight,
-                    fit: BoxFit.contain,
-                    isThumbnail:
-                        false, // High quality for carousel (6x multiplier)
-                  )
-                : Image.asset(
-                    AppImages.defaultImagePng,
-                    height: carouselHeight,
-                    width: double.infinity,
-                    fit: BoxFit.contain,
-                  ),
-          ),
+    // AutomaticKeepAliveClientMixin handles keep-alive automatically
+    // No need to wrap in AutomaticKeepAlive widget (causes ParentDataWidget error)
+    return GestureDetector(
+      onTap: () {
+        if (widget.photos.isNotEmpty) {
+          Get.to(
+            () => ViewPostPhotoScreen(
+              photos: widget.photos,
+              currentIndex: widget.index,
+              postUuid: widget.uuid,
+              heroGroupTag: widget.uuid,
+            ),
+            transition: Transition.fadeIn,
+            curve: Curves.easeInOut,
+            duration: const Duration(milliseconds: 220),
+          );
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        height: carouselHeight,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          color: widget.theme.colorScheme.surfaceContainerHighest,
         ),
-      ), // Close AutomaticKeepAlive
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: widget.photo.bestPath.isNotEmpty
+              ? CachedImageHelper.buildAdaptivePostImage(
+                  photo: widget.photo,
+                  baseUrl: ApiKey.ip,
+                  containerWidth: screenWidth,
+                  containerHeight: carouselHeight,
+                  fit: BoxFit.contain,
+                  isThumbnail:
+                      false, // High quality for carousel (6x multiplier)
+                )
+              : Image.asset(
+                  AppImages.defaultImagePng,
+                  height: carouselHeight,
+                  width: double.infinity,
+                  fit: BoxFit.contain,
+                ),
+        ),
+      ),
     );
   }
 }

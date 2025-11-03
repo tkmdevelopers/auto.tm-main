@@ -175,6 +175,7 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
                           modelId: post.modelId,
                           price: post.price,
                           photoPath: post.photoPath,
+                          // TODO Phase 2.1: Add photos support when PostDto includes photos list
                           year: post.year,
                           milleage: post.milleage,
                           currency: post.currency,

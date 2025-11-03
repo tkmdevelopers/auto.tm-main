@@ -1,8 +1,10 @@
 import 'package:auto_tm/global_controllers/theme_controller.dart';
 import 'package:auto_tm/screens/favorites_screen/controller/favorites_controller.dart';
 import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
+import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/utils/cached_image_helper.dart';
+import 'package:auto_tm/utils/image_features.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -13,6 +15,8 @@ class PostItem extends StatelessWidget {
   final String brand;
   final double price;
   final String photoPath;
+  final List<Photo>?
+  photos; // Phase 2.1: Photo objects with aspect ratio metadata
   final String? subscription;
   final String location;
   final String region; // NEW: region (e.g., Local, Dubai, China)
@@ -28,6 +32,7 @@ class PostItem extends StatelessWidget {
     required this.brand,
     required this.price,
     required this.photoPath,
+    this.photos, // Phase 2.1: Optional for backward compatibility
     this.subscription,
     required this.year,
     required this.milleage,
@@ -85,25 +90,47 @@ class PostItem extends StatelessWidget {
   }
 
   Widget _buildImageSection(BuildContext context, ThemeData theme) {
+    // Phase 2.1: Compute aspect ratio from metadata to prevent layout jump
+    final Photo? firstPhoto = (photos != null && photos!.isNotEmpty)
+        ? photos!.first
+        : null;
+    double aspectRatio;
+    if (firstPhoto != null) {
+      if (ImageFeatures.useBucketedFeedAspectRatio) {
+        aspectRatio = CachedImageHelper.computeBucketedAspectRatioForWidget(
+          photo: firstPhoto,
+        );
+      } else {
+        aspectRatio = CachedImageHelper.computeAspectRatioForWidget(
+          photo: firstPhoto,
+        );
+      }
+    } else {
+      aspectRatio = 16 / 9; // Legacy fallback
+    }
+
     return Stack(
       children: [
-        // Car Image
+        // Car Image with AspectRatio wrapper (Phase 2.1)
+        // 🎨 FIX: Use full borderRadius to match container and prevent corner glitches
         ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-          ),
-          child: SizedBox(
-            height: 200,
-            width: double.infinity,
-            child: CachedImageHelper.buildPostImage(
-              photoPath: photoPath,
-              baseUrl: ApiKey.ip,
-              height: 200,
-              width: 600, // Wider estimate for better quality
-              fit: BoxFit.cover,
-              fallbackUrl:
-                  'https://placehold.co/600x200/e0e0e0/666666?text=No+Image',
+          borderRadius: BorderRadius.circular(16),
+          child: AspectRatio(
+            aspectRatio: aspectRatio,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final actualWidth = constraints.maxWidth;
+                final actualHeight = constraints.maxHeight;
+                return CachedImageHelper.buildPostImage(
+                  photoPath: photoPath,
+                  baseUrl: ApiKey.ip,
+                  height: actualHeight,
+                  width: actualWidth, // Phase 1: Use actual layout width
+                  fit: BoxFit.cover, // Phase 2.3: Feed uses cover (immersive)
+                  fallbackUrl:
+                      'https://placehold.co/${actualWidth.toInt()}x${actualHeight.toInt()}.png/e0e0e0/666666?text=No+Image',
+                );
+              },
             ),
           ),
         ),

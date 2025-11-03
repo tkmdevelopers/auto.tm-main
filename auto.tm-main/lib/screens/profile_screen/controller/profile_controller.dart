@@ -13,6 +13,8 @@ import 'package:auto_tm/utils/logger.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:auto_tm/utils/safe_notify.dart';
+import 'package:auto_tm/utils/error_messages.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -93,9 +95,18 @@ class ProfileController extends GetxController {
 
     // Test API configuration
     testApiConnection();
-
-    // Fetch fresh data from backend
-    fetchProfile();
+    // Phase B: Token-gated initial profile fetch.
+    final accessToken = box.read('ACCESS_TOKEN');
+    if (accessToken != null && accessToken.toString().isNotEmpty) {
+      AppLogger.d(
+        'ProfileController.onInit: access token present, starting initial fetch',
+      );
+      fetchProfile();
+    } else {
+      AppLogger.d(
+        'ProfileController.onInit: skipping initial fetch (no access token yet)',
+      );
+    }
 
     // Late-arrival profile listener: if profile loads after screen build and fields not initialized, prefill.
     // Only trigger if fields genuinely haven't been initialized yet
@@ -108,6 +119,28 @@ class ProfileController extends GetxController {
 
     // Removed bidirectional listeners - they caused conflicts with manual field updates
     // Fields now update via ensureFormFieldPrefill and fetchProfileAndPopulateFields only
+  }
+
+  /// Public helper to trigger a profile fetch after auth completes (e.g. OTP verification).
+  /// Will only start a fetch if not already loaded or currently in-flight.
+  Future<void> maybeFetchAfterAuth() async {
+    if (hasLoadedProfile.value) {
+      AppLogger.d('maybeFetchAfterAuth: already loaded; skipping');
+      return;
+    }
+    if (isFetchingProfile.value) {
+      AppLogger.d('maybeFetchAfterAuth: fetch already in progress; skipping');
+      return;
+    }
+    final accessToken = box.read('ACCESS_TOKEN');
+    if (accessToken == null || accessToken.toString().isEmpty) {
+      AppLogger.d(
+        'maybeFetchAfterAuth: token still missing; not starting fetch',
+      );
+      return;
+    }
+    AppLogger.d('maybeFetchAfterAuth: starting gated fetch');
+    await fetchProfile();
   }
 
   @override
@@ -179,11 +212,7 @@ class ProfileController extends GetxController {
       final accessToken = box.read('ACCESS_TOKEN');
       if (accessToken == null) {
         AppLogger.w('fetchProfile: No access token found');
-        Get.snackbar(
-          'Error',
-          'No access token found. Please log in again.',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        SafeNotify.snackbar('Error', ErrorMessages.resolve('no_token'));
         return _earlyReturnCleanup('no_token');
       }
 
@@ -196,10 +225,9 @@ class ProfileController extends GetxController {
         AppLogger.w(
           'fetchProfile: API base URL is not configured properly (ApiKey.ip = ${ApiKey.ip})',
         );
-        Get.snackbar(
+        SafeNotify.snackbar(
           'Error',
           'API configuration error. Please check environment variables.',
-          snackPosition: SnackPosition.BOTTOM,
         );
         return _earlyReturnCleanup('bad_api_url');
       }
@@ -231,10 +259,9 @@ class ProfileController extends GetxController {
           // Check if response body is empty
           if (response.body.isEmpty) {
             AppLogger.w('fetchProfile: Empty response body received');
-            Get.snackbar(
+            SafeNotify.snackbar(
               'Error',
-              'Empty response from server',
-              snackPosition: SnackPosition.BOTTOM,
+              ErrorMessages.resolve('profile_empty_body'),
             );
             return _earlyReturnCleanup('empty_body');
           }
@@ -264,10 +291,12 @@ class ProfileController extends GetxController {
             stackTrace: st,
           );
           AppLogger.d('Response body that failed to parse: ${response.body}');
-          Get.snackbar(
+          SafeNotify.snackbar(
             'Error',
-            'Failed to parse profile data: $parseError',
-            snackPosition: SnackPosition.BOTTOM,
+            ErrorMessages.resolve(
+              'profile_parse_fail',
+              details: ': $parseError',
+            ),
           );
           // parsing error should still resolve initial load so UI can present fallback
         }
@@ -286,32 +315,28 @@ class ProfileController extends GetxController {
             return; // prevent finally double reset below from firing twice in perception
           }
         }
-        Get.snackbar(
+        SafeNotify.snackbar(
           'Error',
-          'Failed to refresh access token. Please log in again.',
-          snackPosition: SnackPosition.BOTTOM,
+          ErrorMessages.resolve('token_refresh_fail'),
         );
       } else {
         AppLogger.w('Unexpected status code: ${response.statusCode}');
-        Get.snackbar(
+        SafeNotify.snackbar(
           'Error',
-          'Failed to fetch profile. Status: ${response.statusCode}',
-          snackPosition: SnackPosition.BOTTOM,
+          ErrorMessages.resolve(
+            'profile_fetch_fail',
+            details: 'Status: ${response.statusCode}',
+          ),
         );
       }
     } on TimeoutException catch (e) {
       AppLogger.w('Profile fetch timeout: $e');
-      Get.snackbar(
-        'Timeout',
-        'Profile request took too long. Pull to retry.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      SafeNotify.snackbar('Timeout', ErrorMessages.resolve('profile_timeout'));
     } catch (e) {
       AppLogger.e('Error fetching profile', error: e);
-      Get.snackbar(
+      SafeNotify.snackbar(
         'Error',
-        'Failed to fetch profile: $e',
-        snackPosition: SnackPosition.BOTTOM,
+        ErrorMessages.resolve('profile_fetch_fail', details: ': $e'),
       );
     } finally {
       AppLogger.d(

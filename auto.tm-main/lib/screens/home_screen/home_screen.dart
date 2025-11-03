@@ -200,6 +200,7 @@ class HomeScreen extends StatelessWidget {
               model: post.model,
               price: post.price,
               photoPath: post.photoPath,
+              photos: post.photos, // Phase 2.1: Pass aspect ratio metadata
               year: post.year,
               milleage: post.milleage,
               currency: post.currency,
@@ -321,7 +322,7 @@ class _FilterBar extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           InkWell(
-           onTap: () => Get.to(() => BrandSelection(origin: 'directHome')),
+            onTap: () => Get.to(() => BrandSelection(origin: 'directHome')),
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(8),

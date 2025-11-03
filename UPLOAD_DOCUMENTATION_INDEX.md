@@ -277,3 +277,13 @@ See: `PHASE_E_SCOPE_DRAFT.md` – defines goals for resume capability, lazy enco
 
 ## 📊 New: Monitoring Checklist
 See: `MONITORING_CHECKLIST.md` – operational metrics, collection methods, and baseline capture tasks.
+
+## 🏎️ New: Concurrency Baseline Complete
+See: `CONCURRENCY_BASELINE_COMPLETE.md` – Phase D results, throughput analysis, and performance metrics for concurrent photo uploads.
+
+## 🔍 New: Backend Numeric Ratio Validation ✅ COMPLETE
+See: `BACKEND_NUMERIC_RATIO_VALIDATION.md` – validation tasks specification  
+See: `BACKEND_NUMERIC_RATIO_VALIDATION_RESULTS.md` – ✅ validation results (all systems operational)
+
+## 🎯 New: Execution Complete Summary
+See: `UPLOAD_SYSTEM_EXECUTION_COMPLETE.md` – final status report, all tasks complete, system production-ready

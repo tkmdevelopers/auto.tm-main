@@ -39,8 +39,11 @@ import { FileModule } from './file/file.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    // Static file serving for uploaded media.
+    // Use process.cwd() so runtime writes to ./uploads (outside dist) are served correctly.
+    // Previous path using __dirname pointed to dist/uploads which caused 404s after build.
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'uploads'),
+      rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
     }),
     PostModule,

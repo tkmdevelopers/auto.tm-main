@@ -41,21 +41,26 @@ Bring the photo + video upload pipeline to production-grade quality: correct dat
 5. Low coupling: isolate upload concerns from UI presentation layer.
 6. Progressive enhancement: advanced features (pause/resume) built atop solid core.
 
-## 4. Phase Breakdown (REVISED POST-TESTING)
+## 4. Phase Breakdown (REVISED POST-TESTING + IMPLEMENTATION UPDATE)
 
 | Phase | Title | Status | Priority | Core Goal |
 |-------|-------|--------|----------|-----------|
 | 0 | Deep Diagnostics | ✅ COMPLETE | - | Establish ground truth |
-| **NEW** | **FFmpeg Installation** | 🔴 **URGENT** | **P0** | **Enable video processing** |
-| **NEW** | **AspectRatio Calculation** | 🟡 **TODO** | **P1** | **Complete photo metadata** |
+| A | Core Reliability & Cancellation | ✅ COMPLETE | - | Real cancellation + status validation |
+| B | Auth & Idempotent Retry | ✅ COMPLETE | - | Token refresh + part tracking |
+| C | Metadata & Structured Logging | ✅ COMPLETE | - | Correlation IDs + instrumentation |
+| D | Concurrency Management | ✅ COMPLETE | - | Photo upload parallelism (limit=2) |
+| **NEW** | **FFmpeg Installation** | ✅ **COMPLETE** | **P0** | **Enable video processing** |
+| **NEW** | **AspectRatio Calculation** | ✅ **COMPLETE** | **P1** | **Complete photo metadata (dual fields)** |
 | 1 | Backend Contract Alignment | ❌ **CANCELLED** | - | ~~Photos already working~~ |
-| 2 | Frontend API Refactor | ⏸️ PENDING | P2 | Clean request builder & retry |
-| 3 | Concurrency Management | ⏸️ DEFERRED | P4 | Already performing well |
-| 4 | Resiliency Layer | ⏸️ DEFERRED | P3 | Build on stable foundation |
-| 5 | Telemetry Enhancement | ⏸️ DEFERRED | P5 | Logging already robust |
-| 6 | Performance Optimization | ⏸️ DEFERRED | P6 | <500ms already excellent |
-| 7 | Security Hardening | ⏸️ DEFERRED | P4 | No immediate threats |
-| 8 | UX Polish | ⏸️ DEFERRED | P5 | Current UX acceptable |
+| E | Resume & Memory Optimization | 📝 **SPEC DRAFT** | P2 | Lazy encoding + snapshot v2 |
+| 2 | Frontend API Refactor | ⏸️ DEFERRED | P3 | Clean request builder (stable now) |
+| 3 | Adaptive Concurrency | ⏸️ DEFERRED | P4 | Dynamic limits (current fixed=2) |
+| 4 | Enhanced Resiliency | ⏸️ DEFERRED | P5 | Exponential backoff + retry limits |
+| 5 | Remote Telemetry | ⏸️ DEFERRED | P6 | Export to analytics service |
+| 6 | Advanced Memory Optimization | ⏸️ DEFERRED | P6 | Streaming/chunking (after Phase E) |
+| 7 | Security Hardening | ⏸️ DEFERRED | P4 | File validation + rate limiting |
+| 8 | UX Polish | ⏸️ DEFERRED | P5 | Per-photo status indicators |
 | 9 | Documentation | ⏸️ ONGOING | P3 | Incremental updates |
 
 ## 5. Detailed Phase Specifications

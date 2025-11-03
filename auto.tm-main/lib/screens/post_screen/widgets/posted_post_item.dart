@@ -1,5 +1,6 @@
 // Removed legacy favorites & feature imports (not present in current project structure)
 import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
+import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
 import 'package:auto_tm/ui_components/images.dart';
 import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
 import 'package:auto_tm/utils/cached_image_helper.dart';
@@ -121,6 +122,8 @@ class PostedPostItem extends StatelessWidget {
   final String? modelId;
   final double price;
   final String photoPath;
+  final List<Photo>?
+  photos; // Phase 2.1: Photo objects with aspect ratio metadata
   final double year;
   final double milleage;
   final String currency;
@@ -137,6 +140,7 @@ class PostedPostItem extends StatelessWidget {
     this.modelId,
     required this.price,
     required this.photoPath,
+    this.photos, // Phase 2.1: Optional for backward compatibility
     required this.year,
     required this.milleage,
     required this.currency,
@@ -150,28 +154,24 @@ class PostedPostItem extends StatelessWidget {
       ? Get.find<PostController>()
       : Get.put(PostController());
 
-  Widget _buildNetworkOrPlaceholder(ThemeData theme, BuildContext context) {
-    // Get screen width for adaptive sizing
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    // Calculate optimal thumbnail dimensions
-    // Assuming typical grid with padding: screenWidth - 32px (16px each side)
-    final containerWidth = screenWidth - 32;
+  Widget _buildNetworkOrPlaceholderWithWidth(
+    ThemeData theme,
+    double containerWidth,
+  ) {
     const containerHeight = 180.0;
 
-    // Use buildPostImage with adaptive container dimensions
+    // Phase 1: Use actual layout width from LayoutBuilder for precise cache sizing
     // BoxFit.cover will crop to fill the container regardless of source aspect ratio
-    // The image helper will cache at appropriate dimensions (4x multiplier for thumbnails)
+    // The image helper will cache at appropriate dimensions (DPR-based sizing)
     return CachedImageHelper.buildPostImage(
       photoPath: photoPath,
       baseUrl: ApiKey.ip,
-      width: containerWidth, // Actual container width
+      width: containerWidth, // Actual container width from LayoutBuilder
       height: containerHeight, // Fixed height matches container
       fit: BoxFit.cover, // Covers the container, crops if needed
       fallbackUrl:
-          'https://placehold.co/${containerWidth.toInt()}x${containerHeight.toInt()}/e0e0e0/666666?text=No+Image',
-      isThumbnail:
-          true, // Use 4x multiplier for thumbnails (adaptive cached dimensions)
+          'https://placehold.co/${containerWidth.toInt()}x${containerHeight.toInt()}.png/e0e0e0/666666?text=No+Image',
+      isThumbnail: true, // Use thumbnail quality factor
     );
   }
 
@@ -248,16 +248,36 @@ class PostedPostItem extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top image with overlays like home screen
+            // Top image with overlays like home screen (Phase 2.1: AspectRatio wrapper)
             Stack(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 180, // Fixed height - allows natural aspect ratio
-                    child: _buildNetworkOrPlaceholder(theme, context),
-                  ),
+                  child: () {
+                    // Phase 2.1: Compute aspect ratio from metadata to prevent layout jump
+                    final Photo? firstPhoto =
+                        (photos != null && photos!.isNotEmpty)
+                        ? photos!.first
+                        : null;
+                    final aspectRatio = firstPhoto != null
+                        ? CachedImageHelper.computeAspectRatioForWidget(
+                            photo: firstPhoto,
+                          )
+                        : 16 / 9; // Default landscape for legacy posts
+
+                    return AspectRatio(
+                      aspectRatio: aspectRatio,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          // Phase 1: Use actual layout width instead of MediaQuery estimate
+                          return _buildNetworkOrPlaceholderWithWidth(
+                            theme,
+                            constraints.maxWidth,
+                          );
+                        },
+                      ),
+                    );
+                  }(),
                 ),
                 Positioned(top: 12, left: 12, child: _buildStatusBadge(theme)),
                 Positioned(top: 12, right: 12, child: _buildActionMenu(theme)),
