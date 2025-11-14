@@ -1,22 +1,24 @@
 import 'dart:convert';
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
+import 'package:auto_tm/screens/post_details_screen/domain/auth_token_provider.dart';
 import 'package:auto_tm/utils/key.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 
 class PostRepository {
-  final GetStorage _box;
+  final AuthTokenProvider _tokenProvider;
   final http.Client _client;
 
-  PostRepository({GetStorage? box, http.Client? client})
-      : _box = box ?? GetStorage(),
+  PostRepository({
+    required AuthTokenProvider tokenProvider,
+    http.Client? client,
+  })  : _tokenProvider = tokenProvider,
         _client = client ?? http.Client();
 
   Future<Post> fetchPost(String uuid) async {
     final url = Uri.parse('${ApiKey.getPostDetailsKey}$uuid?model=true&brand=true&photo=true');
     final headers = {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${_box.read('ACCESS_TOKEN')}',
+      'Authorization': 'Bearer ${_tokenProvider.getAccessToken()}',
     };
 
     final response = await _client.get(url, headers: headers);
@@ -26,10 +28,10 @@ class PostRepository {
     } else if (response.statusCode == 406) {
       final refreshed = await _refreshAccessToken();
       if (refreshed) {
-        // Retry once
+        // Retry once with refreshed token
         final retryResponse = await _client.get(url, headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${_box.read('ACCESS_TOKEN')}',
+          'Authorization': 'Bearer ${_tokenProvider.getAccessToken()}',
         });
         if (retryResponse.statusCode == 200) {
           final data = json.decode(retryResponse.body);
@@ -45,7 +47,7 @@ class PostRepository {
   }
 
   Future<bool> _refreshAccessToken() async {
-    final refreshToken = _box.read('REFRESH_TOKEN');
+    final refreshToken = _tokenProvider.getRefreshToken();
     if (refreshToken == null) return false;
     final response = await _client.get(
       Uri.parse(ApiKey.refreshTokenKey),
@@ -58,7 +60,7 @@ class PostRepository {
       final data = jsonDecode(response.body);
       final newAccessToken = data['accessToken'];
       if (newAccessToken != null) {
-        _box.write('ACCESS_TOKEN', newAccessToken);
+        await _tokenProvider.setAccessToken(newAccessToken);
         return true;
       }
     }

@@ -1,118 +1,78 @@
+// Phase 6 Refactor: Telemetry service extraction complete
 // Removed legacy direct HTTP/json parsing imports after repository refactor
 import 'package:auto_tm/utils/cached_image_helper.dart';
 import 'package:auto_tm/screens/post_details_screen/domain/image_prefetch_service.dart';
+import 'package:auto_tm/screens/post_details_screen/domain/telemetry_service.dart';
+import 'package:auto_tm/screens/post_details_screen/domain/auth_token_provider.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-// Removed unused http & url_launcher imports after repository integration
 import 'package:auto_tm/screens/post_details_screen/model/post_details_state.dart';
 import 'package:auto_tm/screens/post_details_screen/domain/post_repository.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PostDetailsController extends GetxController {
   final box = GetStorage();
+  final TelemetryService _telemetry;
+  final PostRepository _repository;
+  final ImagePrefetchService _prefetchService;
 
-  var post = Rxn<Post>();
-  var isLoading = true.obs;
   var currentPage = 0.obs;
-  // New Phase 3 state
+
+  // Phase 3: Single source of truth - sealed state pattern
   final Rx<PostDetailsState> state = const PostDetailsLoading().obs;
+
+  // Computed properties for backward compatibility during migration
+  Post? get post {
+    final s = state.value;
+    return s is PostDetailsReady ? s.post : null;
+  }
+
+  bool get isLoading => state.value is PostDetailsLoading;
 
   // Phase 1: Disposal guard to prevent late prefetch calls
   bool _disposed = false;
-  // Phase 2: Prefetch service extraction
-  final ImagePrefetchService _prefetchService = ImagePrefetchService();
-
-  // Phase 3: Session telemetry baseline for delta calculation
-  DateTime? _sessionStart;
-  int _baselineHits = 0;
-  int _baselineMisses = 0;
-  int _baselineSuccesses = 0;
-  int _baselineFailures = 0;
 
   // Phase 4: Network sensitivity and quality adaptation
   bool _networkSlow = false;
   int _slowLoadCount = 0;
 
-  @override
-  void onInit() {
-    super.onInit();
-    // Fix #10: Session start time marked here, but baseline captured after first image loads
-    // to avoid contamination from home screen prefetch
-    _sessionStart = DateTime.now();
-
-    if (kDebugMode) {
-      debugPrint(
-        '[PostDetailsController] 📊 Phase 3: Session started, baseline will be captured after first image',
-      );
-    }
-  }
+  // Constructor with dependency injection for testing
+  PostDetailsController({
+    TelemetryService? telemetry,
+    PostRepository? repository,
+    ImagePrefetchService? prefetchService,
+  })  : _telemetry = telemetry ?? ImageLoadTelemetryService(),
+        _repository = repository ?? PostRepository(
+          tokenProvider: GetStorageAuthTokenProvider(GetStorage()),
+        ),
+        _prefetchService = prefetchService ?? ImagePrefetchService();
 
   void setCurrentPage(int index) {
     currentPage.value = index;
-    final photos = post.value?.photos;
+    final photos = post?.photos; // ✅ Using computed property
     if (photos != null) {
       _prefetchService.prefetchAdjacent(
         currentIndex: index,
         photos: photos,
-        disposed: _disposed,
+        disposed: () => _disposed, // ✅ Closure prevents TOCTOU race
       );
     }
   }
 
   @override
   void onClose() {
-    // Phase 3: Log session telemetry delta before cleanup
-    _logSessionTelemetry();
+    // Phase 6: Finish telemetry session
+    final postUuid = post?.uuid ?? 'unknown'; // ✅ Using computed property
+    _telemetry.finishSession(postUuid);
 
     // Phase 1: Mark as disposed to prevent late async prefetch calls
     _disposed = true;
     _prefetchService.resetSession();
 
     super.onClose();
-  }
-
-  /// Phase 3: Log telemetry delta for this post details session
-  /// Helps identify performance gaps and validate prefetch effectiveness
-  void _logSessionTelemetry() {
-    if (_sessionStart == null) return;
-
-    final telemetry = CachedImageHelper.getTelemetry();
-    final sessionDuration = DateTime.now().difference(_sessionStart!);
-
-    // Calculate deltas for this session
-    final sessionHits = telemetry.cacheHits - _baselineHits;
-    final sessionMisses = telemetry.cacheMisses - _baselineMisses;
-    final sessionSuccesses = telemetry.loadSuccesses - _baselineSuccesses;
-    final sessionFailures = telemetry.loadFailures - _baselineFailures;
-    final totalRequests = sessionHits + sessionMisses;
-    final hitRate = totalRequests > 0
-        ? (sessionHits / totalRequests * 100)
-        : 0.0;
-    final successRate = (sessionSuccesses + sessionFailures) > 0
-        ? (sessionSuccesses / (sessionSuccesses + sessionFailures) * 100)
-        : 0.0;
-
-    // Count slow loads in this session (approximation based on global list)
-    final slowThreshold = 600; // ms
-    final slowCount = telemetry.loadTimesMs
-        .where((t) => t >= slowThreshold)
-        .length;
-
-    if (kDebugMode) {
-      final postUuid = post.value?.uuid ?? 'unknown';
-      debugPrint(
-        '[PostDetailsTelemetry] 📊 Session Summary:\n'
-        '  Post: $postUuid\n'
-        '  Duration: ${sessionDuration.inSeconds}s\n'
-        '  Cache: hits=$sessionHits misses=$sessionMisses hitRate=${hitRate.toStringAsFixed(1)}%\n'
-        '  Network: success=$sessionSuccesses fail=$sessionFailures successRate=${successRate.toStringAsFixed(1)}%\n'
-        '  Slow Loads (>$slowThreshold ms): $slowCount\n'
-        '  Avg Load Time: ${telemetry.averageLoadTimeMs.toStringAsFixed(0)}ms',
-      );
-    }
   }
 
   /// Phase 4: Monitor network performance and adjust prefetch strategy
@@ -173,46 +133,55 @@ class PostDetailsController extends GetxController {
 
   final RxBool isPlaying = false.obs;
   final String apiKeyIp = ApiKey.ip;
-  // VideoPlayerController? _videoPlayerController;
-  // List<String> _orderedUrls = [];
-  // int _currentVideoIndex = 0;
-
-
-  final PostRepository _repository = PostRepository();
 
   Future<void> fetchProductDetails(String uuid) async {
-    isLoading.value = true; // legacy flag
     state.value = const PostDetailsLoading();
+
+    // ✅ Phase 6: Start telemetry BEFORE first image loads (fixes baseline contamination)
+    _telemetry.startSession(uuid);
+
     try {
       final parsed = await _repository.fetchPost(uuid);
       if (kDebugMode) {
         debugPrint('[PostDetailsController] video section raw: ${parsed.video}');
       }
-      post.value = parsed;
+
+      // Check if disposed during fetch
+      if (_disposed) return;
+
+      // ✅ Single state update - no dual state management
       state.value = PostDetailsReady(parsed);
 
-      Future.delayed(const Duration(milliseconds: 150), () {
-        if (_disposed) return;
-        final telemetry = CachedImageHelper.getTelemetry();
-        _baselineHits = telemetry.cacheHits;
-        _baselineMisses = telemetry.cacheMisses;
-        _baselineSuccesses = telemetry.loadSuccesses;
-        _baselineFailures = telemetry.loadFailures;
-
-        final photos = post.value?.photos;
-        if (photos != null) {
-          _prefetchService.prefetchInitial(photos, disposed: _disposed);
-        }
+      // ✅ Prefetch immediately (no delay needed, baseline already captured)
+      final photos = post?.photos; // ✅ Using computed property
+      if (photos != null && !_disposed) {
+        _prefetchService.prefetchInitial(photos, disposed: () => _disposed); // ✅ Closure prevents TOCTOU
         _monitorInitialLoadPerformance();
-      });
+      }
     } on RepositoryHttpException catch (e) {
-      state.value = PostDetailsError(_mapError(e.message));
+      if (!_disposed) {
+        state.value = PostDetailsError(_mapError(e.message));
+      }
     } on RepositoryException catch (e) {
-      state.value = PostDetailsError(_mapError(e.message));
+      if (!_disposed) {
+        state.value = PostDetailsError(_mapError(e.message));
+      }
     } catch (_) {
-      state.value = PostDetailsError(_mapError('network_exception'));
-    } finally {
-      isLoading.value = false;
+      if (!_disposed) {
+        state.value = PostDetailsError(_mapError('network_exception'));
+      }
+    }
+  }
+
+  /// Launch phone dialer with the given number
+  Future<void> makePhoneCall(String phoneNumber) async {
+    final uri = Uri.parse('tel:$phoneNumber');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (kDebugMode) {
+        debugPrint('[PostDetailsController] Could not launch $phoneNumber');
+      }
     }
   }
 

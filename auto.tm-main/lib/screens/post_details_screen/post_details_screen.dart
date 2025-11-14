@@ -5,16 +5,14 @@ import 'package:auto_tm/screens/post_details_screen/widgets/post_details_shimmer
 import 'package:auto_tm/screens/post_details_screen/widgets/sections/characteristics_grid_section.dart';
 import 'package:auto_tm/screens/post_details_screen/widgets/sections/seller_comment_section.dart';
 import 'package:auto_tm/screens/post_details_screen/widgets/sections/comments_preview_section.dart';
-import 'package:auto_tm/screens/post_details_screen/widgets/video_player.dart';
-import 'package:auto_tm/screens/post_details_screen/widgets/view_post_photo.dart';
-import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
+import 'package:auto_tm/screens/post_details_screen/widgets/sections/media_carousel_section.dart';
+import 'package:auto_tm/screens/post_details_screen/widgets/sections/meta_header_section.dart';
+import 'package:auto_tm/screens/post_details_screen/widgets/sections/status_badge_section.dart';
+import 'package:auto_tm/screens/post_details_screen/widgets/sections/download_button_section.dart';
+import 'package:auto_tm/screens/post_details_screen/widgets/sections/price_call_footer.dart';
 import 'package:auto_tm/screens/post_details_screen/model/post_details_state.dart';
 import 'package:auto_tm/ui_components/colors.dart';
-import 'package:auto_tm/ui_components/images.dart';
 import 'package:auto_tm/ui_components/styles.dart';
-import 'package:auto_tm/utils/cached_image_helper.dart';
-import 'package:auto_tm/utils/key.dart';
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -95,9 +93,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
         }
         // Ready state
         final readyState = s as PostDetailsReady;
-        final post = Rxn<Post>(readyState.post);
-        // final photos = post.photoPaths;
-        // final photos = product.photoPaths;
+        final post = readyState.post;
         return SafeArea(
           child: SingleChildScrollView(
             child: Container(
@@ -105,704 +101,57 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Photo Slider
-                  SizedBox(height: 8),
-                  Container(
-                    color: theme.scaffoldBackgroundColor,
-                    // padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surface,
-                              ),
-                              child: CarouselSlider.builder(
-                                itemCount: post.value?.photos.length ?? 0,
-                                itemBuilder: (context, index, realIndex) {
-                                  // Fix #3: Consistent null safety - safe access
-                                  final photos = post.value?.photos;
-                                  if (photos == null ||
-                                      index >= photos.length) {
-                                    return const SizedBox();
-                                  }
-                                  final photo = photos[index];
-
-                                  return _CarouselImageItem(
-                                    key: PageStorageKey('carousel_img_$index'),
-                                    photo: photo,
-                                    photos: photos,
-                                    index: index,
-                                    uuid: uuid,
-                                    theme: theme,
-                                  );
-                                },
-                                options: CarouselOptions(
-                                  // Fix #8: Dynamic carousel height based on screen
-                                  height:
-                                      MediaQuery.of(context).size.height * 0.4,
-                                  enlargeCenterPage: false,
-                                  enableInfiniteScroll: false,
-                                  autoPlay: false,
-                                  viewportFraction: 1,
-                                  disableCenter: true,
-                                  onPageChanged: (index, reason) {
-                                    detailsController.setCurrentPage(index);
-                                  },
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              top: 16,
-                              left: 16,
-                              right: 16,
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  // Back button
-                                  CircleAvatar(
-                                    radius: 24,
-                                    backgroundColor: theme.colorScheme.onSurface
-                                        .withOpacity(0.6),
-                                    child: IconButton(
-                                      icon: const Icon(
-                                        Icons.arrow_back_ios_new_rounded,
-                                        size: 20,
-                                        color: Colors.white,
-                                      ),
-                                      onPressed: () => Get.back(),
-                                    ),
-                                  ),
-                                  // Favorite toggle
-                                  Obx(() {
-                                    final postValue =
-                                        detailsController.post.value;
-                                    final uuidVal = postValue?.uuid;
-                                    final isFav =
-                                        uuidVal != null &&
-                                        favoritesController.favorites.contains(
-                                          uuidVal,
-                                        );
-                                    return CircleAvatar(
-                                      radius: 24,
-                                      backgroundColor: theme
-                                          .colorScheme
-                                          .onSurface
-                                          .withOpacity(0.6),
-                                      child: IconButton(
-                                        icon: Icon(
-                                          isFav
-                                              ? Icons.favorite
-                                              : Icons.favorite_border,
-                                          size: 22,
-                                          color: isFav
-                                              ? theme.colorScheme.primary
-                                              : Colors.white,
-                                        ),
-                                        onPressed: () {
-                                          if (uuidVal != null) {
-                                            favoritesController.toggleFavorite(
-                                              uuidVal,
-                                            );
-                                          }
-                                        },
-                                      ),
-                                    );
-                                  }),
-                                ],
-                              ),
-                            ),
-                            Positioned.fill(
-                              child: Align(
-                                alignment: Alignment.bottomCenter,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: const Color.fromARGB(105, 0, 0, 0),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Obx(() {
-                                      final photos = detailsController
-                                          .post
-                                          .value
-                                          ?.photoPaths;
-
-                                      if (photos == null || photos.isEmpty) {
-                                        return const SizedBox(); // or placeholder
-                                      }
-
-                                      return Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: List.generate(photos.length, (
-                                          index,
-                                        ) {
-                                          return Obx(
-                                            () => AnimatedContainer(
-                                              duration: const Duration(
-                                                milliseconds: 300,
-                                              ),
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 4,
-                                                  ),
-                                              width: 8,
-                                              height: 8,
-                                              decoration: BoxDecoration(
-                                                color:
-                                                    detailsController
-                                                            .currentPage
-                                                            .value ==
-                                                        index
-                                                    ? AppColors.primaryColor
-                                                    : AppColors.whiteColor,
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                              ),
-                                            ),
-                                          );
-                                        }),
-                                      );
-                                    }),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Obx(() {
-                              // Fix #3: Consistent null safety
-                              final post = detailsController.post.value;
-                              final video = post?.video;
-                              final bool hasVideo =
-                                  video != null && video.isNotEmpty;
-
-                              return Positioned(
-                                // Fix #11: Position button inside carousel bounds
-                                bottom: 12.0, // Changed from -12.0 to 12.0
-                                right: 16.0,
-                                child: hasVideo
-                                    ? GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onTap: () {
-                                          // Safe to use ! here since hasVideo checks it
-                                          Get.to(
-                                            () => VideoPlayerPage(),
-                                            arguments: video,
-                                          );
-                                        },
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              begin: Alignment.centerLeft,
-                                              end: Alignment.centerRight,
-                                              colors: [
-                                                Color(0xFF1E4EED),
-                                                Color(0xFF7FA7F6),
-                                              ],
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              12.0,
-                                            ),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                          constraints: const BoxConstraints(
-                                            minHeight: 36,
-                                            minWidth: 140,
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.play_circle_outline,
-                                                color: AppColors.whiteColor,
-                                                size: 16,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Flexible(
-                                                child: Text(
-                                                  'post_watch_video'.tr,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 13,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      )
-                                    : const SizedBox.shrink(),
-                              );
-                            }),
-                            // Obx(() {
-                            //   // Check if post and video exist and are not empty
-                            //   final bool hasVideo =
-                            //       detailsController.post.value != null &&
-                            //       detailsController.post.value!.video != null &&
-                            //       detailsController
-                            //           .post
-                            //           .value!
-                            //           .video!
-                            //           .isNotEmpty;
-
-                            //   return Positioned(
-                            //     bottom:
-                            //         -23.0, // Example: Position at the bottom
-                            //     right: 16.0, // Example: Position to the right
-                            //     child:
-                            //         hasVideo
-                            //             ? ElevatedButton(
-                            //               onPressed: () {
-                            //                 print('pressed');
-                            //                 Get.to(
-                            //                   () => VideoPlayerPage(),
-                            //                   arguments:
-                            //                       detailsController
-                            //                           .post
-                            //                           .value!
-                            //                           .video,
-                            //                 );
-                            //               },
-                            //               style: ElevatedButton.styleFrom(
-                            //                 backgroundColor: Colors.transparent,
-                            //                 padding:
-                            //                     EdgeInsets
-                            //                         .zero, // Remove default padding to control Ink padding
-                            //                 // shape: RoundedRectangleBorder(
-                            //                 //   borderRadius:
-                            //                 //       BorderRadius.circular(
-                            //                 //           12.0),
-                            //                 // ),
-                            //                 elevation:
-                            //                     0, // Remove default elevation if desired
-                            //                 tapTargetSize:
-                            //                     MaterialTapTargetSize
-                            //                         .shrinkWrap, // Shrink tap area to content
-                            //               ),
-                            //               child: Ink(
-                            //                 decoration: BoxDecoration(
-                            //                   gradient: const LinearGradient(
-                            //                     begin: Alignment.centerLeft,
-                            //                     end: Alignment.centerRight,
-                            //                     colors: [
-                            //                       Color(0xFF1E4EED),
-                            //                       Color(0xFF7FA7F6),
-                            //                     ],
-                            //                   ),
-                            //                   borderRadius:
-                            //                       BorderRadius.circular(12.0),
-                            //                 ),
-                            //                 child: Container(
-                            //                   padding: EdgeInsets.symmetric(
-                            //                     horizontal: 10,
-                            //                     vertical: 10,
-                            //                   ), // Adjust padding for button size
-                            //                   // Removed minWidth/minHeight as padding and text size usually define it
-                            //                   alignment: Alignment.center,
-                            //                   child: Row(
-                            //                     children: [
-                            //                       Icon(
-                            //                         Icons.play_circle_outline,
-                            //                         color: AppColors.whiteColor,
-                            //                         size: 12,
-                            //                       ),
-                            //                       SizedBox(width: 10),
-                            //                       Text(
-                            //                         'Watch the video'.tr,
-                            //                         style: TextStyle(
-                            //                           color: Colors.white,
-                            //                           fontWeight:
-                            //                               FontWeight
-                            //                                   .w600, // Make text bold for better visibility
-                            //                           fontSize:
-                            //                               12, // Adjust font size as needed
-                            //                         ),
-                            //                       ),
-                            //                     ],
-                            //                   ),
-                            //                 ),
-                            //               ),
-                            //             )
-                            //             : const SizedBox.shrink(), // If no video, show nothing
-                            //   );
-                            // }),
-                          ],
-                        ),
-                        SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                  ),
-                                  child: Text(
-                                    '${post.value?.brand} ${post.value?.model}',
-                                    style: AppStyles.f24w7.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: theme.colorScheme.onSurface,
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 8),
-                                Container(
-                                  margin: EdgeInsets.symmetric(horizontal: 16),
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: 3,
-                                    horizontal: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    color: AppColors.dateColor,
-                                  ),
-                                  child: Text(
-                                    '${'Posted date:'.tr} ${post.value != null ? favoritesController.formatDate(post.value!.createdAt) : ''}',
-                                    style: AppStyles.f12w4.copyWith(
-                                      color: Color(0xFF403A3A),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                // Status badge
-                                if (post.value?.status != true)
-                                  Container(
-                                    margin: EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                    ),
-                                    padding: EdgeInsets.symmetric(
-                                      vertical: 6,
-                                      horizontal: 12,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      color:
-                                          (post.value?.status == null
-                                                  ? Colors.orange
-                                                  : theme.colorScheme.error)
-                                              .withValues(alpha: 0.1),
-                                      border: Border.all(
-                                        color: post.value?.status == null
-                                            ? Colors.orange
-                                            : theme.colorScheme.error,
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          post.value?.status == null
-                                              ? Icons.hourglass_top_rounded
-                                              : Icons.cancel_outlined,
-                                          size: 16,
-                                          color: post.value?.status == null
-                                              ? Colors.orange.shade700
-                                              : theme.colorScheme.error,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          post.value?.status == null
-                                              ? 'post_status_pending_review'.tr
-                                              : 'post_status_declined_admin'.tr,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: post.value?.status == null
-                                                ? Colors.orange.shade700
-                                                : theme.colorScheme.error,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            // if (downloadController.isDownloading.value &&
-                            //     downloadController.taskId.isNotEmpty) {
-                            //   return Column(
-                            //     children: [
-                            //       LinearProgressIndicator(
-                            //         value:
-                            //             downloadController.progress.value /
-                            //             100,
-                            //       ),
-                            //       SizedBox(height: 8),
-                            //       Text(
-                            //         "Downloading... ${downloadController.progress.value}%",
-                            //       ),
-                            //     ],
-                            //   );
-                            // }
-                            // return ElevatedButton.icon(
-                            //   icon: Icon(Icons.download),
-                            //   label: Text("Download PDF"),
-                            //   onPressed: () {
-                            //     final fileName =
-                            //         "${post.value?.brand}_${post.value?.model}_${post.value?.year}.pdf";
-                            //     downloadController.startDownload(
-                            //       post.value!.file!,
-                            //       fileName,
-                            //     );
-                            //   },
-                            // );
-                            SizedBox(width: 20),
-                            // Fix #3: Consistent null safety for file download
-                            if (post.value?.file?.path.isNotEmpty == true)
-                              Obx(() {
-                                final c = Get.find<DownloadController>();
-
-                                if (c.isDownloading.value) {
-                                  return Column(
-                                    children: [
-                                      LinearProgressIndicator(
-                                        value: c.progress.value / 100,
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        "Downloading... ${c.progress.value}%", // consider i18n
-                                        style: TextStyle(
-                                          color: theme
-                                              .colorScheme
-                                              .onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                }
-
-                                // Safe to use values here since we checked in if condition
-                                final postValue = post.value!;
-                                final brand = postValue.brand;
-                                final model = postValue.model;
-                                final year = postValue.year;
-                                final filePath = postValue.file!.path;
-
-                                return Expanded(
-                                  child: ElevatedButton.icon(
-                                    icon: Icon(
-                                      Icons.download,
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                    label: Text(
-                                      "Download car diagnostics".tr,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color:
-                                            theme.colorScheme.onSurfaceVariant,
-                                      ),
-                                    ),
-                                    onPressed: () {
-                                      final fileName =
-                                          "AutoTM_${brand}_${model}_${year.toStringAsFixed(0)}.pdf";
-                                      final fullUrl = "${ApiKey.ip}$filePath";
-                                      c.startDownload(fullUrl, fileName);
-                                    },
-                                  ),
-                                );
-                              }),
-                            SizedBox(width: 15),
-                          ],
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 8),
+                  // Photo carousel
+                  MediaCarouselSection(
+                    post: post,
+                    uuid: uuid,
+                    detailsController: detailsController,
+                    favoritesController: favoritesController,
                   ),
-
-                  // Product Info
-                  const SizedBox(height: 20),
-                  CharacteristicsGridSection(post: post.value, theme: theme),
-                  // const SizedBox(
-                  //   height: 6,
-                  // ),
-                  // if(post.value?.description != '')
-                  SellerCommentSection(post: post.value, theme: theme),
-                  SizedBox(height: 6),
-                  CommentsPreviewSection(
-                    postUuid: post.value?.uuid,
+                  const SizedBox(height: 6),
+                  // Brand + model + date
+                  MetaHeaderSection(
+                    post: post,
+                    favoritesController: favoritesController,
                     theme: theme,
                   ),
-                  SizedBox(height: 80),
+                  const SizedBox(height: 8),
+                  // Status badge
+                  StatusBadgeSection(
+                    post: post,
+                    theme: theme,
+                  ),
+                  const SizedBox(height: 8),
+                  // Download button
+                  DownloadButtonSection(
+                    post: post,
+                    downloadController: downloadController,
+                    theme: theme,
+                  ),
+                  const SizedBox(height: 20),
+                  // Characteristics grid
+                  CharacteristicsGridSection(post: post, theme: theme),
+                  // Seller comment
+                  SellerCommentSection(post: post, theme: theme),
+                  const SizedBox(height: 6),
+                  // Comments preview
+                  CommentsPreviewSection(
+                    postUuid: post.uuid,
+                    theme: theme,
+                  ),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),
           ),
         );
       }),
-      floatingActionButton: Container(
-        color: theme.bottomNavigationBarTheme.backgroundColor,
-        child: Padding(
-          // padding: EdgeInsets.all(16.0.w),
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${'Price'.tr}:',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  Obx(() {
-                    // Fix #3: Consistent null safety
-                    final postValue = detailsController.post.value;
-                    final price = postValue?.price;
-                    final currency = postValue?.currency;
-
-                    final priceText = (price != null && currency != null)
-                        ? '${price.toStringAsFixed(0)}$currency'
-                        : 'N/A';
-
-                    return Text(
-                      priceText,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.notificationColor,
-                      ),
-                    );
-                  }),
-                ],
-              ),
-              // Add to Cart Button
-              ElevatedButton(
-                onPressed: () {
-                  // Fix #3: Consistent null safety
-                  final phoneNumber = detailsController.post.value?.phoneNumber;
-                  if (phoneNumber != null &&
-                      phoneNumber.isNotEmpty &&
-                      phoneNumber != '+993') {
-                    detailsController.makePhoneCall(phoneNumber);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  minimumSize: Size(80, 50),
-                  backgroundColor: AppColors.primaryColor, // Button color
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding:
-                      // EdgeInsets.symmetric(horizontal: 30.w, vertical: 10.h),
-                      const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                ),
-                child: Text(
-                  'Call'.tr,
-                  style: AppStyles.f18w4.copyWith(
-                    color: AppColors.scaffoldColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      floatingActionButton: PriceCallFooter(
+        controller: detailsController,
+        theme: theme,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-    );
-  }
-}
-
-// _DynamicCharacteristics extracted to widgets/sections/characteristics_grid_section.dart
-
-/// Carousel image item with AutomaticKeepAliveClientMixin
-/// to prevent disposal and re-initialization when scrolling
-class _CarouselImageItem extends StatefulWidget {
-  final Photo photo;
-  final List<Photo> photos;
-  final int index;
-  final String uuid;
-  final ThemeData theme;
-
-  const _CarouselImageItem({
-    super.key,
-    required this.photo,
-    required this.photos,
-    required this.index,
-    required this.uuid,
-    required this.theme,
-  });
-
-  @override
-  State<_CarouselImageItem> createState() => _CarouselImageItemState();
-}
-
-class _CarouselImageItemState extends State<_CarouselImageItem>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true; // Keep widget alive when off-screen!
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context); // Required for AutomaticKeepAliveClientMixin
-
-    // Get screen dimensions for adaptive sizing
-    final screenWidth = MediaQuery.of(context).size.width;
-    const carouselHeight = 300.0;
-
-    // AutomaticKeepAliveClientMixin handles keep-alive automatically
-    // No need to wrap in AutomaticKeepAlive widget (causes ParentDataWidget error)
-    return GestureDetector(
-      onTap: () {
-        if (widget.photos.isNotEmpty) {
-          Get.to(
-            () => ViewPostPhotoScreen(
-              photos: widget.photos,
-              currentIndex: widget.index,
-              postUuid: widget.uuid,
-              heroGroupTag: widget.uuid,
-            ),
-            transition: Transition.fadeIn,
-            curve: Curves.easeInOut,
-            duration: const Duration(milliseconds: 220),
-          );
-        }
-      },
-      child: Container(
-        width: double.infinity,
-        height: carouselHeight,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          color: widget.theme.colorScheme.surfaceContainerHighest,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: widget.photo.bestPath.isNotEmpty
-              ? CachedImageHelper.buildAdaptivePostImage(
-                  photo: widget.photo,
-                  baseUrl: ApiKey.ip,
-                  containerWidth: screenWidth,
-                  containerHeight: carouselHeight,
-                  fit: BoxFit.contain,
-                  isThumbnail:
-                      false, // High quality for carousel (6x multiplier)
-                )
-              : Image.asset(
-                  AppImages.defaultImagePng,
-                  height: carouselHeight,
-                  width: double.infinity,
-                  fit: BoxFit.contain,
-                ),
-        ),
-      ),
     );
   }
 }

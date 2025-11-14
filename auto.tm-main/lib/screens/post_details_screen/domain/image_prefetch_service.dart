@@ -14,8 +14,7 @@ class ImagePrefetchService {
   int lastPrefetchIndex = -1;
   int consecutiveForwardSwipes = 0;
   DateTime? lastSwipeTime;
-  bool networkSlow = false; // network condition flag
-  int _slowLoadCount = 0;
+  bool networkSlow = false; // network condition flag synced from controller
 
   ImagePrefetchService({PrefetchStrategy? strategy})
     : strategy = strategy ?? DefaultAdaptiveStrategy();
@@ -26,12 +25,12 @@ class ImagePrefetchService {
     consecutiveForwardSwipes = 0;
     lastSwipeTime = null;
     networkSlow = false;
-    _slowLoadCount = 0;
   }
 
   /// Initial batch prefetch: indices 1..warmCount-1 (exclude 0 which carousel loads).
-  void prefetchInitial(List<Photo> photos, {required bool disposed}) {
-    if (disposed || photos.isEmpty) return;
+  /// Uses function for disposed check to prevent TOCTOU race condition.
+  void prefetchInitial(List<Photo> photos, {required bool Function() disposed}) {
+    if (disposed() || photos.isEmpty) return;
 
     const normalWarmCount = 5;
     const slowNetworkWarmCount = 3;
@@ -68,12 +67,13 @@ class ImagePrefetchService {
   }
 
   /// Adaptive adjacent prefetch delegation.
+  /// Uses function for disposed check to prevent TOCTOU race condition.
   void prefetchAdjacent({
     required int currentIndex,
     required List<Photo> photos,
-    required bool disposed,
+    required bool Function() disposed,
   }) {
-    if (disposed || photos.isEmpty) return;
+    if (disposed() || photos.isEmpty) return;
     if (lastPrefetchIndex == currentIndex) return; // duplicate guard
 
     final now = DateTime.now();
@@ -143,29 +143,5 @@ class ImagePrefetchService {
 
     lastPrefetchIndex = currentIndex;
     lastSwipeTime = now;
-  }
-
-  /// Monitor network performance similar to original controller logic.
-  void monitorNetworkPerformance(int loadTimeMs) {
-    const slowThreshold = 800; // ms
-    const fastThreshold = 500; // ms
-
-    if (loadTimeMs >= slowThreshold) {
-      _slowLoadCount++;
-      if (_slowLoadCount >= 2 && !networkSlow) {
-        networkSlow = true;
-        if (kDebugMode) {
-          debugPrint('[ImagePrefetchService] 🐌 Network marked slow');
-        }
-      }
-    } else if (loadTimeMs < fastThreshold) {
-      if (_slowLoadCount > 0) _slowLoadCount--;
-      if (networkSlow && _slowLoadCount == 0) {
-        networkSlow = false;
-        if (kDebugMode) {
-          debugPrint('[ImagePrefetchService] 🚀 Network recovered');
-        }
-      }
-    }
   }
 }
