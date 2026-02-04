@@ -63,6 +63,8 @@ nano .env  # or use any text editor
 ```properties
 # Database Configuration (Docker)
 DATABASE_HOST=db
+# Host port to connect from your computer (also used by `npm run db:init`).
+# If you already have local Postgres using 5432, set this to 5433.
 DATABASE_PORT=5432
 DATABASE_USERNAME=auto_tm
 DATABASE_PASSWORD=YourSecurePasswordHere123!
@@ -131,6 +133,8 @@ Expected output:
 [NestJS] Application is running on: http://localhost:3080
 ```
 
+> Note: Postgres is exposed to your host at `localhost:${DATABASE_PORT}` (see `backend/docker-compose.yml`). This is required for running `npm run db:init` from your terminal.
+
 ### Step 5: Verify Backend
 
 Open your browser and visit:
@@ -149,6 +153,68 @@ docker exec -it auto_tm_postgres psql -U auto_tm -d auto_tm
 # Exit
 \q
 ```
+
+### Step 6: Seed Initial Data
+
+After migrations complete, seed the database with initial data (currencies, car brands, and models):
+
+```bash
+# From the backend directory
+cd backend
+
+# One command: migrate + seed (recommended)
+npm run db:init
+```
+
+**What gets seeded:**
+- **Currencies**: TMT (base), USD (19.5), CNY (2.7)
+- **Car Brands**: All car brands from `cars.brands.json`
+- **Car Models**: All car models associated with brands
+
+**Individual seed commands** (if needed):
+```bash
+# Seed only currencies
+npm run db:seed:currencies
+
+# Seed only car brands and models
+npm run db:seed:brands
+```
+
+> **Important**: Seed scripts are **insert-only** and will **fail fast** if the schema is wrong.\n+> If you see “column does not exist”, reset the database and re-run `npm run db:init`.
+\n
+**Verify seeded data:**
+```bash
+# Check currencies
+docker exec -it auto_tm_postgres psql -U auto_tm -d auto_tm -c "SELECT * FROM convert_prices;"
+
+# Check brands count
+docker exec -it auto_tm_postgres psql -U auto_tm -d auto_tm -c "SELECT COUNT(*) FROM brands;"
+
+# Check models count
+docker exec -it auto_tm_postgres psql -U auto_tm -d auto_tm -c "SELECT COUNT(*) FROM models;"
+```
+
+> **💡 Tip**: The seed scripts use environment variables from `.env`, so they work with both local and Docker setups automatically.
+
+### Reset / Clean Rebuild (Dev)
+
+If you previously ran older migrations and your schema drifted, the recommended fix is to **reset the database** and rebuild from the baseline migration.
+
+```bash
+# Stop containers
+docker compose down -v
+
+# `-v` removes the named Postgres volume (e.g. `backend_db_data`) so Postgres re-initializes cleanly.
+
+# Start again (migrations auto-run)
+docker compose up -d
+
+# Seed everything
+cd backend
+npm run db:init
+```
+
+> **Anti-drift rule**: don’t edit old migrations after they’ve been applied. If schema needs to evolve, add a new migration.
 
 ---
 
@@ -444,6 +510,37 @@ docker compose -f docker-compose.prod.yml up -d
 # Check logs
 docker logs alpha_backend --tail 100 -f
 ```
+
+### Seed Initial Data (Required)
+
+After the stack starts and migrations complete, seed the database with initial data:
+
+```bash
+# From the backend directory on server
+cd /opt/alpha-motors/backend
+
+# Run all seed scripts (currencies + brands/models)
+npm run db:seed:all
+```
+
+**What gets seeded:**
+- **Currencies**: TMT (base: 1.0), USD (19.5), CNY (2.7)
+- **Car Brands**: All car brands from `cars.brands.json`
+- **Car Models**: All car models associated with brands
+
+**Verify seeded data:**
+```bash
+# Check currencies
+docker exec auto_tm_postgres psql -U auto_tm -d auto_tm -c "SELECT label, rate FROM convert_prices ORDER BY label;"
+
+# Check brands count
+docker exec auto_tm_postgres psql -U auto_tm -d auto_tm -c "SELECT COUNT(*) as brand_count FROM brands;"
+
+# Check models count
+docker exec auto_tm_postgres psql -U auto_tm -d auto_tm -c "SELECT COUNT(*) as model_count FROM models;"
+```
+
+> **⚠️ Important**: Run seeding **after** migrations complete but **before** the app goes live. The seed scripts use environment variables from `.env`, so they work automatically with your production configuration.
 
 ### Setup NGINX Reverse Proxy (Optional but Recommended)
 

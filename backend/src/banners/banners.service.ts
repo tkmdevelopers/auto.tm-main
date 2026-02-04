@@ -1,24 +1,24 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { Request, Response } from 'express';
-import { BannerUUID, FindAllBanners } from './banners.dto';
-import { FindOptions } from 'sequelize/types/model';
-import { Banners } from './banners.entity';
-import { Photo } from 'src/photo/photo.entity';
-import { User } from 'src/auth/auth.entity';
-import { v4 as uuidv4 } from 'uuid';
+import { Inject, Injectable } from "@nestjs/common";
+import { Request, Response } from "express";
+import { BannerUUID, FindAllBanners } from "./banners.dto";
+import { FindOptions } from "sequelize/types/model";
+import { Banners } from "./banners.entity";
+import { Photo } from "src/photo/photo.entity";
+import { User } from "src/auth/auth.entity";
+import { v4 as uuidv4 } from "uuid";
 @Injectable()
 export class BannersService {
   constructor(
-    @Inject('BANNERS_REPOSITORY') private banners: typeof Banners,
-    @Inject('PHOTO_REPOSITORY') private photo: typeof Photo,
+    @Inject("BANNERS_REPOSITORY") private banners: typeof Banners,
+    @Inject("PHOTO_REPOSITORY") private photo: typeof Photo,
   ) {}
   async findAll(res: Response, req: Request, query: FindAllBanners) {
-    let { limit, offset } = query;
+    const { limit, offset } = query;
     try {
       const object: FindOptions = {
         limit: limit || 50,
         offset: offset || 0,
-        include: ['photo'],
+        include: ["photo"],
       };
 
       const banners = await this.banners.findAll(object);
@@ -27,7 +27,7 @@ export class BannersService {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -39,7 +39,7 @@ export class BannersService {
       const uuid = uuidv4();
       const creator = await User.findOne({
         where: { uuid: req.uuid },
-        attributes: ['name', 'email'],
+        attributes: ["name", "email"],
       });
 
       const banner = await this.banners.create({
@@ -54,12 +54,12 @@ export class BannersService {
         bannerId: uuid,
       });
 
-      return res.status(200).json({ message: 'ok', uuid: banner?.uuid });
+      return res.status(200).json({ message: "ok", uuid: banner?.uuid });
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -75,14 +75,14 @@ export class BannersService {
         })
         .then((response) => {
           return res.status(200).json({
-            message: 'ok',
+            message: "ok",
           });
         });
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -94,14 +94,14 @@ export class BannersService {
       const { uuid } = param;
       const banner = await this.banners.findOne({
         where: { uuid: uuid },
-        include: ['photo'],
+        include: ["photo"],
       });
       return res.status(200).json(banner);
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }

@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Injectable } from "@nestjs/common";
+import * as nodemailer from "nodemailer";
 
 @Injectable()
 export class MailService {
@@ -7,7 +7,7 @@ export class MailService {
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      service: 'gmail',
+      service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD,
@@ -18,9 +18,9 @@ export class MailService {
   async sendOtpEmail(to: string, otp: string): Promise<void> {
     this.transporter.verify((error, success) => {
       if (error) {
-        console.error('Nodemailer verification failed:', error);
+        console.error("Nodemailer verification failed:", error);
       } else {
-        console.log('Nodemailer is ready to send messages');
+        console.log("Nodemailer is ready to send messages");
       }
     });
 
@@ -28,7 +28,7 @@ export class MailService {
       from: process.env.EMAIL_USER,
       to,
       subject:
-        'Служба технической поддержки учетных записей Alpha Motors Dubai',
+        "Служба технической поддержки учетных записей Alpha Motors Dubai",
       text: `Разовый код`,
       html: `Здравствуйте, ${to}!<br>
 Мы получили запрос на отправку разового кода для вашей учетной записи Майкрософт.<br><br>

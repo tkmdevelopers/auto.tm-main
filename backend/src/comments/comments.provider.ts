@@ -1,8 +1,8 @@
-import { Comments } from './comments.entity';
+import { Comments } from "./comments.entity";
 
 export const commentsProvider = [
   {
-    provide: 'COMMENTS_REPOSITORY',
+    provide: "COMMENTS_REPOSITORY",
     useValue: Comments,
   },
 ];

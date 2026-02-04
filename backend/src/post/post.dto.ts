@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class FindAllPosts {
   @ApiProperty({ required: false })
@@ -21,11 +21,11 @@ export class FindAllPosts {
   category: string;
   @ApiProperty({ required: false })
   subscription: string;
-  @ApiProperty({ required: false, enum: ['asc', 'desc'] })
+  @ApiProperty({ required: false, enum: ["asc", "desc"] })
   sortAs: string;
   @ApiProperty({
     required: false,
-    enum: ['createdAt', 'price', 'year', 'milleage'],
+    enum: ["createdAt", "price", "year", "milleage"],
   })
   sortBy: string;
   @ApiProperty({ required: false })

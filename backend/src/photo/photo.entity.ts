@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { DataTypes } from 'sequelize';
+import { ApiProperty } from "@nestjs/swagger";
+import { DataTypes } from "sequelize";
 import {
   Table,
   Column,
@@ -11,62 +11,62 @@ import {
   BelongsTo,
   HasOne,
   DataType,
-} from 'sequelize-typescript';
-import { User } from 'src/auth/auth.entity';
-import { Banners } from 'src/banners/banners.entity';
-import { Brands } from 'src/brands/brands.entity';
-import { Categories } from 'src/categories/categories.entity';
-import { PhotoPosts } from 'src/junction/photo_posts';
-import { PhotoVlog } from 'src/junction/photo_vlog';
-import { Models } from 'src/models/models.entity';
-import { Posts } from 'src/post/post.entity';
-import { Subscriptions } from 'src/subscription/subscription.entity';
-import { Vlogs } from 'src/vlog/vlog.entity';
+} from "sequelize-typescript";
+import { User } from "src/auth/auth.entity";
+import { Banners } from "src/banners/banners.entity";
+import { Brands } from "src/brands/brands.entity";
+import { Categories } from "src/categories/categories.entity";
+import { PhotoPosts } from "src/junction/photo_posts";
+import { PhotoVlog } from "src/junction/photo_vlog";
+import { Models } from "src/models/models.entity";
+import { Posts } from "src/post/post.entity";
+import { Subscriptions } from "src/subscription/subscription.entity";
+import { Vlogs } from "src/vlog/vlog.entity";
 
-@Table({ tableName: 'photo' })
+@Table({ tableName: "photo" })
 export class Photo extends Model {
   map(arg0: (photo: any) => void): any {
-    throw new Error('Method not implemented.');
+    throw new Error("Method not implemented.");
   }
   @Column({ primaryKey: true })
   uuid: string;
 
   @Column({ type: DataType.JSON, allowNull: true })
   path: { small: string; medium: string; large: string } | null;
-  @Column({allowNull:true})
-  originalPath:string;
+  @Column({ allowNull: true })
+  originalPath: string;
   @ApiProperty()
   @BelongsTo(() => Banners, {
-    foreignKey: 'bannerId',
+    foreignKey: "bannerId",
   })
   banners: Banners;
 
   @ApiProperty()
   @BelongsTo(() => Categories, {
-    foreignKey: 'categoryId',
+    foreignKey: "categoryId",
   })
   categories: Categories;
   @ApiProperty()
   @BelongsTo(() => Subscriptions, {
-    foreignKey: 'subscriptionId',
+    foreignKey: "subscriptionId",
   })
   subscription: Subscriptions;
   @ApiProperty()
   @BelongsTo(() => Brands, {
-    foreignKey: 'brandsId',
+    foreignKey: "brandsId",
   })
   brand: Brands;
   @ApiProperty()
   @BelongsTo(() => Models, {
-    foreignKey: 'modelsId',
+    foreignKey: "modelsId",
   })
   model: Models;
   @ApiProperty()
   @BelongsTo(() => User, {
-    foreignKey: 'userId',
+    foreignKey: "userId",
   })
   user: User;
   @ApiProperty()
-  @BelongsToMany(() => Posts, () => PhotoPosts, 'uuid')
+  @BelongsToMany(() => Posts, () => PhotoPosts, "uuid")
   posts: Posts[];
 }

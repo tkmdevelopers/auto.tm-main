@@ -1,129 +1,179 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import {
-  CreateUser,
   DeleteOne,
   FindOne,
   firebaseDto,
-  LoginUser,
   Update,
   UpdateUser,
-} from './auth.dto';
-import { Request, Response } from 'express';
-import { User } from './auth.entity';
-import { v4 as uuidv4 } from 'uuid';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcryptjs';
-import { Photo } from 'src/photo/photo.entity';
-import * as sharp from 'sharp';
-import * as path from 'path';
-import * as fs from 'fs';
-import { promisify } from 'util';
+} from "./auth.dto";
+import { Request, Response } from "express";
+import { User } from "./auth.entity";
+import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
+import { Photo } from "src/photo/photo.entity";
+import * as sharp from "sharp";
+import * as path from "path";
+import * as fs from "fs";
+import { promisify } from "util";
+import { v4 as uuidv4 } from "uuid";
 
 const unlinkAsync = promisify(fs.unlink);
 
+/**
+ * Auth Service
+ *
+ * OTP-only authentication:
+ * - Registration and login are handled via OtpService (otp/send + otp/verify)
+ * - This service handles profile management, token refresh, and admin operations
+ *
+ * Email/password login has been removed. All authentication
+ * now flows through the OTP endpoints.
+ */
 @Injectable()
 export class AuthService {
   constructor(
-    @Inject('USERS_REPOSITORY') private Users: typeof User,
-    @Inject('PHOTO_REPOSITORY') private photo: typeof Photo,
+    @Inject("USERS_REPOSITORY") private Users: typeof User,
+    @Inject("PHOTO_REPOSITORY") private photo: typeof Photo,
     private configService: ConfigService,
     private jwtService: JwtService,
   ) {}
-  async create(body: CreateUser, res: Response, req: Request) {
-    try {
-      let { phone } = body;
-      if (!phone) {
-        throw new HttpException(
-          'Fill all required fields',
-          HttpStatus.NOT_ACCEPTABLE,
-        );
-      }
-      phone = `+${phone}`;
-      const DEFAULT_LOCATION = 'Aşgabat';
-      const new_user = await this.Users.findOrCreate({
-        where: { phone },
-        defaults: { uuid: uuidv4(), phone, location: DEFAULT_LOCATION },
-      });
-      // If user pre-existed and lacks location, patch it with default silently
-      if (new_user && new_user[0] && !new_user[0].location) {
-        await new_user[0].update({ location: DEFAULT_LOCATION });
-      }
-      console.log(new_user);
-      await this.photo.create({
-        uuid: uuidv4(),
-        userId: new_user?.[0]?.uuid,
-      });
-      return res.status(HttpStatus.OK).json({
-        message: `New user Successfully created.`,
-      });
-    } catch (error) {
-      if (!error.status) {
-        console.log(error);
-        return res.status(500).json({
-          message: 'Internal server error!',
-          detail: error?.parent?.detail || 'Unknown',
-        });
-      }
-      return res.status(error.status).json(error);
-    }
-  }
 
+  // ============================================================
+  // Token Management
+  // ============================================================
+
+  /**
+   * Refresh access token using refresh token
+   */
   async refresh(req: any): Promise<any> {
     try {
       const user = await this.Users.findOne({
         where: { uuid: req?.uuid },
-        attributes: ['uuid', 'refreshToken'],
+        attributes: ["uuid", "refreshToken", "phone"],
       });
 
       const refreshToken = req
-        .get('authorization')
-        .replace('Bearer', '')
+        .get("authorization")
+        .replace("Bearer", "")
         .trim();
 
-      if (user?.refreshToken == refreshToken) {
+      if (user?.refreshToken === refreshToken) {
         const [accessToken] = await Promise.all([
           this.jwtService.signAsync(
-            { uuid: user?.uuid },
+            { uuid: user?.uuid, phone: user?.phone },
             {
-              secret: this.configService.get<string>('ACCESS_TOKEN_SECRET_KEY'),
-              expiresIn: '24h',
+              secret: this.configService.get<string>("ACCESS_TOKEN_SECRET_KEY"),
+              expiresIn: "24h",
             },
           ),
         ]);
         return { accessToken };
       }
+
+      throw new HttpException("Invalid refresh token", HttpStatus.UNAUTHORIZED);
     } catch (error) {
-      console.log(error);
+      console.error("[AuthService] Refresh error:", error);
+      throw error;
     }
   }
-  async patch(body: UpdateUser, req: Request | any, res: Response) {
+
+  /**
+   * Logout (invalidate refresh token)
+   */
+  async logout(req: Request | any, res: Response) {
     try {
-      const { location, email, name, phone, password } = body;
-      console.log(password);
-      const salt = !password ? password : await bcrypt.hashSync(password, 10);
-      const updatedUser = await this.Users.update(
-        { location, email, name, phone, password: salt },
+      await this.Users.update(
+        { refreshToken: null },
         { where: { uuid: req?.uuid } },
       );
+      return res.status(HttpStatus.OK).json({
+        message: "Successfully logged out",
+      });
+    } catch (error) {
+      console.error("[AuthService] Logout error:", error);
+      return res.status(500).json({
+        message: "Internal server error!",
+        detail: error?.message || "Unknown",
+      });
+    }
+  }
+
+  // ============================================================
+  // Profile Management
+  // ============================================================
+
+  /**
+   * Get current user profile
+   */
+  async me(req: Request | any, res: Response) {
+    try {
+      const user = await this.Users.findOne({
+        where: { uuid: req?.uuid },
+        include: ["avatar"],
+      });
+      if (!user) {
+        throw new HttpException("User Not Found", HttpStatus.NOT_FOUND);
+      }
+      return res.status(HttpStatus.OK).json({
+        uuid: user.uuid,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        location: user.location,
+        access: user.access,
+        role: user.role,
+        avatar: user.avatar,
+      });
+    } catch (error) {
+      if (error?.status) {
+        return res.status(error.status).json(error);
+      }
+      console.error("[AuthService] Me error:", error);
+      return res.status(500).json({
+        message: "Internal server error!",
+        detail: error?.message || "Unknown",
+      });
+    }
+  }
+
+  /**
+   * Update current user profile
+   */
+  async patch(body: UpdateUser, req: Request | any, res: Response) {
+    try {
+      const { location, email, name, phone } = body;
+
+      // Note: Password updates removed - OTP-only auth
+      const updatedUser = await this.Users.update(
+        { location, email, name, phone },
+        { where: { uuid: req?.uuid } },
+      );
+
       if (updatedUser) {
         return res.status(HttpStatus.OK).json({
-          message: 'Successfully changed',
+          message: "Successfully changed",
           uuid: req?.uuid,
         });
       }
     } catch (error) {
-      if (!error.status) {
-        console.log(error);
-        return res.status(500).json({
-          message: 'Internal server error!',
-          detail: error?.parent?.detail || 'Unknown',
-        });
+      if (error?.status) {
+        return res.status(error.status).json(error);
       }
-      return res.status(error.status).json(error);
+      console.error("[AuthService] Patch error:", error);
+      return res.status(500).json({
+        message: "Internal server error!",
+        detail: error?.parent?.detail || "Unknown",
+      });
     }
   }
 
+  // ============================================================
+  // Avatar Management
+  // ============================================================
+
+  /**
+   * Upload user avatar
+   */
   async uploadAvatar(
     file: Express.Multer.File,
     req: Request | any,
@@ -135,22 +185,22 @@ export class AuthService {
       // Check if user exists
       const user = await this.Users.findOne({ where: { uuid: userId } });
       if (!user) {
-        throw new HttpException('User Not Found', HttpStatus.NOT_FOUND);
+        throw new HttpException("User Not Found", HttpStatus.NOT_FOUND);
       }
 
       const originalPath = file.path;
       const uploadDir = path.dirname(originalPath);
 
       const sizes = [
-        { name: 'large', width: 1024 },
-        { name: 'medium', width: 512 },
-        { name: 'small', width: 256 },
+        { name: "large", width: 1024 },
+        { name: "medium", width: 512 },
+        { name: "small", width: 256 },
       ];
 
       const paths = {
-        small: '',
-        medium: '',
-        large: '',
+        small: "",
+        medium: "",
+        large: "",
       };
 
       for (const size of sizes) {
@@ -182,31 +232,34 @@ export class AuthService {
       }
 
       return res.status(200).json({
-        message: 'Avatar uploaded successfully',
+        message: "Avatar uploaded successfully",
         uuid: photo.uuid,
       });
     } catch (error) {
-      console.error('Error uploading avatar:', error);
+      console.error("Error uploading avatar:", error);
       return res.status(500).json({
-        message: 'Internal server error!',
+        message: "Internal server error!",
         error: error?.message,
       });
     }
   }
 
+  /**
+   * Delete user avatar
+   */
   async deleteAvatar(req: Request | any, res: Response) {
     try {
       const userId = req?.uuid;
 
       const photo = await this.photo.findOne({ where: { userId } });
       if (!photo) {
-        return res.status(404).json({ message: 'Avatar not found' });
+        return res.status(404).json({ message: "Avatar not found" });
       }
 
-      const baseDir = path.join(__dirname, '..', '..');
+      const baseDir = path.join(__dirname, "..", "..");
 
       // Delete all resized versions and original file
-      for (const size of ['small', 'medium', 'large']) {
+      for (const size of ["small", "medium", "large"]) {
         const filePath = path.join(baseDir, photo.path?.[size]);
         try {
           if (fs.existsSync(filePath)) {
@@ -231,197 +284,23 @@ export class AuthService {
 
       await photo.destroy();
 
-      return res.status(200).json({ message: 'Avatar deleted successfully' });
+      return res.status(200).json({ message: "Avatar deleted successfully" });
     } catch (error) {
-      console.error('Error deleting avatar:', error);
+      console.error("Error deleting avatar:", error);
       return res.status(500).json({
-        message: 'Internal server error!',
+        message: "Internal server error!",
         error: error?.message,
       });
     }
   }
 
-  async login(body: LoginUser, res: Response, req: Request | any) {
-    try {
-      const { email, password } = body;
-      if (!email || !password) {
-        throw new HttpException(
-          'Fill all required fields',
-          HttpStatus.NOT_ACCEPTABLE,
-        );
-      }
-      const user = await this.Users.findOne({
-        where: { email },
-        include: ['avatar'],
-      });
-      if (!user) {
-        throw new HttpException('User Not Found', HttpStatus.NOT_FOUND);
-      }
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-      if (!isPasswordValid) {
-        throw new HttpException('Invalid password', HttpStatus.UNAUTHORIZED);
-      }
-      const [accessToken, refreshToken] = await Promise.all([
-        this.jwtService.signAsync(
-          { uuid: user?.uuid },
-          {
-            secret: this.configService.get<string>('ACCESS_TOKEN_SECRET_KEY'),
-            expiresIn: '24h',
-          },
-        ),
-        this.jwtService.signAsync(
-          { uuid: user?.uuid },
-          {
-            secret: this.configService.get<string>('REFRESH_TOKEN_SECRET_KEY'),
-            expiresIn: '7d',
-          },
-        ),
-      ]);
-      await this.Users.update(
-        { refreshToken },
-        { where: { uuid: user?.uuid } },
-      );
-      return res.status(HttpStatus.OK).json({
-        message: 'Successfully logged in',
-        accessToken,
-        refreshToken,
-        user: {
-          uuid: user.uuid,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          avatar: user.avatar,
-        },
-      });
-    } catch (error) {
-      if (!error.status) {
-        console.log(error);
-        return res.status(500).json({
-          message: 'Internal server error!',
-          detail: error?.parent?.detail || 'Unknown',
-        });
-      }
-      return res.status(error.status).json(error);
-    }
-  }
+  // ============================================================
+  // Firebase Token
+  // ============================================================
 
-  async me(req: Request | any, res: Response) {
-    try {
-      const user = await this.Users.findOne({
-        where: { uuid: req?.uuid },
-        include: ['avatar'],
-      });
-      if (!user) {
-        throw new HttpException('User Not Found', HttpStatus.NOT_FOUND);
-      }
-      return res.status(HttpStatus.OK).json({
-        uuid: user.uuid,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        location: user.location,
-        access: user.access,
-        role: user.role,
-        avatar: user.avatar,
-      });
-    } catch (error) {
-      if (!error.status) {
-        console.log(error);
-        return res.status(500).json({
-          message: 'Internal server error!',
-          detail: error?.parent?.detail || 'Unknown',
-        });
-      }
-      return res.status(error.status).json(error);
-    }
-  }
-
-  async findAll(req: Request | any, res: Response) {
-    try {
-      const users = await this.Users.findAll({
-        include: ['avatar'],
-      });
-      console.log(users);
-      return res.status(HttpStatus.OK).json(users);
-    } catch (error) {
-      if (!error.status) {
-        console.log(error);
-        return res.status(500).json({
-          message: 'Internal server error!',
-          detail: error?.parent?.detail || 'Unknown',
-        });
-      }
-      return res.status(error.status).json(error);
-    }
-  }
-
-  async findOne(param: FindOne, req: Request | any, res: Response) {
-    try {
-      const { uuid } = param;
-      const user = await this.Users.findOne({
-        where: { uuid },
-        include: ['avatar'],
-      });
-      if (!user) {
-        throw new HttpException('User Not Found', HttpStatus.NOT_FOUND);
-      }
-      return res.status(HttpStatus.OK).json(user);
-    } catch (error) {
-      if (!error.status) {
-        console.log(error);
-        return res.status(500).json({
-          message: 'Internal server error!',
-          detail: error?.parent?.detail || 'Unknown',
-        });
-      }
-      return res.status(error.status).json(error);
-    }
-  }
-
-  async logout(req: Request | any, res: Response) {
-    try {
-      await this.Users.update(
-        { refreshToken: null },
-        { where: { uuid: req?.uuid } },
-      );
-      return res.status(HttpStatus.OK).json({
-        message: 'Successfully logged out',
-      });
-    } catch (error) {
-      if (!error.status) {
-        console.log(error);
-        return res.status(500).json({
-          message: 'Internal server error!',
-          detail: error?.parent?.detail || 'Unknown',
-        });
-      }
-      return res.status(error.status).json(error);
-    }
-  }
-
-  async deleteOne(param: DeleteOne, req: Request | any, res: Response) {
-    try {
-      const { uuid } = param;
-      const user = await this.Users.destroy({ where: { uuid } });
-      if (!user) {
-        throw new HttpException('User Not Found', HttpStatus.NOT_FOUND);
-      }
-      return res.status(HttpStatus.OK).json({
-        message: 'User Successfully deleted',
-      });
-    } catch (error) {
-      if (!error.status) {
-        console.log(error);
-        return res.status(500).json({
-          message: 'Internal server error!',
-          detail: error?.parent?.detail || 'Unknown',
-        });
-      }
-      return res.status(error.status).json(error);
-    }
-  }
-
+  /**
+   * Set Firebase Cloud Messaging token
+   */
   async setFirebase(body: firebaseDto, req: Request | any, res: Response) {
     try {
       const { token } = body;
@@ -430,20 +309,68 @@ export class AuthService {
         { where: { uuid: req?.uuid } },
       );
       return res.status(HttpStatus.OK).json({
-        message: 'Firebase token set successfully',
+        message: "Firebase token set successfully",
       });
     } catch (error) {
-      if (!error.status) {
-        console.log(error);
-        return res.status(500).json({
-          message: 'Internal server error!',
-          detail: error?.parent?.detail || 'Unknown',
-        });
-      }
-      return res.status(error.status).json(error);
+      console.error("[AuthService] SetFirebase error:", error);
+      return res.status(500).json({
+        message: "Internal server error!",
+        detail: error?.message || "Unknown",
+      });
     }
   }
 
+  // ============================================================
+  // Admin Operations
+  // ============================================================
+
+  /**
+   * List all users (admin only)
+   */
+  async findAll(req: Request | any, res: Response) {
+    try {
+      const users = await this.Users.findAll({
+        include: ["avatar"],
+      });
+      return res.status(HttpStatus.OK).json(users);
+    } catch (error) {
+      console.error("[AuthService] FindAll error:", error);
+      return res.status(500).json({
+        message: "Internal server error!",
+        detail: error?.message || "Unknown",
+      });
+    }
+  }
+
+  /**
+   * Get user by ID (admin only)
+   */
+  async findOne(param: FindOne, req: Request | any, res: Response) {
+    try {
+      const { uuid } = param;
+      const user = await this.Users.findOne({
+        where: { uuid },
+        include: ["avatar"],
+      });
+      if (!user) {
+        throw new HttpException("User Not Found", HttpStatus.NOT_FOUND);
+      }
+      return res.status(HttpStatus.OK).json(user);
+    } catch (error) {
+      if (error?.status) {
+        return res.status(error.status).json(error);
+      }
+      console.error("[AuthService] FindOne error:", error);
+      return res.status(500).json({
+        message: "Internal server error!",
+        detail: error?.message || "Unknown",
+      });
+    }
+  }
+
+  /**
+   * Update user (admin only)
+   */
   async update(
     param: FindOne,
     body: Update,
@@ -452,27 +379,54 @@ export class AuthService {
   ) {
     try {
       const { uuid } = param;
-      const { location, name, password, access, role } = body;
-      const salt = !password ? password : await bcrypt.hashSync(password, 10);
+      const { location, name, access, role } = body;
+
+      // Note: Password updates removed - OTP-only auth
       const updatedUser = await this.Users.update(
-        { location, name, password: salt, access, role },
+        { location, name, access, role },
         { where: { uuid } },
       );
+
       if (updatedUser) {
         return res.status(HttpStatus.OK).json({
-          message: 'Successfully changed',
+          message: "Successfully changed",
           uuid: uuid,
         });
       }
     } catch (error) {
-      if (!error.status) {
-        console.log(error);
-        return res.status(500).json({
-          message: 'Internal server error!',
-          detail: error?.parent?.detail || 'Unknown',
-        });
+      if (error?.status) {
+        return res.status(error.status).json(error);
       }
-      return res.status(error.status).json(error);
+      console.error("[AuthService] Update error:", error);
+      return res.status(500).json({
+        message: "Internal server error!",
+        detail: error?.parent?.detail || "Unknown",
+      });
+    }
+  }
+
+  /**
+   * Delete user (admin only)
+   */
+  async deleteOne(param: DeleteOne, req: Request | any, res: Response) {
+    try {
+      const { uuid } = param;
+      const user = await this.Users.destroy({ where: { uuid } });
+      if (!user) {
+        throw new HttpException("User Not Found", HttpStatus.NOT_FOUND);
+      }
+      return res.status(HttpStatus.OK).json({
+        message: "User Successfully deleted",
+      });
+    } catch (error) {
+      if (error?.status) {
+        return res.status(error.status).json(error);
+      }
+      console.error("[AuthService] DeleteOne error:", error);
+      return res.status(500).json({
+        message: "Internal server error!",
+        detail: error?.message || "Unknown",
+      });
     }
   }
 }

@@ -1,10 +1,10 @@
-import { Table, Column, Model, ForeignKey } from 'sequelize-typescript';
-import { Photo } from 'src/photo/photo.entity';
-import { Vlogs } from 'src/vlog/vlog.entity';
+import { Table, Column, Model, ForeignKey } from "sequelize-typescript";
+import { Photo } from "src/photo/photo.entity";
+import { Vlogs } from "src/vlog/vlog.entity";
 
 // Distinct junction table for Vlog <-> Photo
 @Table({
-  tableName: 'photo_vlogs',
+  tableName: "photo_vlogs",
   createdAt: false,
   updatedAt: false,
 })

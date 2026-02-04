@@ -1,8 +1,11 @@
-import { OtpTemp } from './otp.entity';
+import { OtpCode } from "./otp-codes.entity";
 
-export const OtpTempProvider = [
+export const OtpCodeProvider = [
   {
-    provide: 'OTP_TEMP_REPOSITORY',
-    useValue: OtpTemp,
+    provide: "OTP_CODE_REPOSITORY",
+    useValue: OtpCode,
   },
 ];
+
+// Legacy export for backward compatibility during migration
+export const OtpTempProvider = OtpCodeProvider;

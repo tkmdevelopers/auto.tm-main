@@ -1,21 +1,21 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class UploadDto {
-  @ApiProperty({ type: 'array', items: { type: 'string', format: 'binary' } })
+  @ApiProperty({ type: "array", items: { type: "string", format: "binary" } })
   files: any;
-  @ApiProperty({ type: 'string' })
+  @ApiProperty({ type: "string" })
   uuid: any;
 }
 
 export class UploadUser {
-  @ApiProperty({ type: 'array', items: { type: 'string', format: 'binary' } })
+  @ApiProperty({ type: "array", items: { type: "string", format: "binary" } })
   file: any;
 }
 
 export class uploadFile {
-  @ApiProperty({ type: 'string', format: 'binary' })
+  @ApiProperty({ type: "string", format: "binary" })
   file: any;
-  @ApiProperty({ type: 'string' })
+  @ApiProperty({ type: "string" })
   uuid: any;
 }
 

@@ -1,11 +1,10 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
-import { IsInt, Min, Max, IsIn } from 'sequelize-typescript';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsNumber, IsObject, IsOptional, IsString } from "class-validator";
+import { IsInt, Min, Max, IsIn } from "sequelize-typescript";
 
-
-export class findOneSubscriptions{
+export class findOneSubscriptions {
   @ApiProperty()
-  uuid:string;
+  uuid: string;
 }
 
 export class findAllSubscription {
@@ -16,10 +15,10 @@ export class findAllSubscription {
   limit?: number = 10;
 
   @ApiProperty({ required: false })
-  sortBy?: string = 'createdAt';
+  sortBy?: string = "createdAt";
 
   @ApiProperty({ required: false })
-  order?: 'asc' | 'desc' = 'asc';
+  order?: "asc" | "desc" = "asc";
 }
 export class CreateSubscriptionDto {
   @ApiProperty({ required: false })
@@ -36,7 +35,7 @@ export class CreateSubscriptionDto {
   description: object;
 }
 export class UpdateSubscriptionDto {
-  @ApiPropertyOptional({ type: Object, example: { en: 'Pro', ru: 'Премиум' } })
+  @ApiPropertyOptional({ type: Object, example: { en: "Pro", ru: "Премиум" } })
   name?: Record<string, string>;
 
   @ApiPropertyOptional({ type: Number, example: 2 })
@@ -45,12 +44,12 @@ export class UpdateSubscriptionDto {
   @ApiPropertyOptional({ type: Number, example: 19 })
   price?: number;
 
-  @ApiPropertyOptional({ type: String, example: '#00FF00' })
+  @ApiPropertyOptional({ type: String, example: "#00FF00" })
   color?: string;
 
   @ApiPropertyOptional({
     type: Object,
-    example: { en: 'Pro plan', ru: 'Премиум план' },
+    example: { en: "Pro plan", ru: "Премиум план" },
   })
   description?: Record<string, string>;
 }
@@ -71,14 +70,14 @@ export class getAllOrdersSubscription {
   limit?: number = 10;
 
   @ApiProperty({ required: false })
-  sortBy?: string = 'createdAt';
+  sortBy?: string = "createdAt";
 
   @ApiProperty({ required: false })
-  order?: 'asc' | 'desc' = 'asc';
+  order?: "asc" | "desc" = "asc";
 
   @ApiProperty({ required: false })
   location: string;
 
   @ApiProperty({ required: false })
-  status: 'Pending' | 'Active' | 'Expired' | 'Inactive' = 'Pending';
+  status: "Pending" | "Active" | "Expired" | "Inactive" = "Pending";
 }

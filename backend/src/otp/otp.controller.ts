@@ -1,123 +1,130 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpStatus,
-  Param,
-  Post,
-  Query,
-  Res,
-} from '@nestjs/common';
-
-import { ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Response } from 'express';
-import { OtpService } from './otp.service';
-import { GetTime, SendOtp } from './/get-time.dto';
-import { ChatGateway } from 'src/chat/chat.gateway';
+import { Controller, Get, HttpStatus, Query, Req, Res } from "@nestjs/common";
+import { ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { Request, Response } from "express";
+import { OtpService } from "./otp.service";
+import { GetTime, SendOtp } from "./get-time.dto";
 
 @Controller({
-  path: 'otp',
-  version: '1',
+  path: "otp",
+  version: "1",
 })
-@ApiTags('SMS and Functions')
+@ApiTags("OTP Authentication")
 export class OtpController {
-  constructor(
-    private OtpService: OtpService,
-    private readonly chatGateway: ChatGateway,
-  ) {}
+  constructor(private readonly otpService: OtpService) {}
+
   @ApiResponse({
-    status: HttpStatus.NOT_ACCEPTABLE,
-    description: 'Fill all fields',
+    status: HttpStatus.OK,
+    description: "OTP sent successfully",
     schema: {
       example: {
-        response: 'Fill all fields',
-        status: HttpStatus.NOT_ACCEPTABLE,
-        message: 'Fill all fields',
-        name: 'HttpException',
+        message: "OTP sent successfully",
+        requestId: "uuid",
+        phone: "+99362120020",
+        expiresAt: "2026-02-02T12:00:00.000Z",
       },
     },
   })
   @ApiResponse({
-    status: 201,
-    description: 'Ok',
+    status: HttpStatus.BAD_REQUEST,
+    description: "Invalid phone number",
     schema: {
       example: {
-        token: 'string',
+        message: "Phone number is required",
       },
     },
   })
-  @Get('send')
-  sendOtp(@Query('phone') phone: string, @Res() res: Response): any {
+  @ApiQuery({ name: "phone", required: true, description: "Phone number" })
+  @Get("send")
+  async sendOtp(
+    @Query("phone") phone: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<any> {
     if (!phone) {
       return res
         .status(HttpStatus.BAD_REQUEST)
-        .json({ message: 'Invalid Phone Number' });
+        .json({ message: "Invalid Phone Number" });
     }
-    return this.OtpService.sendOtp({ phone } as SendOtp, res);
+    return this.otpService.sendOtp({ phone } as SendOtp, res, req);
   }
 
-  // @Post('sendNotification')
-  // sendNotification(@Body() body: notification) {
-  //   const message = body.message;
-  //   const notification = { message, timestamp: new Date() };
-  //   this.chatGateway.sendNotification(notification);
-  // }
-  // @ApiTags('SMS and Functions')
-  // @Post('sendOrdersMessageClient')
-  // sendOrdersMessage(@Body()body: messageSend) {
-  //   this.chatGateway.sendGeneralOrderMessage(
-  //     this.chatGateway['socketId'],
-  //     body?.uuid,
-  //     body?.message
-  //   );
-  // }
-  // @ApiTags('SMS and Functions')
-  // @Post('sendOrdersMessageAdmin')
-  // sendAdminsOrdersMessage() {
-  //   return this.chatGateway.sendGeneralOrderMessageAdmin(
-  //     this.chatGateway['socketId'],
-  //   );
-  // }
-
   @ApiResponse({
-    status: HttpStatus.NOT_ACCEPTABLE,
-    description: 'No otp validation',
+    status: HttpStatus.OK,
+    description: "OTP verified, tokens returned",
     schema: {
       example: {
-        response: 'No otp validation',
-        status: HttpStatus.NOT_ACCEPTABLE,
-        message: 'No otp validation',
-        name: 'HttpException',
+        message: "Login successful",
+        accessToken: "jwt-access-token",
+        refreshToken: "jwt-refresh-token",
       },
     },
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Hello word',
+    description: "Invalid OTP",
     schema: {
       example: {
-        response: 'Otp Password is Incorrect',
-        status: HttpStatus.NOT_ACCEPTABLE,
-        message: 'Otp Password is Incorrect',
-        name: 'HttpException',
+        message: "Incorrect OTP. 4 attempts remaining.",
       },
     },
   })
-  @Get('verify')
-  getTime(@Query() query: GetTime, @Res() res: Response): Promise<any> {
-    return this.OtpService.checkOtp(query, res);
+  @Get("verify")
+  async verifyOtp(@Query() query: GetTime, @Res() res: Response): Promise<any> {
+    return this.otpService.checkOtp(query, res);
   }
-  @Get('sendVerification')
-  sendVerification(@Query('phone') phone: string, @Res() res: Response): any {
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "OTP sent for verification",
+    schema: {
+      example: {
+        message: "OTP sent successfully",
+        requestId: "uuid",
+        phone: "+99362120020",
+        expiresAt: "2026-02-02T12:00:00.000Z",
+      },
+    },
+  })
+  @Get("sendVerification")
+  async sendVerification(
+    @Query("phone") phone: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<any> {
     if (!phone) {
       return res
         .status(HttpStatus.BAD_REQUEST)
-        .json({ message: 'Invalid Phone Number' });
+        .json({ message: "Invalid Phone Number" });
     }
-    return this.OtpService.sendOtp({ phone } as SendOtp, res);
+    return this.otpService.sendOtp({ phone } as SendOtp, res, req);
   }
-  @Get('verifyVerification')
-  getVerification(@Query() query: GetTime, @Res() res: Response): Promise<any> {
-    return this.OtpService.checkVerification(query, res);
+
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Phone verification successful",
+    schema: {
+      example: {
+        message: "Verification successful",
+        response: true,
+        userId: "uuid",
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_ACCEPTABLE,
+    description: "Invalid verification code",
+    schema: {
+      example: {
+        message: "Incorrect OTP. 4 attempts remaining.",
+        response: false,
+      },
+    },
+  })
+  @Get("verifyVerification")
+  async verifyVerification(
+    @Query() query: GetTime,
+    @Res() res: Response,
+  ): Promise<any> {
+    return this.otpService.checkVerification(query, res);
   }
 }

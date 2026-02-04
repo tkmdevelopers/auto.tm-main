@@ -1,3 +1,3 @@
 export function stringToBoolean(str: string): boolean {
-  return str === 'true';
+  return str === "true";
 }

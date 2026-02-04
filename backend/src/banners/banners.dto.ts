@@ -1,17 +1,17 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class FindAllBanners {
   @ApiProperty({
     required: false,
     example: 0,
-    description: 'Offset',
+    description: "Offset",
   })
   offset: number;
 
   @ApiProperty({
     example: 30,
     required: false,
-    description: 'Limit',
+    description: "Limit",
   })
   limit: number;
 }

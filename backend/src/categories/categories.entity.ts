@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   Table,
   Column,
@@ -7,11 +7,11 @@ import {
   BelongsToMany,
   HasOne,
   DataType,
-} from 'sequelize-typescript';
-import { Photo } from 'src/photo/photo.entity';
-import { Posts } from 'src/post/post.entity';
+} from "sequelize-typescript";
+import { Photo } from "src/photo/photo.entity";
+import { Posts } from "src/post/post.entity";
 
-@Table({ tableName: 'categories' })
+@Table({ tableName: "categories" })
 export class Categories extends Model {
   @ApiProperty()
   @Column({ primaryKey: true })
@@ -25,7 +25,7 @@ export class Categories extends Model {
   priority: number;
   @ApiProperty()
   @HasOne(() => Photo, {
-    foreignKey: 'categoryId',
+    foreignKey: "categoryId",
   })
   photo: Photo;
   @ApiProperty()

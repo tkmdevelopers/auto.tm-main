@@ -1,23 +1,23 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { Categories } from './categories.entity';
-import { Photo } from 'src/photo/photo.entity';
+import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { Categories } from "./categories.entity";
+import { Photo } from "src/photo/photo.entity";
 import {
   createCategories,
   findAllCategories,
   findOneCat,
-} from './categories.dto';
-import { Request, Response } from 'express';
-import { stringToBoolean } from 'src/utils/functions/stringBool';
-import { Posts } from 'src/post/post.entity';
-import { v4 as uuidv4 } from 'uuid';
-import { User } from 'src/auth/auth.entity';
+} from "./categories.dto";
+import { Request, Response } from "express";
+import { stringToBoolean } from "src/utils/functions/stringBool";
+import { Posts } from "src/post/post.entity";
+import { v4 as uuidv4 } from "uuid";
+import { User } from "src/auth/auth.entity";
 @Injectable()
 export class CategoriesService {
   constructor(
-    @Inject('CATEGORIES_REPOSITORY') private Category: typeof Categories,
-    @Inject('PHOTO_REPOSITORY')
+    @Inject("CATEGORIES_REPOSITORY") private Category: typeof Categories,
+    @Inject("PHOTO_REPOSITORY")
     private photo: typeof Photo,
-    @Inject('POSTS_REPOSITORY') private posts: typeof Posts,
+    @Inject("POSTS_REPOSITORY") private posts: typeof Posts,
   ) {}
 
   async findAll(query: findAllCategories, req: Request | any, res: Response) {
@@ -26,20 +26,20 @@ export class CategoriesService {
       const includePayload: {}[] = [];
       const post_bool: boolean = stringToBoolean(post);
       const photo_bool: boolean = stringToBoolean(photo);
-      if (post_bool) includePayload.push({ model: this.posts, as: 'posts' });
-      if (photo_bool) includePayload.push({ model: this.photo, as: 'photo' });
+      if (post_bool) includePayload.push({ model: this.posts, as: "posts" });
+      if (photo_bool) includePayload.push({ model: this.photo, as: "photo" });
       const categoryies = await this.Category.findAll({
         limit: limit || 50,
         offset: offset || 0,
         include: [...includePayload],
-        order: [['priority', sort || 'asc']],
+        order: [["priority", sort || "asc"]],
       });
       return res.status(200).json(categoryies);
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -52,7 +52,7 @@ export class CategoriesService {
       const uuid = uuidv4();
       const creator = await User.findOne({
         where: { uuid: req.uuid },
-        attributes: ['name', 'email'],
+        attributes: ["name", "email"],
       });
 
       const category = await this.Category.create({
@@ -73,12 +73,12 @@ export class CategoriesService {
         categoryId: uuid,
       });
 
-      return res.status(200).json({ message: 'ok', uuid: category?.uuid });
+      return res.status(200).json({ message: "ok", uuid: category?.uuid });
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -91,15 +91,15 @@ export class CategoriesService {
 
       const categoryies = await this.Category.findOne({
         where: { uuid },
-        include: ['photo'],
-        order: [['priority', 'asc']],
+        include: ["photo"],
+        order: [["priority", "asc"]],
       });
       return res.status(200).json(categoryies);
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -121,12 +121,12 @@ export class CategoriesService {
           where: { uuid },
         },
       );
-      return res.status(200).json({ message: 'Updated' });
+      return res.status(200).json({ message: "Updated" });
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -139,12 +139,12 @@ export class CategoriesService {
       const categoryies = await this.Category.destroy({
         where: { uuid },
       });
-      return res.status(200).json({ message: 'Deleted' });
+      return res.status(200).json({ message: "Deleted" });
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }

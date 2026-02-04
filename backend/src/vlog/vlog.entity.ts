@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   Table,
   Column,
@@ -8,13 +8,13 @@ import {
   BelongsTo,
   Default,
   BelongsToMany,
-} from 'sequelize-typescript';
-import { User } from 'src/auth/auth.entity';
-import { PhotoVlog } from 'src/junction/photo_vlog';
-import { Photo } from 'src/photo/photo.entity';
+} from "sequelize-typescript";
+import { User } from "src/auth/auth.entity";
+import { PhotoVlog } from "src/junction/photo_vlog";
+import { Photo } from "src/photo/photo.entity";
 
 // Align with existing production table name 'vlogs'
-@Table({ tableName: 'vlogs' })
+@Table({ tableName: "vlogs" })
 export class Vlogs extends Model {
   @ApiProperty()
   @Column({
@@ -74,13 +74,13 @@ export class Vlogs extends Model {
   @BelongsTo(() => User)
   user: User;
 
-  @ApiProperty({ enum: ['Pending', 'Accepted', 'Declined'] })
-  @Default('Pending')
+  @ApiProperty({ enum: ["Pending", "Accepted", "Declined"] })
+  @Default("Pending")
   @Column({
-    type: DataType.ENUM('Pending', 'Accepted', 'Declined'),
+    type: DataType.ENUM("Pending", "Accepted", "Declined"),
     allowNull: false,
   })
-  status: 'Pending' | 'Accepted' | 'Declined';
+  status: "Pending" | "Accepted" | "Declined";
 
   @ApiProperty()
   @Column({

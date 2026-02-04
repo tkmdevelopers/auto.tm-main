@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   Table,
   Column,
@@ -9,12 +9,12 @@ import {
   DataType,
   ForeignKey,
   BelongsTo,
-} from 'sequelize-typescript';
-import { Photo } from 'src/photo/photo.entity';
-import { Posts } from 'src/post/post.entity';
-import { Subscriptions } from './subscription.entity';
+} from "sequelize-typescript";
+import { Photo } from "src/photo/photo.entity";
+import { Posts } from "src/post/post.entity";
+import { Subscriptions } from "./subscription.entity";
 
-@Table({ tableName: 'subscription_order' })
+@Table({ tableName: "subscription_order" })
 export class SubscriptionOrder extends Model {
   @ApiProperty()
   @Column({ primaryKey: true })

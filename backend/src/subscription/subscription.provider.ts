@@ -1,8 +1,8 @@
-import { Subscriptions } from './subscription.entity';
+import { Subscriptions } from "./subscription.entity";
 
 export const SubscriptionsProvider = [
   {
-    provide: 'SUBSCRIPTIONS_REPOSITORY',
+    provide: "SUBSCRIPTIONS_REPOSITORY",
     useValue: Subscriptions,
   },
 ];

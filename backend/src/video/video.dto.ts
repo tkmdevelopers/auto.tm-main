@@ -1,12 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class UploadDto {
-  @ApiProperty({ type: 'string' })
+  @ApiProperty({ type: "string" })
   uuid: any;
 }
 
 export class CreateVideo {
-  @ApiProperty({ type: 'string', format: 'binary' })
+  @ApiProperty({ type: "string", format: "binary" })
   file: any;
   @ApiProperty()
   postId: string;
@@ -33,6 +33,8 @@ export class VideoResponse {
   @ApiProperty()
   updatedAt: Date;
 
-  @ApiProperty({ description: 'Computed public URL for serving the video file' })
+  @ApiProperty({
+    description: "Computed public URL for serving the video file",
+  })
   publicUrl?: string;
 }

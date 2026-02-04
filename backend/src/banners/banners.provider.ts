@@ -1,8 +1,8 @@
-import { Banners } from './banners.entity';
+import { Banners } from "./banners.entity";
 
 export const BannersProvider = [
   {
-    provide: 'BANNERS_REPOSITORY',
+    provide: "BANNERS_REPOSITORY",
     useValue: Banners,
   },
 ];

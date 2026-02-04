@@ -1,6 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { Subscriptions } from './subscription.entity';
-import { Request, Response } from 'express';
+import { Inject, Injectable } from "@nestjs/common";
+import { Subscriptions } from "./subscription.entity";
+import { Request, Response } from "express";
 import {
   CreateSubscriptionDto,
   findAllSubscription,
@@ -8,18 +8,18 @@ import {
   getAllOrdersSubscription,
   orderSubscriptionDto,
   UpdateSubscriptionDto,
-} from './subscription.dto';
-import { v4 as uuidV4 } from 'uuid';
-import { Photo } from 'src/photo/photo.entity';
-import { SubscriptionOrder } from './subscription_order.entity';
-import { Op } from 'sequelize';
+} from "./subscription.dto";
+import { v4 as uuidV4 } from "uuid";
+import { Photo } from "src/photo/photo.entity";
+import { SubscriptionOrder } from "./subscription_order.entity";
+import { Op } from "sequelize";
 
 @Injectable()
 export class SubscriptionService {
   constructor(
-    @Inject('SUBSCRIPTIONS_REPOSITORY')
+    @Inject("SUBSCRIPTIONS_REPOSITORY")
     private subscription: typeof Subscriptions,
-    @Inject('PHOTO_REPOSITORY')
+    @Inject("PHOTO_REPOSITORY")
     private photo: typeof Photo,
   ) {}
 
@@ -28,40 +28,38 @@ export class SubscriptionService {
       const {
         offset = 0,
         limit = 10,
-        sortBy = 'createdAt',
-        order = 'asc',
+        sortBy = "createdAt",
+        order = "asc",
       } = query;
 
       const result = await this.subscription.findAll({
         offset,
         limit,
         order: [[sortBy, order]],
-        include: ['photo'],
+        include: ["photo"],
       });
 
       return res.status(200).json(result);
     } catch (error) {
       console.error(error);
-      return res.status(500).json({ message: 'Internal server error', error });
+      return res.status(500).json({ message: "Internal server error", error });
     }
   }
   async findOne(param: findOneSubscriptions, req: Request, res: Response) {
     try {
-      const {
-       uuid
-      } = param;
+      const { uuid } = param;
 
       const result = await this.subscription.findOne({
-       where:{
-        uuid
-       },
-       include:['photo']
+        where: {
+          uuid,
+        },
+        include: ["photo"],
       });
 
       return res.status(200).json(result);
     } catch (error) {
       console.error(error);
-      return res.status(500).json({ message: 'Internal server error', error });
+      return res.status(500).json({ message: "Internal server error", error });
     }
   }
   async create(body: CreateSubscriptionDto, req: Request, res: Response) {
@@ -80,13 +78,13 @@ export class SubscriptionService {
         subscriptionId: newSubscription.uuid,
       });
       return res.status(201).json({
-        message: 'Subscription created successfully',
+        message: "Subscription created successfully",
         data: newSubscription,
       });
     } catch (error) {
-      console.error('Error creating subscription:', error);
+      console.error("Error creating subscription:", error);
       return res.status(500).json({
-        message: 'Failed to create subscription',
+        message: "Failed to create subscription",
         error: error?.message || error,
       });
     }
@@ -103,19 +101,19 @@ export class SubscriptionService {
       });
 
       if (!subscription) {
-        return res.status(404).json({ message: 'Subscription not found' });
+        return res.status(404).json({ message: "Subscription not found" });
       }
 
       await subscription.update(dto);
 
       return res.status(200).json({
-        message: 'Subscription updated successfully',
+        message: "Subscription updated successfully",
         uuid: subscription?.uuid,
       });
     } catch (error) {
-      console.error('Error updating subscription:', error);
+      console.error("Error updating subscription:", error);
       return res.status(500).json({
-        message: 'Failed to update subscription',
+        message: "Failed to update subscription",
         error: error?.message || error,
       });
     }
@@ -128,17 +126,17 @@ export class SubscriptionService {
         uuid: uuidV4(),
         location,
         phone,
-        status: 'Pending',
+        status: "Pending",
         subscriptionId,
       });
       return res.status(200).json({
-        message: 'Subscription updated successfully',
+        message: "Subscription updated successfully",
         data: order,
       });
     } catch (error) {
-      console.error('Error updating subscription:', error);
+      console.error("Error updating subscription:", error);
       return res.status(500).json({
-        message: 'Failed to update subscription',
+        message: "Failed to update subscription",
         error: error?.message || error,
       });
     }
@@ -152,16 +150,16 @@ export class SubscriptionService {
       const {
         offset = 0,
         limit = 10,
-        sortBy = 'createdAt',
-        order = 'asc',
-        location = '',
-        status = 'Pending',
+        sortBy = "createdAt",
+        order = "asc",
+        location = "",
+        status = "Pending",
       } = query;
       const result = await SubscriptionOrder.findAll({
         offset,
         limit,
         order: [[sortBy, order]],
-        include: ['subscription'],
+        include: ["subscription"],
         where: {
           location: {
             [Op.iLike]: `%${location}%`,
@@ -173,7 +171,7 @@ export class SubscriptionService {
       return res.status(200).json(result);
     } catch (error) {
       console.error(error);
-      return res.status(500).json({ message: 'Internal server error', error });
+      return res.status(500).json({ message: "Internal server error", error });
     }
   }
 }

@@ -548,12 +548,20 @@ class PostDetailsScreen extends StatelessWidget {
                                             theme.colorScheme.onSurfaceVariant,
                                       ),
                                     ),
-                                    onPressed: () {
-                                      final fileName =
-                                          "AutoTM_${post.value!.brand}_${post.value!.model}_${post.value!.year.toStringAsFixed(0)}.pdf";
-                                      final fullUrl =
-                                          "${ApiKey.ip}${post.value!.file!.path}";
-                                      c.startDownload(fullUrl, fileName);
+                                    onPressed: () async {
+                                      try {
+                                        final fileName =
+                                            "AutoTM_${post.value!.brand}_${post.value!.model}_${post.value!.year.toStringAsFixed(0)}.pdf";
+                                        final fullUrl =
+                                            "${ApiKey.ip}${post.value!.file!.path}";
+                                        await c.startDownload(fullUrl, fileName);
+                                      } catch (e) {
+                                        Get.snackbar(
+                                          'Download Error',
+                                          'Download feature is not available. ${e.toString()}',
+                                          snackPosition: SnackPosition.BOTTOM,
+                                        );
+                                      }
                                     },
                                   ),
                                 );

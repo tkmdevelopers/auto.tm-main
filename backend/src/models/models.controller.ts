@@ -12,30 +12,30 @@ import {
   UseGuards,
   UploadedFile,
   UseInterceptors,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
   ApiSecurity,
   ApiTags,
   ApiConsumes,
   ApiOperation,
   ApiResponse,
-} from '@nestjs/swagger';
-import { ModelsService } from './models.service';
+} from "@nestjs/swagger";
+import { ModelsService } from "./models.service";
 import {
   CreateModels,
   FindAllModels,
   findOneModel,
   ModelUUID,
   updateModel,
-} from './models.dto';
-import { Request, Response } from 'express';
-import { AuthGuard } from 'src/guards/auth.gurad';
-import { AdminGuard } from 'src/guards/admin.guard';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { multerOptionsForModel } from 'src/photo/config/multer.config';
+} from "./models.dto";
+import { Request, Response } from "express";
+import { AuthGuard } from "src/guards/auth.gurad";
+import { AdminGuard } from "src/guards/admin.guard";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { multerOptionsForModel } from "src/photo/config/multer.config";
 
-@Controller({ path: 'models', version: '1' })
-@ApiTags('Models and thier functions')
+@Controller({ path: "models", version: "1" })
+@ApiTags("Models and thier functions")
 export class ModelsController {
   constructor(private modelsService: ModelsService) {}
 
@@ -47,7 +47,7 @@ export class ModelsController {
   ) {
     return this.modelsService.findAll(query, req, res);
   }
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
   @UseGuards(AdminGuard)
   @Post()
@@ -58,16 +58,16 @@ export class ModelsController {
   ) {
     return this.modelsService.create(body, req, res);
   }
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
   @UseGuards(AdminGuard)
-  @Get('faker')
+  @Get("faker")
   async createBulk() {
     return this.modelsService.createBulk();
   }
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
-  @Get('/:uuid')
+  @Get("/:uuid")
   async findOne(
     @Param() param: ModelUUID,
     @Req() req: Request,
@@ -76,10 +76,10 @@ export class ModelsController {
   ) {
     return this.modelsService.findOne(param, req, res, query);
   }
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
   @UseGuards(AdminGuard)
-  @Put('/:uuid')
+  @Put("/:uuid")
   async update(
     @Param() param: ModelUUID,
     @Body() body: updateModel,
@@ -88,10 +88,10 @@ export class ModelsController {
   ) {
     return this.modelsService.update(param, body, req, res);
   }
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
   @UseGuards(AdminGuard)
-  @Delete('/:uuid')
+  @Delete("/:uuid")
   async delete(
     @Param() param: ModelUUID,
     @Req() req: Request,
@@ -100,14 +100,14 @@ export class ModelsController {
     return this.modelsService.delete(param, req, res);
   }
 
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
   @UseGuards(AdminGuard)
-  @Post('photo/:uuid')
-  @UseInterceptors(FileInterceptor('file', multerOptionsForModel))
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload photo for model' })
-  @ApiResponse({ status: 200, description: 'Photo uploaded successfully' })
+  @Post("photo/:uuid")
+  @UseInterceptors(FileInterceptor("file", multerOptionsForModel))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Upload photo for model" })
+  @ApiResponse({ status: 200, description: "Photo uploaded successfully" })
   async uploadPhoto(
     @Param() param: ModelUUID,
     @UploadedFile() file: Express.Multer.File,
@@ -117,12 +117,12 @@ export class ModelsController {
     return this.modelsService.uploadPhoto(param, file, req, res);
   }
 
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
   @UseGuards(AdminGuard)
-  @Delete('photo/:uuid')
-  @ApiOperation({ summary: 'Delete photo for model' })
-  @ApiResponse({ status: 200, description: 'Photo deleted successfully' })
+  @Delete("photo/:uuid")
+  @ApiOperation({ summary: "Delete photo for model" })
+  @ApiResponse({ status: 200, description: "Photo deleted successfully" })
   async deletePhoto(
     @Param() param: ModelUUID,
     @Req() req: Request,

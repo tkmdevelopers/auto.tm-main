@@ -5,176 +5,149 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
-} from '@nestjs/websockets';
-import { Op } from 'sequelize';
-import { Server, Socket } from 'socket.io';
-import { User } from 'src/auth/auth.entity';
-import { OtpTemp } from 'src/otp/otp.entity';
-import { v4 as uniq } from 'uuid';
-@WebSocketGateway(3090, { cors: false, origin: '*' })
+  ConnectedSocket,
+} from "@nestjs/websockets";
+import { Server, Socket } from "socket.io";
+
+/**
+ * WebSocket Gateway for real-time features
+ *
+ * Features:
+ * - Chat messaging (broadcast)
+ * - Notifications
+ * - Phone-to-socket mapping for targeted messages
+ *
+ * Note: OTP generation has been moved to OtpService.
+ * SMS dispatch is handled by SmsGatewayClient (separate module).
+ */
+@WebSocketGateway(3090, { cors: { origin: "*" } })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  private socketId: string;
+  // Map phone numbers to socket IDs for targeted messages
+  private phoneToSocket: Map<string, string> = new Map();
+  private socketToPhone: Map<string, string> = new Map();
 
+  /**
+   * Handle new socket connection
+   */
   handleConnection(client: Socket) {
-    console.log('Client connected:', client.id);
-    this.socketId = client.id;
-  }
+    console.log("[ChatGateway] Client connected:", client.id);
 
-  handleDisconnect(client: Socket) {
-    console.log('Client disconnected:', client.id);
-  }
-
-  @SubscribeMessage('chat message')
-  handleChatMessage(@MessageBody() data: any): void {
-    console.log('Received message:', data);
-    this.server.emit('chat message', data); // Broadcast to all clients
-  }
-
-  @SubscribeMessage('sendOtp')
-  handleSendOtp(@MessageBody() data: any): void {
-    console.log(data);
-    this.sendGeneralMessage(data.id);
-  }
-
-  private normalizePhone(phone?: string): string | undefined {
-    if (!phone) return phone;
-    return phone.startsWith('+') ? phone : `+${phone}`;
-  }
-
-  private generateOtp(): number {
-    return Math.floor(Math.random() * 90000) + 10000; // 5-digit
+    // Extract phone from handshake if provided
+    const phone = client.handshake.auth?.phone || client.handshake.query?.phone;
+    if (phone) {
+      const normalizedPhone = this.normalizePhone(phone as string);
+      this.registerPhone(client.id, normalizedPhone);
+    }
   }
 
   /**
-   * Central OTP issuance logic.
-   * registered: if true -> update User.otp; else -> upsert/create in otp_temp.
-   * Accepts override for test numbers producing deterministic OTP.
+   * Handle socket disconnection
    */
-  async issueOtp(socketId: string | undefined, phone: string, registered: boolean): Promise<{ otp: number, phone: string, target: 'user' | 'temp', emitted: boolean }> {
-    const originalPhone = phone;
-    phone = this.normalizePhone(phone)!;
-    // Strip non-digits for comparison so +99361999999 also matches
-    const digits = (originalPhone || '').replace(/\D/g, '');
-    // Deterministic test numbers configuration:
-    // 1. Explicit list from env TEST_OTP_NUMBERS (comma separated digits)
-    // 2. Fallback: any number starting with TEST_OTP_PREFIX (default '9936199999')
-    // 3. Explicit hard-coded range extension for convenience (99361999999, 99361999991-99361999993)
-    const envListRaw = process.env.TEST_OTP_NUMBERS || '';
-    const envPrefix = process.env.TEST_OTP_PREFIX || '9936199999';
-    const list = envListRaw
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean);
-    const hardcodedSet = new Set<string>([
-      '99361999999',
-      '99361999991',
-      '99361999992',
-      '99361999993',
-    ]);
-    const isListed = list.includes(digits);
-    const matchesPrefix = digits.startsWith(envPrefix);
-    const isHardcoded = hardcodedSet.has(digits);
-    const forceDeterministic = isListed || isHardcoded || matchesPrefix;
-    let otp: number;
-    if (forceDeterministic) {
-      otp = 12345;
-      // eslint-disable-next-line no-console
-      console.debug('[OTP] Deterministic test OTP applied', { originalPhone, digits, isListed, isHardcoded, matchesPrefix });
-    } else {
-      otp = this.generateOtp();
-    }
-    if (registered) {
-      await User.update({ otp }, { where: { phone } });
-    } else {
-      const existing = await OtpTemp.findOne({ where: { phone } });
-      if (existing) {
-        await OtpTemp.update({ otp }, { where: { phone } });
-      } else {
-        await OtpTemp.create({ phone, otp });
-      }
-    }
-    let emitted = false;
-    if (socketId) {
-      try {
-        this.server.to(socketId).emit('recieveOtp', { otp, phoneNumber: phone });
-        emitted = true;
-      } catch (e) {
-        emitted = false;
-      }
-    }
-    return { otp, phone, target: registered ? 'user' : 'temp', emitted };
+  handleDisconnect(client: Socket) {
+    console.log("[ChatGateway] Client disconnected:", client.id);
+    this.unregisterSocket(client.id);
   }
 
-  async sendGeneralMessage(id: string, phone?: string): Promise<any> {
-    try {
-      if (!phone) return false;
-  const r = await this.issueOtp(id, phone, true);
-  return r;
-    } catch (error) {
-      return error;
+  /**
+   * Register a phone number with a socket ID
+   */
+  @SubscribeMessage("register")
+  handleRegister(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { phone: string },
+  ): void {
+    if (data?.phone) {
+      const normalizedPhone = this.normalizePhone(data.phone);
+      this.registerPhone(client.id, normalizedPhone);
+      client.emit("registered", { phone: normalizedPhone });
     }
   }
 
-  async sendGeneralVerification(id: string, phone?: string): Promise<any> {
-    try {
-      if (!phone) return false;
-  const r = await this.issueOtp(id, phone, false);
-  return r;
-    } catch (error) {
-      return error;
+  /**
+   * Handle chat messages (broadcast to all)
+   */
+  @SubscribeMessage("chat message")
+  handleChatMessage(@MessageBody() data: any): void {
+    console.log("[ChatGateway] Chat message received:", data);
+    this.server.emit("chat message", data);
+  }
+
+  /**
+   * Send a notification to all connected clients
+   */
+  sendNotification(notification: any): void {
+    this.server.emit("notification", notification);
+  }
+
+  /**
+   * Send a message to a specific phone number
+   */
+  sendToPhone(phone: string, event: string, data: any): boolean {
+    const normalizedPhone = this.normalizePhone(phone);
+    const socketId = this.phoneToSocket.get(normalizedPhone);
+
+    if (socketId && this.server.sockets.sockets.has(socketId)) {
+      this.server.to(socketId).emit(event, data);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Send OTP to a specific phone (called from SMS service after dispatch)
+   * This is for real-time delivery to connected clients
+   */
+  sendOtpToClient(phone: string, requestId: string): boolean {
+    return this.sendToPhone(phone, "otp:delivered", { requestId, phone });
+  }
+
+  // ============================================================
+  // Private helpers
+  // ============================================================
+
+  private normalizePhone(phone: string): string {
+    if (!phone) return phone;
+    const normalized = phone.replace(/[^\d+]/g, "");
+    return normalized.startsWith("+") ? normalized : `+${normalized}`;
+  }
+
+  private registerPhone(socketId: string, phone: string): void {
+    // Remove old registration if exists
+    const oldSocketId = this.phoneToSocket.get(phone);
+    if (oldSocketId && oldSocketId !== socketId) {
+      this.socketToPhone.delete(oldSocketId);
+    }
+
+    this.phoneToSocket.set(phone, socketId);
+    this.socketToPhone.set(socketId, phone);
+    console.log("[ChatGateway] Registered phone:", { phone, socketId });
+  }
+
+  private unregisterSocket(socketId: string): void {
+    const phone = this.socketToPhone.get(socketId);
+    if (phone) {
+      this.phoneToSocket.delete(phone);
+      this.socketToPhone.delete(socketId);
+      console.log("[ChatGateway] Unregistered phone:", { phone, socketId });
     }
   }
-  // async sendGeneralOrderMessage(id: string, uuid?: string,message?:string ): Promise<any> {
-  //   try {
-  //     const sms = message;
-  //     const phonesObject: any = await Orders.findOne({
-  //       where: {
-  //         uuid,
-  //       },
-  //     });
-  //     let phone = phonesObject?.phone;
-  //       this.server.to(id).emit('recieveOrders', { phone, sms });
 
-  //     return true;
-  //   } catch (error) {
-  //     return error;
-  //   }
-  // }
-  // async sendGeneralOrderMessageAdmin(id: string): Promise<any> {
-  //   try {
-  //     const sms =
-  //       'Size täze sargyt bar! Admin paneli açmagyňyzy haýyş edýäris!';
-  //     const phones = await Admins.findAll({
-  //       where: {
-  //         [Op.and]: [
-  //           {
-  //             uuid: {
-  //               [Op.iLike]: 'admin-%',
-  //             },
-  //             access: {
-  //               [Op.contains]: ['orders'],
-  //             },
-  //           },
-  //         ],
-  //       },
-  //       attributes: ['phone'],
-  //     });
+  /**
+   * Check if a phone is connected
+   */
+  isPhoneConnected(phone: string): boolean {
+    const normalizedPhone = this.normalizePhone(phone);
+    const socketId = this.phoneToSocket.get(normalizedPhone);
+    return socketId ? this.server.sockets.sockets.has(socketId) : false;
+  }
 
-  //     phones?.map(async (e) => {
-  //       await this.server
-  //         .to(id)
-  //         .emit('recieveOrders', { phone: e?.phone, sms });
-  //     });
-  //     return true;
-  //   } catch (error) {
-  //     return error;
-  //   }
-  // }
-  sendNotification(notification: any) {
-    this.server.emit('notification', notification);
-    // this.server.to(clientId).emit('notification', notification);
+  /**
+   * Get connected clients count
+   */
+  getConnectedCount(): number {
+    return this.server.sockets.sockets.size;
   }
 }

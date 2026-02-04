@@ -10,9 +10,9 @@ import {
   Req,
   Res,
   UseGuards,
-} from '@nestjs/common';
-import { ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { PostService } from './post.service';
+} from "@nestjs/common";
+import { ApiSecurity, ApiTags } from "@nestjs/swagger";
+import { PostService } from "./post.service";
 import {
   CreatePost,
   FindAllPosts,
@@ -20,15 +20,15 @@ import {
   FindOneUUID,
   listPost,
   UpdatePost,
-} from './post.dto';
-import { Response, Request } from 'express';
-import { AuthGuard } from 'src/guards/auth.gurad';
+} from "./post.dto";
+import { Response, Request } from "express";
+import { AuthGuard } from "src/guards/auth.gurad";
 
 @Controller({
-  path: 'posts',
-  version: '1',
+  path: "posts",
+  version: "1",
 })
-@ApiTags('Posts and their functions')
+@ApiTags("Posts and their functions")
 export class PostController {
   constructor(private postService: PostService) {}
   // @ApiSecurity('token')
@@ -43,19 +43,19 @@ export class PostController {
     return this.postService.findAll(query, req, res);
   }
 
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
-  @Get('/me')
+  @Get("/me")
   async postMe(@Req() req: Request, @Res() res: Response) {
     return this.postService.me(req, res);
   }
   // @ApiSecurity('token')
   // @UseGuards(AuthGuard)
-  @Get('/add_rate')
+  @Get("/add_rate")
   async add_rate(@Req() req: Request, @Res() res: Response) {
     return this.postService.rate(req, res);
   }
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
   @Post()
   async createPost(
@@ -65,7 +65,7 @@ export class PostController {
   ) {
     return this.postService.create(body, req, res);
   }
-  @Get('/:uuid')
+  @Get("/:uuid")
   async findOne(
     @Query() query: FindOnePost,
     @Res() res: Response,
@@ -74,15 +74,15 @@ export class PostController {
   ) {
     return this.postService.findOne(query, req, res, param);
   }
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
-  @Get('faker')
+  @Get("faker")
   async createBulk() {
     return this.postService.createBulk();
   }
   // @ApiSecurity('token')
   // @UseGuards(AuthGuard)
-  @Post('list')
+  @Post("list")
   listOfProducts(
     @Req() req: any,
     @Res() res: Response,
@@ -90,9 +90,9 @@ export class PostController {
   ) {
     return this.postService.listOfProducts(req, res, body);
   }
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
-  @Put('/:uuid')
+  @Put("/:uuid")
   async update(
     @Param() param: FindOneUUID,
     @Body() body: UpdatePost,
@@ -101,9 +101,9 @@ export class PostController {
   ) {
     return this.postService.update(param, body, req, res);
   }
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
-  @Delete('/:uuid')
+  @Delete("/:uuid")
   async delete(
     @Param() param: FindOneUUID,
     @Req() req: Request,
@@ -111,9 +111,9 @@ export class PostController {
   ) {
     return this.postService.delete(param, req, res);
   }
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
-  @Get('count')
+  @Get("count")
   async count(@Req() req: Request, @Res() res: Response) {
     return this.postService.count(req, res);
   }

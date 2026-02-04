@@ -9,10 +9,10 @@ import {
   Query,
   Req,
   Res,
-} from '@nestjs/common';
-import { SubscriptionService } from './subscription.service';
-import { ApiTags } from '@nestjs/swagger';
-import { Request, Response } from 'express';
+} from "@nestjs/common";
+import { SubscriptionService } from "./subscription.service";
+import { ApiTags } from "@nestjs/swagger";
+import { Request, Response } from "express";
 import {
   CreateSubscriptionDto,
   findAllSubscription,
@@ -20,13 +20,13 @@ import {
   getAllOrdersSubscription,
   orderSubscriptionDto,
   UpdateSubscriptionDto,
-} from './subscription.dto';
+} from "./subscription.dto";
 
 @Controller({
-  path: 'subscription',
-  version: '1',
+  path: "subscription",
+  version: "1",
 })
-@ApiTags('Post subscriptions & Functions')
+@ApiTags("Post subscriptions & Functions")
 export class SubscriptionController {
   constructor(private subscriptionService: SubscriptionService) {}
 
@@ -54,16 +54,16 @@ export class SubscriptionController {
   ) {
     return this.subscriptionService.create(body, req, res);
   }
-  @Put(':id')
+  @Put(":id")
   update(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() dto: UpdateSubscriptionDto,
     @Req() req: Request,
     @Res() res: Response,
   ) {
     return this.subscriptionService.update(id, dto, req, res);
   }
-  @Post('order')
+  @Post("order")
   async subscription_order(
     @Body() body: orderSubscriptionDto,
     @Req() req: Request,
@@ -71,7 +71,7 @@ export class SubscriptionController {
   ) {
     return this.subscriptionService.order(body, req, res);
   }
-  @Get('order')
+  @Get("order")
   async get_all_subscription_order(
     @Query() query: getAllOrdersSubscription,
     @Req() req: Request,

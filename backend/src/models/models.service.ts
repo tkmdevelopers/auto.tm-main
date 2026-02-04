@@ -1,35 +1,35 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { Brands } from 'src/brands/brands.entity';
-import { Posts } from 'src/post/post.entity';
-import { createRandomModels } from 'src/utils/fakers/createModels';
-import { Models } from './models.entity';
+import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { Brands } from "src/brands/brands.entity";
+import { Posts } from "src/post/post.entity";
+import { createRandomModels } from "src/utils/fakers/createModels";
+import { Models } from "./models.entity";
 import {
   CreateModels,
   FindAllModels,
   findOneModel,
   ModelUUID,
   updateModel,
-} from './models.dto';
-import { stringToBoolean } from 'src/utils/functions/stringBool';
-import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { FindOptions } from 'sequelize/types/model';
-import { Op } from 'sequelize';
-import { Photo } from 'src/photo/photo.entity';
-import * as sharp from 'sharp';
-import * as path from 'path';
-import * as fs from 'fs';
-import { promisify } from 'util';
+} from "./models.dto";
+import { stringToBoolean } from "src/utils/functions/stringBool";
+import { Request, Response } from "express";
+import { v4 as uuidv4 } from "uuid";
+import { FindOptions } from "sequelize/types/model";
+import { Op } from "sequelize";
+import { Photo } from "src/photo/photo.entity";
+import * as sharp from "sharp";
+import * as path from "path";
+import * as fs from "fs";
+import { promisify } from "util";
 
 const unlinkAsync = promisify(fs.unlink);
 
 @Injectable()
 export class ModelsService {
   constructor(
-    @Inject('BRANDS_REPOSITORY') private brands: typeof Brands,
-    @Inject('MODELS_REPOSITORY') private models: typeof Models,
-    @Inject('POSTS_REPOSITORY') private posts: typeof Posts,
-    @Inject('PHOTO_REPOSITORY') private photo: typeof Photo,
+    @Inject("BRANDS_REPOSITORY") private brands: typeof Brands,
+    @Inject("MODELS_REPOSITORY") private models: typeof Models,
+    @Inject("POSTS_REPOSITORY") private posts: typeof Posts,
+    @Inject("PHOTO_REPOSITORY") private photo: typeof Photo,
   ) {}
 
   async findAll(query: FindAllModels, req: Request | any, res: Response) {
@@ -38,21 +38,21 @@ export class ModelsService {
       const includePayload: {}[] = [];
       const brand_bool: boolean = stringToBoolean(brand);
       const post_bool: boolean = stringToBoolean(post);
-      if (brand_bool) includePayload.push({ model: this.brands, as: 'brand' });
-      if (post_bool) includePayload.push({ model: this.posts, as: 'posts' });
+      if (brand_bool) includePayload.push({ model: this.brands, as: "brand" });
+      if (post_bool) includePayload.push({ model: this.posts, as: "posts" });
       const payload: FindOptions = {
         limit: limit || 500,
         offset: offset || 0,
-        include: [...includePayload, 'photo'],
-        order: [['name', sortAs || 'asc']],
+        include: [...includePayload, "photo"],
+        order: [["name", sortAs || "asc"]],
         where: {
           name: {
-            [Op.iLike]: `%${search || ''}%`,
+            [Op.iLike]: `%${search || ""}%`,
           },
         },
       };
       if (filter) {
-        payload['where'] = { brandId: filter };
+        payload["where"] = { brandId: filter };
       }
       const models = await this.models.findAll(payload);
       return res.status(200).json(models);
@@ -60,7 +60,7 @@ export class ModelsService {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -77,7 +77,7 @@ export class ModelsService {
         models_fake.push({ uuid: model.uuid, name: model.name });
       }
       await this.models.bulkCreate(models_fake);
-      return 'ok';
+      return "ok";
     } catch (error) {
       return error;
     }
@@ -88,7 +88,7 @@ export class ModelsService {
       const { name, brandId } = body;
       if (!name) {
         throw new HttpException(
-          'Fill all required fields!',
+          "Fill all required fields!",
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -99,12 +99,12 @@ export class ModelsService {
       });
       return res
         .status(200)
-        .json({ message: 'New Model successfully created', uuid: model?.uuid });
+        .json({ message: "New Model successfully created", uuid: model?.uuid });
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -124,20 +124,20 @@ export class ModelsService {
       const includePayload: {}[] = [];
       const brand_bool: boolean = stringToBoolean(brand);
       const post_bool: boolean = stringToBoolean(post);
-      if (brand_bool) includePayload.push({ model: this.brands, as: 'brand' });
-      if (post_bool) includePayload.push({ model: this.posts, as: 'posts' });
+      if (brand_bool) includePayload.push({ model: this.brands, as: "brand" });
+      if (post_bool) includePayload.push({ model: this.posts, as: "posts" });
       const model = await this.models.findOne({
         where: { uuid },
-        include: [...includePayload, 'photo'],
+        include: [...includePayload, "photo"],
       });
       if (!model)
-        throw new HttpException('Model Not Found', HttpStatus.NOT_FOUND);
+        throw new HttpException("Model Not Found", HttpStatus.NOT_FOUND);
       return res.status(200).json(model);
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -159,15 +159,15 @@ export class ModelsService {
       );
 
       if (!model)
-        throw new HttpException('Model Not Found', HttpStatus.NOT_FOUND);
+        throw new HttpException("Model Not Found", HttpStatus.NOT_FOUND);
       return res
         .status(200)
-        .json({ message: 'Successfully changed', uuid: uuid });
+        .json({ message: "Successfully changed", uuid: uuid });
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -179,13 +179,13 @@ export class ModelsService {
       const { uuid } = param;
       const model = await this.models.destroy({ where: { uuid } });
       if (!model)
-        throw new HttpException('Model Not Found', HttpStatus.NOT_FOUND);
-      return res.status(200).json({ message: 'Model Successfully deleted' });
+        throw new HttpException("Model Not Found", HttpStatus.NOT_FOUND);
+      return res.status(200).json({ message: "Model Successfully deleted" });
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -205,22 +205,22 @@ export class ModelsService {
       // Check if model exists
       const model = await this.models.findOne({ where: { uuid } });
       if (!model) {
-        throw new HttpException('Model Not Found', HttpStatus.NOT_FOUND);
+        throw new HttpException("Model Not Found", HttpStatus.NOT_FOUND);
       }
 
       const originalPath = file.path;
       const uploadDir = path.dirname(originalPath);
 
       const sizes = [
-        { name: 'large', width: 1024 },
-        { name: 'medium', width: 512 },
-        { name: 'small', width: 256 },
+        { name: "large", width: 1024 },
+        { name: "medium", width: 512 },
+        { name: "small", width: 256 },
       ];
 
       const paths = {
-        small: '',
-        medium: '',
-        large: '',
+        small: "",
+        medium: "",
+        large: "",
       };
 
       for (const size of sizes) {
@@ -252,13 +252,13 @@ export class ModelsService {
       }
 
       return res.status(200).json({
-        message: 'Photo uploaded successfully',
+        message: "Photo uploaded successfully",
         uuid: photo.uuid,
       });
     } catch (error) {
-      console.error('Error uploading model photo:', error);
+      console.error("Error uploading model photo:", error);
       return res.status(500).json({
-        message: 'Internal server error!',
+        message: "Internal server error!",
         error: error?.message,
       });
     }
@@ -270,13 +270,13 @@ export class ModelsService {
 
       const photo = await this.photo.findOne({ where: { modelsId: uuid } });
       if (!photo) {
-        return res.status(404).json({ message: 'Photo not found' });
+        return res.status(404).json({ message: "Photo not found" });
       }
 
-      const baseDir = path.join(__dirname, '..', '..');
+      const baseDir = path.join(__dirname, "..", "..");
 
       // Delete all resized versions and original file
-      for (const size of ['small', 'medium', 'large']) {
+      for (const size of ["small", "medium", "large"]) {
         const filePath = path.join(baseDir, photo.path?.[size]);
         try {
           if (fs.existsSync(filePath)) {
@@ -301,11 +301,11 @@ export class ModelsService {
 
       await photo.destroy();
 
-      return res.status(200).json({ message: 'Photo deleted successfully' });
+      return res.status(200).json({ message: "Photo deleted successfully" });
     } catch (error) {
-      console.error('Error deleting model photo:', error);
+      console.error("Error deleting model photo:", error);
       return res.status(500).json({
-        message: 'Internal server error!',
+        message: "Internal server error!",
         error: error?.message,
       });
     }

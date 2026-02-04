@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   Table,
   Column,
@@ -7,16 +7,16 @@ import {
   ForeignKey,
   BelongsTo,
   BelongsToMany,
-} from 'sequelize-typescript';
-import { User } from 'src/auth/auth.entity';
-import { Brands } from 'src/brands/brands.entity';
-import { Categories } from 'src/categories/categories.entity';
-import { PhotoPosts } from 'src/junction/photo_posts';
-import { Models } from 'src/models/models.entity';
-import { Photo } from 'src/photo/photo.entity';
-import { Posts } from 'src/post/post.entity';
+} from "sequelize-typescript";
+import { User } from "src/auth/auth.entity";
+import { Brands } from "src/brands/brands.entity";
+import { Categories } from "src/categories/categories.entity";
+import { PhotoPosts } from "src/junction/photo_posts";
+import { Models } from "src/models/models.entity";
+import { Photo } from "src/photo/photo.entity";
+import { Posts } from "src/post/post.entity";
 
-@Table({ tableName: 'comments' })
+@Table({ tableName: "comments" })
 export class Comments extends Model {
   @ApiProperty()
   @Column({ primaryKey: true })
@@ -44,6 +44,6 @@ export class Comments extends Model {
   @ForeignKey(() => Comments)
   @Column({ type: DataType.STRING, allowNull: true })
   replyTo: string;
-  @BelongsTo(() => Comments, { foreignKey: 'replyTo', as: 'parent' })
+  @BelongsTo(() => Comments, { foreignKey: "replyTo", as: "parent" })
   parent?: Comments;
 }

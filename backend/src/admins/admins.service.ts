@@ -1,12 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { Request, Response } from 'express';
-import { User } from 'src/auth/auth.entity';
-import { FindOne, updateAdmin } from './admins.dto';
-import { Op } from 'sequelize';
+import { Inject, Injectable } from "@nestjs/common";
+import { Request, Response } from "express";
+import { User } from "src/auth/auth.entity";
+import { FindOne, updateAdmin } from "./admins.dto";
+import { Op } from "sequelize";
 
 @Injectable()
 export class AdminsService {
-  constructor(@Inject('USERS_REPOSITORY') private Users: typeof User) {}
+  constructor(@Inject("USERS_REPOSITORY") private Users: typeof User) {}
 
   // async setAdmin() {
   //   try {
@@ -22,8 +22,8 @@ export class AdminsService {
   async findAll(req: Request, res: Response) {
     try {
       const admins = await this.Users.findAll({
-        where: { role: 'admin' },
-        attributes: { exclude: ['password'] },
+        where: { role: "admin" },
+        attributes: { exclude: ["password"] },
       });
 
       return res.status(200).json(admins);
@@ -31,7 +31,7 @@ export class AdminsService {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -43,14 +43,14 @@ export class AdminsService {
       const { uuid } = param;
       const admins = await this.Users.findOne({
         where: { uuid },
-        attributes: { exclude: ['password', 'refreshToken', 'otp'] },
+        attributes: { exclude: ["password", "refreshToken", "otp"] },
       });
       return res.status(200).json(admins);
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -70,12 +70,12 @@ export class AdminsService {
         { access, email, name, phone, status },
         { where: { uuid } },
       );
-      return res.status(200).json({ message: 'Updated Admin' });
+      return res.status(200).json({ message: "Updated Admin" });
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }

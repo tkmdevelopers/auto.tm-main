@@ -1,6 +1,6 @@
-import { HttpException, HttpStatus, Injectable, Inject } from '@nestjs/common';
-import { ServiceAccount } from 'firebase-admin';
-import * as admin from 'firebase-admin';
+import { HttpException, HttpStatus, Injectable, Inject } from "@nestjs/common";
+import { ServiceAccount } from "firebase-admin";
+import * as admin from "firebase-admin";
 import {
   notificationFirebaseToSubscribe,
   CreateNotificationDto,
@@ -8,31 +8,31 @@ import {
   FindAllNotificationsDto,
   SendNotificationDto,
   NotificationStatsDto,
-} from './notification.dto';
+} from "./notification.dto";
 import {
   NotificationHistory,
   NotificationType,
   NotificationStatus,
-} from './notification.entity';
-import { User } from 'src/auth/auth.entity';
-import { Brands } from 'src/brands/brands.entity';
-import { Op } from 'sequelize';
-import { v4 as uuidv4 } from 'uuid';
+} from "./notification.entity";
+import { User } from "src/auth/auth.entity";
+import { Brands } from "src/brands/brands.entity";
+import { Op } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
 
 @Injectable()
 export class NotificationService {
   constructor(
-    @Inject('NOTIFICATION_HISTORY_REPOSITORY')
+    @Inject("NOTIFICATION_HISTORY_REPOSITORY")
     private notificationHistoryRepo: typeof NotificationHistory,
-    @Inject('USERS_REPOSITORY')
+    @Inject("USERS_REPOSITORY")
     private usersRepo: typeof User,
-    @Inject('BRANDS_REPOSITORY')
+    @Inject("BRANDS_REPOSITORY")
     private brandsRepo: typeof Brands,
   ) {
     const serviceAccount: ServiceAccount = {
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
     };
 
     admin.initializeApp({
@@ -43,12 +43,12 @@ export class NotificationService {
   async sendNotification(payload: any) {
     try {
       const response = await admin.messaging().send(payload);
-      console.log('Successfully sent message:', response);
-      return { message: 'Notification sent successfully', response };
+      console.log("Successfully sent message:", response);
+      return { message: "Notification sent successfully", response };
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
       throw new HttpException(
-        'Failed to send notification',
+        "Failed to send notification",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -60,20 +60,20 @@ export class NotificationService {
         title: title,
         body: body,
       },
-      topic: 'all',
+      topic: "all",
     };
 
     try {
       const response = await admin.messaging().send(message);
-      console.log('Successfully sent message:', response);
+      console.log("Successfully sent message:", response);
       return {
-        message: 'Notification sent to all users successfully',
+        message: "Notification sent to all users successfully",
         response,
       };
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
       throw new HttpException(
-        'Failed to send notification to all users',
+        "Failed to send notification to all users",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -83,16 +83,16 @@ export class NotificationService {
     try {
       const { title, body } = payload?.notification;
       console.log(payload);
-      console.log('Finding brands with uuid:', uuid);
+      console.log("Finding brands with uuid:", uuid);
       const brands = await this.brandsRepo.findAll({
         where: { uuid },
-        include: [{ model: User, attributes: ['uuid', 'firebaseToken'] }],
-        attributes: ['uuid'],
+        include: [{ model: User, attributes: ["uuid", "firebaseToken"] }],
+        attributes: ["uuid"],
       });
 
       if (!brands || brands.length === 0) {
-        console.log('No brands found');
-        throw new HttpException('Not found', HttpStatus.NOT_FOUND);
+        console.log("No brands found");
+        throw new HttpException("Not found", HttpStatus.NOT_FOUND);
       }
 
       let successfulDeliveries = 0;
@@ -100,57 +100,57 @@ export class NotificationService {
       const deliveryDetails: any[] = [];
 
       for (const brand of brands) {
-        console.log('Processing brand:', brand.uuid);
+        console.log("Processing brand:", brand.uuid);
         if (brand.users && brand.users.length > 0) {
           for (const user of brand.users) {
-            console.log('Checking user:', user.uuid);
+            console.log("Checking user:", user.uuid);
             if (user.firebaseToken) {
               try {
                 const response = await admin.messaging().send({
                   notification: { body, title },
                   token: user.firebaseToken,
                 });
-                console.log('Successfully sent message:', response);
+                console.log("Successfully sent message:", response);
                 successfulDeliveries++;
                 deliveryDetails.push({
                   userId: user.uuid,
-                  status: 'success',
+                  status: "success",
                   response,
                 });
               } catch (error) {
-                console.error('Error sending message:', error);
+                console.error("Error sending message:", error);
                 failedDeliveries++;
                 deliveryDetails.push({
                   userId: user.uuid,
-                  status: 'failed',
+                  status: "failed",
                   error: error.message,
                 });
               }
             } else {
-              console.log('⚠️ No firebaseToken for user:', user.uuid);
+              console.log("⚠️ No firebaseToken for user:", user.uuid);
               failedDeliveries++;
               deliveryDetails.push({
                 userId: user.uuid,
-                status: 'failed',
-                error: 'No firebase token',
+                status: "failed",
+                error: "No firebase token",
               });
             }
           }
         } else {
-          console.log('⚠️ Brand has no users:', brand.uuid);
+          console.log("⚠️ Brand has no users:", brand.uuid);
         }
       }
 
       return {
-        message: 'Notifications attempted for all users',
+        message: "Notifications attempted for all users",
         successfulDeliveries,
         failedDeliveries,
         deliveryDetails,
       };
     } catch (error) {
-      console.error('🔥 Unexpected error:', error.message || error);
+      console.error("🔥 Unexpected error:", error.message || error);
       throw new HttpException(
-        'Failed to send notifications',
+        "Failed to send notifications",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -183,9 +183,9 @@ export class NotificationService {
 
       return notification;
     } catch (error) {
-      console.error('Error creating notification history:', error);
+      console.error("Error creating notification history:", error);
       throw new HttpException(
-        'Failed to create notification history',
+        "Failed to create notification history",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -211,7 +211,7 @@ export class NotificationService {
         case NotificationType.ALL_USERS:
           try {
             await this.sendNotificationToAll(sendDto.title, sendDto.body);
-            deliveryResult = { message: 'Sent to all users' };
+            deliveryResult = { message: "Sent to all users" };
           } catch (error) {
             status = NotificationStatus.FAILED;
             errorMessage = error.message;
@@ -222,7 +222,7 @@ export class NotificationService {
         case NotificationType.BRAND_SUBSCRIBERS:
           if (!sendDto.targetData?.brandId) {
             throw new HttpException(
-              'Brand ID is required',
+              "Brand ID is required",
               HttpStatus.BAD_REQUEST,
             );
           }
@@ -250,7 +250,7 @@ export class NotificationService {
         case NotificationType.SPECIFIC_USER:
           if (!sendDto.targetData?.userId) {
             throw new HttpException(
-              'User ID is required',
+              "User ID is required",
               HttpStatus.BAD_REQUEST,
             );
           }
@@ -260,7 +260,7 @@ export class NotificationService {
             );
             if (!user || !user.firebaseToken) {
               throw new HttpException(
-                'User not found or no firebase token',
+                "User not found or no firebase token",
                 HttpStatus.NOT_FOUND,
               );
             }
@@ -269,7 +269,7 @@ export class NotificationService {
               token: user.firebaseToken,
             });
             deliveryResult = {
-              message: 'Sent to specific user',
+              message: "Sent to specific user",
               userId: user.uuid,
             };
           } catch (error) {
@@ -282,7 +282,7 @@ export class NotificationService {
         case NotificationType.TOPIC:
           if (!sendDto.topic) {
             throw new HttpException(
-              'Topic is required',
+              "Topic is required",
               HttpStatus.BAD_REQUEST,
             );
           }
@@ -291,7 +291,7 @@ export class NotificationService {
               notification: { title: sendDto.title, body: sendDto.body },
               topic: sendDto.topic,
             });
-            deliveryResult = { message: 'Sent to topic', topic: sendDto.topic };
+            deliveryResult = { message: "Sent to topic", topic: sendDto.topic };
           } catch (error) {
             status = NotificationStatus.FAILED;
             errorMessage = error.message;
@@ -301,7 +301,7 @@ export class NotificationService {
 
         default:
           throw new HttpException(
-            'Invalid notification type',
+            "Invalid notification type",
             HttpStatus.BAD_REQUEST,
           );
       }
@@ -326,15 +326,15 @@ export class NotificationService {
       );
 
       return {
-        message: 'Notification sent successfully',
+        message: "Notification sent successfully",
         notificationId: notificationHistory.uuid,
         status,
         deliveryResult,
       };
     } catch (error) {
-      console.error('Error sending notification with history:', error);
+      console.error("Error sending notification with history:", error);
       throw new HttpException(
-        error.message || 'Failed to send notification',
+        error.message || "Failed to send notification",
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -346,8 +346,8 @@ export class NotificationService {
         type,
         status,
         search,
-        sortBy = 'createdAt',
-        sortOrder = 'DESC',
+        sortBy = "createdAt",
+        sortOrder = "DESC",
         page = 1,
         limit = 10,
         startDate,
@@ -380,7 +380,7 @@ export class NotificationService {
         offset,
         limit,
         include: [
-          { model: User, as: 'sender', attributes: ['uuid', 'name', 'email'] },
+          { model: User, as: "sender", attributes: ["uuid", "name", "email"] },
         ],
       });
 
@@ -392,9 +392,9 @@ export class NotificationService {
         data: notifications.rows,
       };
     } catch (error) {
-      console.error('Error finding notifications:', error);
+      console.error("Error finding notifications:", error);
       throw new HttpException(
-        'Failed to fetch notifications',
+        "Failed to fetch notifications",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -405,20 +405,20 @@ export class NotificationService {
       const notification = await this.notificationHistoryRepo.findOne({
         where: { uuid },
         include: [
-          { model: User, as: 'sender', attributes: ['uuid', 'name', 'email'] },
+          { model: User, as: "sender", attributes: ["uuid", "name", "email"] },
         ],
       });
 
       if (!notification) {
-        throw new HttpException('Notification not found', HttpStatus.NOT_FOUND);
+        throw new HttpException("Notification not found", HttpStatus.NOT_FOUND);
       }
 
       return notification;
     } catch (error) {
       if (error.status) throw error;
-      console.error('Error finding notification:', error);
+      console.error("Error finding notification:", error);
       throw new HttpException(
-        'Failed to fetch notification',
+        "Failed to fetch notification",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -431,12 +431,12 @@ export class NotificationService {
       });
 
       if (!notification) {
-        throw new HttpException('Notification not found', HttpStatus.NOT_FOUND);
+        throw new HttpException("Notification not found", HttpStatus.NOT_FOUND);
       }
 
       if (notification.status !== NotificationStatus.PENDING) {
         throw new HttpException(
-          'Cannot update notification that has already been sent',
+          "Cannot update notification that has already been sent",
           HttpStatus.BAD_REQUEST,
         );
       }
@@ -446,9 +446,9 @@ export class NotificationService {
       return await this.findNotificationById(uuid);
     } catch (error) {
       if (error.status) throw error;
-      console.error('Error updating notification:', error);
+      console.error("Error updating notification:", error);
       throw new HttpException(
-        'Failed to update notification',
+        "Failed to update notification",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -461,24 +461,24 @@ export class NotificationService {
       });
 
       if (!notification) {
-        throw new HttpException('Notification not found', HttpStatus.NOT_FOUND);
+        throw new HttpException("Notification not found", HttpStatus.NOT_FOUND);
       }
 
       if (notification.status !== NotificationStatus.PENDING) {
         throw new HttpException(
-          'Cannot delete notification that has already been sent',
+          "Cannot delete notification that has already been sent",
           HttpStatus.BAD_REQUEST,
         );
       }
 
       await this.notificationHistoryRepo.destroy({ where: { uuid } });
 
-      return { message: 'Notification deleted successfully' };
+      return { message: "Notification deleted successfully" };
     } catch (error) {
       if (error.status) throw error;
-      console.error('Error deleting notification:', error);
+      console.error("Error deleting notification:", error);
       throw new HttpException(
-        'Failed to delete notification',
+        "Failed to delete notification",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -495,22 +495,22 @@ export class NotificationService {
         notificationsByStatus,
       ] = await Promise.all([
         this.notificationHistoryRepo.count(),
-        this.notificationHistoryRepo.sum('totalRecipients'),
-        this.notificationHistoryRepo.sum('successfulDeliveries'),
-        this.notificationHistoryRepo.sum('failedDeliveries'),
+        this.notificationHistoryRepo.sum("totalRecipients"),
+        this.notificationHistoryRepo.sum("successfulDeliveries"),
+        this.notificationHistoryRepo.sum("failedDeliveries"),
         this.notificationHistoryRepo.findAll({
           attributes: [
-            'type',
-            [this.notificationHistoryRepo.sequelize!.fn('COUNT', '*'), 'count'],
+            "type",
+            [this.notificationHistoryRepo.sequelize!.fn("COUNT", "*"), "count"],
           ],
-          group: ['type'],
+          group: ["type"],
         }),
         this.notificationHistoryRepo.findAll({
           attributes: [
-            'status',
-            [this.notificationHistoryRepo.sequelize!.fn('COUNT', '*'), 'count'],
+            "status",
+            [this.notificationHistoryRepo.sequelize!.fn("COUNT", "*"), "count"],
           ],
-          group: ['status'],
+          group: ["status"],
         }),
       ]);
 
@@ -524,12 +524,12 @@ export class NotificationService {
 
       const typeStats = {};
       notificationsByType.forEach((item: any) => {
-        typeStats[item.type] = parseInt(item.getDataValue('count'));
+        typeStats[item.type] = parseInt(item.getDataValue("count"));
       });
 
       const statusStats = {};
       notificationsByStatus.forEach((item: any) => {
-        statusStats[item.status] = parseInt(item.getDataValue('count'));
+        statusStats[item.status] = parseInt(item.getDataValue("count"));
       });
 
       return {
@@ -544,9 +544,9 @@ export class NotificationService {
         notificationsByStatus: statusStats,
       };
     } catch (error) {
-      console.error('Error getting notification stats:', error);
+      console.error("Error getting notification stats:", error);
       throw new HttpException(
-        'Failed to get notification statistics',
+        "Failed to get notification statistics",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

@@ -29,7 +29,7 @@ export class User extends Model {
   @Column({ primaryKey: true })
   uuid: string;
   @ApiProperty()
-  @Column
+  @Column({ allowNull: true })
   name: string;
   @ApiProperty({
     example: "99362120020",
@@ -38,16 +38,18 @@ export class User extends Model {
   @Column({ allowNull: true, unique: true })
   email: string;
   @ApiProperty()
-  @Column
+  @Column({ allowNull: true })
   password: string;
   @ApiProperty()
   @Column({
+    type: DataType.STRING(20),
+    allowNull: true,
     unique: true,
   })
   phone: string;
 
   @ApiProperty()
-  @Column({ defaultValue: "false" })
+  @Column({ defaultValue: false })
   status: boolean;
   @ApiProperty()
   @Column({
@@ -56,12 +58,10 @@ export class User extends Model {
     defaultValue: UserRole?.USER,
   })
   role: UserRole;
-  @ApiProperty()
-  @Column
-  otp: string;
-  @Column
+  // OTP removed - now stored in otp_codes table
+  @Column({ type: DataType.TEXT, allowNull: true })
   refreshToken: string;
-  @Column
+  @Column({ allowNull: true })
   location: string;
   @HasMany(() => Posts)
   posts: Posts[];

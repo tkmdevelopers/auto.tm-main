@@ -10,22 +10,22 @@ import {
   Res,
   UseGuards,
   Query,
-} from '@nestjs/common';
-import { ApiTags, ApiSecurity } from '@nestjs/swagger';
-import { VlogService } from './vlog.service';
-import { Request, Response } from 'express';
-import { AuthGuard } from 'src/guards/auth.gurad';
-import { CreateVlogDto, FindAllVlogDto, UpdateVlogDto } from './vlog.dto';
+} from "@nestjs/common";
+import { ApiTags, ApiSecurity } from "@nestjs/swagger";
+import { VlogService } from "./vlog.service";
+import { Request, Response } from "express";
+import { AuthGuard } from "src/guards/auth.gurad";
+import { CreateVlogDto, FindAllVlogDto, UpdateVlogDto } from "./vlog.dto";
 
 @Controller({
-  path: 'vlog',
-  version: '1',
+  path: "vlog",
+  version: "1",
 })
-@ApiTags('Vlog and Functions')
+@ApiTags("Vlog and Functions")
 export class VlogController {
   constructor(private vlogService: VlogService) {}
 
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
   @Post()
   async create(
@@ -45,22 +45,22 @@ export class VlogController {
     return this.vlogService.findAll(query, req, res);
   }
 
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
-  @Get(':id')
+  @Get(":id")
   async findOne(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {
     return this.vlogService.findOne(id, req, res);
   }
 
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
-  @Patch(':id')
+  @Patch(":id")
   async update(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() body: UpdateVlogDto,
     @Req() req: Request,
     @Res() res: Response,
@@ -68,11 +68,11 @@ export class VlogController {
     return this.vlogService.update(id, body, req, res);
   }
 
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
-  @Delete(':id')
+  @Delete(":id")
   async remove(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {

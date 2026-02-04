@@ -1,11 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class createCommets {
   @ApiProperty()
   message: string;
   @ApiProperty()
   postId: string;
-  @ApiProperty({ required: false, description: 'UUID of parent comment if this is a reply' })
+  @ApiProperty({
+    required: false,
+    description: "UUID of parent comment if this is a reply",
+  })
   replyTo?: string;
 }
 

@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   Table,
   Column,
@@ -7,9 +7,9 @@ import {
   DataType,
   ForeignKey,
   BelongsTo,
-} from 'sequelize-typescript';
-import { Photo } from 'src/photo/photo.entity';
-@Table({ tableName: 'banners' })
+} from "sequelize-typescript";
+import { Photo } from "src/photo/photo.entity";
+@Table({ tableName: "banners" })
 export class Banners extends Model {
   @Column({ primaryKey: true })
   uuid: string;
@@ -19,7 +19,7 @@ export class Banners extends Model {
 
   @ApiProperty()
   @HasOne(() => Photo, {
-    foreignKey: 'bannerId',
+    foreignKey: "bannerId",
   })
   photo: Photo;
 }

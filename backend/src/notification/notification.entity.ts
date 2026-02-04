@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   Table,
   Column,
@@ -7,24 +7,24 @@ import {
   ForeignKey,
   BelongsTo,
   Default,
-} from 'sequelize-typescript';
-import { User } from 'src/auth/auth.entity';
+} from "sequelize-typescript";
+import { User } from "src/auth/auth.entity";
 
 export enum NotificationType {
-  ALL_USERS = 'all_users',
-  BRAND_SUBSCRIBERS = 'brand_subscribers',
-  SPECIFIC_USER = 'specific_user',
-  TOPIC = 'topic',
+  ALL_USERS = "all_users",
+  BRAND_SUBSCRIBERS = "brand_subscribers",
+  SPECIFIC_USER = "specific_user",
+  TOPIC = "topic",
 }
 
 export enum NotificationStatus {
-  PENDING = 'pending',
-  SENT = 'sent',
-  FAILED = 'failed',
-  PARTIAL = 'partial',
+  PENDING = "pending",
+  SENT = "sent",
+  FAILED = "failed",
+  PARTIAL = "partial",
 }
 
-@Table({ tableName: 'notification_history' })
+@Table({ tableName: "notification_history" })
 export class NotificationHistory extends Model {
   @ApiProperty()
   @Column({

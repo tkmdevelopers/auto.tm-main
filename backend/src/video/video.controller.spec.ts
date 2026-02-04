@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { VideoController } from './video.controller';
+import { Test, TestingModule } from "@nestjs/testing";
+import { VideoController } from "./video.controller";
 
-describe('VideoController', () => {
+describe("VideoController", () => {
   let controller: VideoController;
 
   beforeEach(async () => {
@@ -12,7 +12,7 @@ describe('VideoController', () => {
     controller = module.get<VideoController>(VideoController);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

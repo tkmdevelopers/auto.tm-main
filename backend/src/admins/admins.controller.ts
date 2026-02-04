@@ -8,20 +8,20 @@ import {
   Req,
   Res,
   UseGuards,
-} from '@nestjs/common';
-import { ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { AdminsService } from './admins.service';
-import { AuthGuard } from 'src/guards/auth.gurad';
-import { AdminGuard } from 'src/guards/admin.guard';
-import { Request, Response } from 'express';
-import { FindOne, updateAdmin } from './admins.dto';
+} from "@nestjs/common";
+import { ApiSecurity, ApiTags } from "@nestjs/swagger";
+import { AdminsService } from "./admins.service";
+import { AuthGuard } from "src/guards/auth.gurad";
+import { AdminGuard } from "src/guards/admin.guard";
+import { Request, Response } from "express";
+import { FindOne, updateAdmin } from "./admins.dto";
 
 @Controller({
-  path: 'admins',
-  version: '1',
+  path: "admins",
+  version: "1",
 })
-@ApiSecurity('token')
-@ApiTags('admin')
+@ApiSecurity("token")
+@ApiTags("admin")
 export class AdminsController {
   constructor(private adminService: AdminsService) {}
 
@@ -33,7 +33,7 @@ export class AdminsController {
   }
   @UseGuards(AuthGuard)
   @UseGuards(AdminGuard)
-  @Get('/:uuid')
+  @Get("/:uuid")
   async findOne(
     @Param() param: FindOne,
     @Req() req: Request,
@@ -43,7 +43,7 @@ export class AdminsController {
   }
   @UseGuards(AuthGuard)
   @UseGuards(AdminGuard)
-  @Patch('/:uuid')
+  @Patch("/:uuid")
   async update(
     @Param() param: FindOne,
     @Req() req: Request,
@@ -58,5 +58,4 @@ export class AdminsController {
   // // async setAdmin(){
   // //   return this.adminService.setAdmin()
   // // }
-  
 }

@@ -1,9 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class GetTime {
-  @ApiProperty({ example: '99362120020' })
+  @ApiProperty({ example: "99362120020" })
   phone: string;
-  @ApiProperty({ example: '1111' })
+  @ApiProperty({ example: "1111" })
   otp: string;
 }
 export class messageSend {
@@ -13,6 +13,6 @@ export class messageSend {
   message: string;
 }
 export class SendOtp {
-  @ApiProperty({ example: '99362120020' })
+  @ApiProperty({ example: "99362120020" })
   phone: string;
 }

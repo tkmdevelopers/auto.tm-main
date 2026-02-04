@@ -1,14 +1,14 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { File } from './file.entity';
-import { v4 as uuidv4 } from 'uuid';
-import * as fs from 'fs';
-import * as path from 'path';
-import { UpdateFile } from './file.dto';
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { File } from "./file.entity";
+import { v4 as uuidv4 } from "uuid";
+import * as fs from "fs";
+import * as path from "path";
+import { UpdateFile } from "./file.dto";
 
 @Injectable()
 export class FileService {
   constructor(
-    @Inject('FILE_REPOSITORY')
+    @Inject("FILE_REPOSITORY")
     private fileRepository: typeof File,
   ) {}
 
@@ -75,7 +75,7 @@ export class FileService {
     // Delete the database record
     await file.destroy();
 
-    return { message: 'File deleted successfully' };
+    return { message: "File deleted successfully" };
   }
 
   async deleteFilesByPostId(postId: string) {

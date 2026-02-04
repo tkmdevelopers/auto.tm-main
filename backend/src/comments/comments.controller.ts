@@ -10,22 +10,22 @@ import {
   Req,
   Res,
   UseGuards,
-} from '@nestjs/common';
-import { ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { CommentsService } from './comments.service';
-import { createCommets, findAllComments } from './comments.dto';
-import { Request, Response } from 'express';
-import { AuthGuard } from 'src/guards/auth.gurad';
+} from "@nestjs/common";
+import { ApiSecurity, ApiTags } from "@nestjs/swagger";
+import { CommentsService } from "./comments.service";
+import { createCommets, findAllComments } from "./comments.dto";
+import { Request, Response } from "express";
+import { AuthGuard } from "src/guards/auth.gurad";
 
 @Controller({
-  path: 'comments',
-  version: '1',
+  path: "comments",
+  version: "1",
 })
-@ApiTags('Comments and Reply functions')
+@ApiTags("Comments and Reply functions")
 export class CommentsController {
   constructor(private commentsService: CommentsService) {}
 
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
   @Post()
   async create(
@@ -36,7 +36,7 @@ export class CommentsController {
     return this.commentsService.create(body, req, res);
   }
 
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
   @Get()
   async findAll(
@@ -47,22 +47,22 @@ export class CommentsController {
     return this.commentsService.findAll(body, req, res);
   }
 
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
-  @Get(':id')
+  @Get(":id")
   async findOne(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {
     return this.commentsService.findOne(id, req, res);
   }
 
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
-  @Patch(':id')
+  @Patch(":id")
   async update(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() body: any,
     @Req() req: Request,
     @Res() res: Response,
@@ -70,11 +70,11 @@ export class CommentsController {
     return this.commentsService.update(id, body, req, res);
   }
 
-  @ApiSecurity('token')
+  @ApiSecurity("token")
   @UseGuards(AuthGuard)
-  @Delete(':id')
+  @Delete(":id")
   async remove(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {

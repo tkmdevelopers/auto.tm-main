@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   Table,
   Column,
@@ -7,12 +7,12 @@ import {
   BelongsToMany,
   HasOne,
   DataType,
-} from 'sequelize-typescript';
-import { Photo } from 'src/photo/photo.entity';
-import { Posts } from 'src/post/post.entity';
-import { SubscriptionOrder } from './subscription_order.entity';
+} from "sequelize-typescript";
+import { Photo } from "src/photo/photo.entity";
+import { Posts } from "src/post/post.entity";
+import { SubscriptionOrder } from "./subscription_order.entity";
 
-@Table({ tableName: 'subscriptions' })
+@Table({ tableName: "subscriptions" })
 export class Subscriptions extends Model {
   @ApiProperty()
   @Column({ primaryKey: true })
@@ -26,7 +26,7 @@ export class Subscriptions extends Model {
   price: number;
   @ApiProperty()
   @HasOne(() => Photo, {
-    foreignKey: 'subscriptionId',
+    foreignKey: "subscriptionId",
   })
   photo: Photo;
 
@@ -41,5 +41,3 @@ export class Subscriptions extends Model {
   @HasMany(() => SubscriptionOrder)
   order: SubscriptionOrder[];
 }
-
-

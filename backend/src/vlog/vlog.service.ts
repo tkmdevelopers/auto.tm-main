@@ -1,14 +1,14 @@
-import { Injectable, Inject, HttpException, HttpStatus } from '@nestjs/common';
-import { Request, Response } from 'express';
-import { Vlogs } from './vlog.entity';
-import { v4 as uuidv4 } from 'uuid';
-import { CreateVlogDto, FindAllVlogDto, UpdateVlogDto } from './vlog.dto';
-import { Op } from 'sequelize';
-import { User } from 'src/auth/auth.entity';
+import { Injectable, Inject, HttpException, HttpStatus } from "@nestjs/common";
+import { Request, Response } from "express";
+import { Vlogs } from "./vlog.entity";
+import { v4 as uuidv4 } from "uuid";
+import { CreateVlogDto, FindAllVlogDto, UpdateVlogDto } from "./vlog.dto";
+import { Op } from "sequelize";
+import { User } from "src/auth/auth.entity";
 
 @Injectable()
 export class VlogService {
-  constructor(@Inject('VLOG_REPOSITORY') private vlogRepo: typeof Vlogs) {}
+  constructor(@Inject("VLOG_REPOSITORY") private vlogRepo: typeof Vlogs) {}
 
   async create(body: CreateVlogDto, req: Request | any, res: Response) {
     try {
@@ -16,12 +16,12 @@ export class VlogService {
         uuid: uuidv4(),
         title: body.title,
         userId: body.userId || req?.uuid,
-        description: body.description || '',
-        tag: body.tag || '',
-        videoUrl: body.videoUrl || '',
+        description: body.description || "",
+        tag: body.tag || "",
+        videoUrl: body.videoUrl || "",
         isActive: body.isActive || false,
         thumbnail: body.thumbnail || {},
-        status: 'Pending',
+        status: "Pending",
         declineMessage: null,
       });
 
@@ -29,7 +29,7 @@ export class VlogService {
     } catch (error) {
       console.log(error);
       return res.status(500).json({
-        message: 'Internal server error!',
+        message: "Internal server error!",
         error: error?.parent?.detail,
       });
     }
@@ -41,8 +41,8 @@ export class VlogService {
         userId,
         status,
         search,
-        sortBy = 'createdAt',
-        sortOrder = 'DESC',
+        sortBy = "createdAt",
+        sortOrder = "DESC",
         page = 1,
         limit = 10,
       } = query;
@@ -65,7 +65,7 @@ export class VlogService {
         where,
         order: [[sortBy, sortOrder]],
         offset,
-        include: [{ model: User, include: ['avatar'] }],
+        include: [{ model: User, include: ["avatar"] }],
         limit,
       });
 
@@ -78,7 +78,7 @@ export class VlogService {
     } catch (error) {
       console.log(error);
       return res.status(500).json({
-        message: 'Internal server error!',
+        message: "Internal server error!",
         error: error?.parent?.detail,
       });
     }
@@ -87,14 +87,14 @@ export class VlogService {
   async findOne(id: string, req: Request | any, res: Response) {
     try {
       const vlog = await this.vlogRepo.findOne({ where: { uuid: id } });
-      if (!vlog) throw new HttpException('Not found', HttpStatus.NOT_FOUND);
+      if (!vlog) throw new HttpException("Not found", HttpStatus.NOT_FOUND);
 
       return res.status(200).json(vlog);
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -110,7 +110,7 @@ export class VlogService {
   ) {
     try {
       const vlog = await this.vlogRepo.findOne({ where: { uuid: id } });
-      if (!vlog) throw new HttpException('Not found', HttpStatus.NOT_FOUND);
+      if (!vlog) throw new HttpException("Not found", HttpStatus.NOT_FOUND);
 
       const updateData: any = {};
       if (body.title !== undefined) updateData.title = body.title;
@@ -129,7 +129,7 @@ export class VlogService {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }
@@ -140,15 +140,15 @@ export class VlogService {
   async remove(id: string, req: Request | any, res: Response) {
     try {
       const vlog = await this.vlogRepo.findOne({ where: { uuid: id } });
-      if (!vlog) throw new HttpException('Not found', HttpStatus.NOT_FOUND);
+      if (!vlog) throw new HttpException("Not found", HttpStatus.NOT_FOUND);
 
       await this.vlogRepo.destroy({ where: { uuid: id } });
-      return res.status(200).json({ message: 'Deleted successfully' });
+      return res.status(200).json({ message: "Deleted successfully" });
     } catch (error) {
       if (!error.status) {
         console.log(error);
         return res.status(500).json({
-          message: 'Internal server error!',
+          message: "Internal server error!",
           error: error?.parent?.detail,
         });
       }

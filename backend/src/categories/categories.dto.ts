@@ -1,24 +1,24 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class findAllCategories {
   @ApiProperty({
     required: false,
     example: 0,
-    description: 'Offset',
+    description: "Offset",
   })
   offset: number;
 
   @ApiProperty({
     example: 30,
     required: false,
-    description: 'Limit',
+    description: "Limit",
   })
   limit: number;
 
   @ApiProperty({
     required: false,
-    description: 'Sorting By',
-    enum: ['asc', 'desc'],
+    description: "Sorting By",
+    enum: ["asc", "desc"],
   })
   sort?: string;
   @ApiProperty({ required: false })
@@ -31,12 +31,12 @@ export class findAllCategories {
 
 export class createCategories {
   @ApiProperty({
-    type: 'object',
-    additionalProperties: { type: 'string' },
+    type: "object",
+    additionalProperties: { type: "string" },
     example: {
-      tm: 'string',
-      ru: 'string',
-      en: 'string',
+      tm: "string",
+      ru: "string",
+      en: "string",
     },
   })
   name: Record<string, string>;
@@ -45,11 +45,11 @@ export class createCategories {
 }
 export class updateCategories {
   @ApiProperty({
-    type: 'object',
-    additionalProperties: { type: 'string' },
+    type: "object",
+    additionalProperties: { type: "string" },
     example: {
-      tm: 'string',
-      ru: 'string',
+      tm: "string",
+      ru: "string",
     },
   })
   name: Record<string, string>;

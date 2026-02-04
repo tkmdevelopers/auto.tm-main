@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   BelongsTo,
   Column,
@@ -6,10 +6,10 @@ import {
   ForeignKey,
   Model,
   Table,
-} from 'sequelize-typescript';
-import { Posts } from 'src/post/post.entity';
+} from "sequelize-typescript";
+import { Posts } from "src/post/post.entity";
 
-@Table({ tableName: 'file' })
+@Table({ tableName: "file" })
 export class File extends Model {
   @Column({
     primaryKey: true,

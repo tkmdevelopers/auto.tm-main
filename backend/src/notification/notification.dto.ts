@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { NotificationType, NotificationStatus } from './notification.entity';
+import { ApiProperty } from "@nestjs/swagger";
+import { NotificationType, NotificationStatus } from "./notification.entity";
 
 export class notification {
   @ApiProperty()
@@ -137,8 +137,8 @@ export class FindAllNotificationsDto {
   @ApiProperty({ required: false })
   sortBy?: string;
 
-  @ApiProperty({ required: false, enum: ['ASC', 'DESC'] })
-  sortOrder?: 'ASC' | 'DESC';
+  @ApiProperty({ required: false, enum: ["ASC", "DESC"] })
+  sortOrder?: "ASC" | "DESC";
 
   @ApiProperty({ required: false, type: Number })
   page?: number;

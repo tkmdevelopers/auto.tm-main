@@ -9,6 +9,11 @@ services:
       POSTGRES_DB: auto_tm
     volumes:
       - db_data:/var/lib/postgresql/data
+    ports:
+      # Expose Postgres to the host so local CLI scripts (migrations/seeds) can connect.
+      # If you already have a local Postgres on 5432, set DATABASE_PORT=5433 in backend/.env
+      # (the API container still uses 5432 internally; see api.environment below).
+      - "${DATABASE_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U auto_tm"]
       interval: 10s
@@ -25,6 +30,8 @@ services:
     environment:
       # Override host so app can reach Postgres service name
       DATABASE_HOST: db
+      # Force internal port (container-to-container). Host port mapping can differ.
+      DATABASE_PORT: 5432
       PORT: 3080
     volumes:
       - ./uploads:/app/uploads

@@ -13,78 +13,125 @@ import {
   UseGuards,
   UploadedFile,
   UseInterceptors,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
   ApiResponse,
   ApiSecurity,
   ApiTags,
   ApiConsumes,
   ApiOperation,
-} from '@nestjs/swagger';
-import { AuthService } from './auth.service';
+  ApiBody,
+} from "@nestjs/swagger";
+import { AuthService } from "./auth.service";
 import {
-  CreateUser,
   DeleteOne,
   FindOne,
   firebaseDto,
-  LoginUser,
   Update,
   UpdateUser,
-} from './auth.dto';
-import { Request, Response } from 'express';
-import { AuthGuard } from 'src/guards/auth.gurad';
-import { RefreshGuard } from 'src/guards/refresh.guard';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import { AdminGuard } from 'src/guards/admin.guard';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { muletrOptionsForUsers } from 'src/photo/config/multer.config';
+} from "./auth.dto";
+import { Request, Response } from "express";
+import { AuthGuard } from "src/guards/auth.gurad";
+import { RefreshGuard } from "src/guards/refresh.guard";
+import { AdminGuard } from "src/guards/admin.guard";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { muletrOptionsForUsers } from "src/photo/config/multer.config";
 
-@Controller({ path: 'auth', version: '1' })
-@ApiTags('Auth')
+/**
+ * Auth Controller
+ *
+ * OTP-only authentication flow:
+ * 1. POST /api/v1/otp/send?phone=... - Request OTP
+ * 2. GET /api/v1/otp/verify?phone=...&otp=... - Verify OTP, get tokens
+ * 3. GET /api/v1/auth/me - Get current user (with token)
+ * 4. GET /api/v1/auth/refresh - Refresh access token
+ *
+ * Note: Email/password login has been removed. All authentication
+ * now flows through the OTP endpoints.
+ */
+@Controller({ path: "auth", version: "1" })
+@ApiTags("Auth")
 export class AuthController {
   constructor(private authService: AuthService) {}
+
+  // ============================================================
+  // Token Management
+  // ============================================================
+
+  @Get("refresh")
+  @ApiOperation({ summary: "Refresh access token using refresh token" })
+  @ApiSecurity("token")
+  @UseGuards(RefreshGuard)
   @ApiResponse({
-    status: HttpStatus.NOT_ACCEPTABLE,
-    description: 'Fill all required fields',
+    status: HttpStatus.OK,
+    description: "New access token returned",
     schema: {
       example: {
-        response: 'Fill all required fields',
-        status: HttpStatus.NOT_ACCEPTABLE,
-        message: 'Fill all required fields',
-        name: 'HttpException',
+        accessToken: "new-jwt-access-token",
       },
     },
   })
-  @ApiResponse({
-    status: HttpStatus.INTERNAL_SERVER_ERROR,
-    description: 'Interval Server Error',
-    schema: {
-      example: {
-        message: 'Interval Server error',
-        name: '(Message Depends on Sequelize Configuration',
-      },
-    },
-  })
-  @Post('register')
-  async create(
-    @Body() body: CreateUser,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    return this.authService.create(body, res, req);
+  async refresh(@Req() req: Request) {
+    return this.authService.refresh(req);
   }
-  @Post('login')
-  async login(
-    @Body() body: LoginUser,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    return this.authService.login(body, res, req);
-  }
+
+  @Get("/logout")
+  @ApiOperation({ summary: "Logout (invalidate refresh token)" })
   @UseGuards(AuthGuard)
-  @ApiSecurity('token')
+  @ApiSecurity("token")
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Logged out successfully",
+    schema: {
+      example: {
+        message: "Successfully logged out",
+      },
+    },
+  })
+  async logout(@Req() req: Request, @Res() res: Response) {
+    return this.authService.logout(req, res);
+  }
+
+  // ============================================================
+  // Current User
+  // ============================================================
+
+  @Get("/me")
+  @ApiOperation({ summary: "Get current authenticated user" })
+  @UseGuards(AuthGuard)
+  @ApiSecurity("token")
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Current user data",
+    schema: {
+      example: {
+        uuid: "user-uuid",
+        name: "User Name",
+        phone: "+99362120020",
+        location: "Aşgabat",
+        role: "user",
+        avatar: null,
+      },
+    },
+  })
+  async me(@Req() req: Request, @Res() res: Response) {
+    return this.authService.me(req, res);
+  }
+
   @Put()
+  @ApiOperation({ summary: "Update current user profile" })
+  @UseGuards(AuthGuard)
+  @ApiSecurity("token")
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Profile updated successfully",
+    schema: {
+      example: {
+        message: "Successfully changed",
+        uuid: "user-uuid",
+      },
+    },
+  })
   async patch(
     @Body() body: UpdateUser,
     @Res() res: Response,
@@ -92,58 +139,24 @@ export class AuthController {
   ) {
     return this.authService.patch(body, req, res);
   }
-  @Get('refresh')
-  @ApiSecurity('token')
-  @UseGuards(RefreshGuard)
-  async refresh(@Req() req: Request) {
-    return this.authService.refresh(req);
-  }
 
-  @Get('/me')
+  // ============================================================
+  // Firebase Token
+  // ============================================================
+
+  @Put("setFirebase")
+  @ApiOperation({ summary: "Set Firebase Cloud Messaging token" })
   @UseGuards(AuthGuard)
-  @ApiSecurity('token')
-  async me(@Req() req: Request, @Res() res: Response) {
-    return this.authService.me(req, res);
-  }
-  @Get('/users')
-  @UseGuards(AuthGuard)
-  @UseGuards(AdminGuard)
-  @ApiSecurity('token')
-  async findAll(@Req() req: Request, @Res() res: Response) {
-    return this.authService.findAll(req, res);
-  }
-  @Get('/:uuid')
-  @UseGuards(AuthGuard)
-  @UseGuards(AdminGuard)
-  @ApiSecurity('token')
-  async findOne(
-    @Param() param: FindOne,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    return this.authService.findOne(param, req, res);
-  }
-  @Patch('/:uuid')
-  @UseGuards(AuthGuard)
-  @UseGuards(AdminGuard)
-  @ApiSecurity('token')
-  async update(
-    @Param() param: FindOne,
-    @Body() body: Update,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    return this.authService.update(param, body, req, res);
-  }
-  @Get('/logout')
-  @UseGuards(AuthGuard)
-  @ApiSecurity('token')
-  async logout(@Req() req: Request, @Res() res: Response) {
-    return this.authService.logout(req, res);
-  }
-  @Put('setFirebase')
-  @UseGuards(AuthGuard)
-  @ApiSecurity('token')
+  @ApiSecurity("token")
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Firebase token set successfully",
+    schema: {
+      example: {
+        message: "Firebase token set successfully",
+      },
+    },
+  })
   async setFirebaseToken(
     @Body() body: firebaseDto,
     @Req() req: Request,
@@ -151,25 +164,18 @@ export class AuthController {
   ) {
     return this.authService.setFirebase(body, req, res);
   }
-  @Delete('/:uuid')
-  @UseGuards(AuthGuard)
-  @UseGuards(AdminGuard)
-  @ApiSecurity('token')
-  async delete(
-    @Param() param: DeleteOne,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    return this.authService.deleteOne(param, req, res);
-  }
 
+  // ============================================================
+  // Avatar Management
+  // ============================================================
+
+  @Post("avatar")
+  @ApiOperation({ summary: "Upload user avatar" })
   @UseGuards(AuthGuard)
-  @ApiSecurity('token')
-  @Post('avatar')
-  @UseInterceptors(FileInterceptor('file', muletrOptionsForUsers))
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload user avatar' })
-  @ApiResponse({ status: 200, description: 'Avatar uploaded successfully' })
+  @ApiSecurity("token")
+  @UseInterceptors(FileInterceptor("file", muletrOptionsForUsers))
+  @ApiConsumes("multipart/form-data")
+  @ApiResponse({ status: 200, description: "Avatar uploaded successfully" })
   async uploadAvatar(
     @UploadedFile() file: Express.Multer.File,
     @Req() req: Request,
@@ -178,12 +184,65 @@ export class AuthController {
     return this.authService.uploadAvatar(file, req, res);
   }
 
+  @Delete("avatar")
+  @ApiOperation({ summary: "Delete user avatar" })
   @UseGuards(AuthGuard)
-  @ApiSecurity('token')
-  @Delete('avatar')
-  @ApiOperation({ summary: 'Delete user avatar' })
-  @ApiResponse({ status: 200, description: 'Avatar deleted successfully' })
+  @ApiSecurity("token")
+  @ApiResponse({ status: 200, description: "Avatar deleted successfully" })
   async deleteAvatar(@Req() req: Request, @Res() res: Response) {
     return this.authService.deleteAvatar(req, res);
+  }
+
+  // ============================================================
+  // Admin Routes
+  // ============================================================
+
+  @Get("/users")
+  @ApiOperation({ summary: "List all users (admin only)" })
+  @UseGuards(AuthGuard)
+  @UseGuards(AdminGuard)
+  @ApiSecurity("token")
+  async findAll(@Req() req: Request, @Res() res: Response) {
+    return this.authService.findAll(req, res);
+  }
+
+  @Get("/:uuid")
+  @ApiOperation({ summary: "Get user by ID (admin only)" })
+  @UseGuards(AuthGuard)
+  @UseGuards(AdminGuard)
+  @ApiSecurity("token")
+  async findOne(
+    @Param() param: FindOne,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    return this.authService.findOne(param, req, res);
+  }
+
+  @Patch("/:uuid")
+  @ApiOperation({ summary: "Update user (admin only)" })
+  @UseGuards(AuthGuard)
+  @UseGuards(AdminGuard)
+  @ApiSecurity("token")
+  async update(
+    @Param() param: FindOne,
+    @Body() body: Update,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    return this.authService.update(param, body, req, res);
+  }
+
+  @Delete("/:uuid")
+  @ApiOperation({ summary: "Delete user (admin only)" })
+  @UseGuards(AuthGuard)
+  @UseGuards(AdminGuard)
+  @ApiSecurity("token")
+  async delete(
+    @Param() param: DeleteOne,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    return this.authService.deleteOne(param, req, res);
   }
 }

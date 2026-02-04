@@ -1,8 +1,8 @@
-import { File } from './file.entity';
+import { File } from "./file.entity";
 
 export const FileProvider = [
   {
-    provide: 'FILE_REPOSITORY',
+    provide: "FILE_REPOSITORY",
     useValue: File,
   },
 ];

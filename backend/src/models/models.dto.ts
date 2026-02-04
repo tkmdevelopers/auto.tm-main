@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class FindAllModels {
   @ApiProperty({ required: false })
@@ -10,7 +10,7 @@ export class FindAllModels {
   brand: string;
   @ApiProperty({ required: false })
   post: string;
-  @ApiProperty({ required: false, enum: ['asc', 'desc'] })
+  @ApiProperty({ required: false, enum: ["asc", "desc"] })
   sortAs: string;
   @ApiProperty({ required: false })
   search: string;

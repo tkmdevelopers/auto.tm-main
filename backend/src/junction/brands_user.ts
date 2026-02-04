@@ -1,11 +1,11 @@
-import { Table, Column, Model, ForeignKey } from 'sequelize-typescript';
-import { User } from 'src/auth/auth.entity';
-import { Brands } from 'src/brands/brands.entity';
-import { Photo } from 'src/photo/photo.entity';
-import { Posts } from 'src/post/post.entity';
+import { Table, Column, Model, ForeignKey } from "sequelize-typescript";
+import { User } from "src/auth/auth.entity";
+import { Brands } from "src/brands/brands.entity";
+import { Photo } from "src/photo/photo.entity";
+import { Posts } from "src/post/post.entity";
 
 @Table({
-  tableName: 'brands_user',
+  tableName: "brands_user",
   createdAt: false,
   updatedAt: false, // This is a common naming convention
 })

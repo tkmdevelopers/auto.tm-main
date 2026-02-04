@@ -1,8 +1,8 @@
-import { Photo } from './photo.entity';
+import { Photo } from "./photo.entity";
 
 export const PhotoProvider = [
   {
-    provide: 'PHOTO_REPOSITORY',
+    provide: "PHOTO_REPOSITORY",
     useValue: Photo,
   },
 ];

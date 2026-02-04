@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class CreateVlogDto {
   @ApiProperty()
@@ -21,35 +21,35 @@ export class FindAllVlogDto {
   @ApiProperty({ required: false })
   userId?: string;
 
-  @ApiProperty({ required: false, enum: ['Pending', 'Accepted', 'Declined'] })
-  status?: 'Pending' | 'Accepted' | 'Declined';
+  @ApiProperty({ required: false, enum: ["Pending", "Accepted", "Declined"] })
+  status?: "Pending" | "Accepted" | "Declined";
 
-  @ApiProperty({ required: false, description: 'Search by title' })
+  @ApiProperty({ required: false, description: "Search by title" })
   search?: string;
 
   @ApiProperty({
     required: false,
-    description: 'Sort by column (e.g., title, createdAt)',
+    description: "Sort by column (e.g., title, createdAt)",
   })
   sortBy?: string;
 
   @ApiProperty({
     required: false,
-    enum: ['ASC', 'DESC'],
-    description: 'Sort direction',
+    enum: ["ASC", "DESC"],
+    description: "Sort direction",
   })
-  sortOrder?: 'ASC' | 'DESC';
+  sortOrder?: "ASC" | "DESC";
 
   @ApiProperty({
     required: false,
-    description: 'Page number for pagination',
+    description: "Page number for pagination",
     type: Number,
   })
   page?: number;
 
   @ApiProperty({
     required: false,
-    description: 'Items per page for pagination',
+    description: "Items per page for pagination",
     type: Number,
   })
   limit?: number;

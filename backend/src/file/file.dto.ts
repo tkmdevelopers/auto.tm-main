@@ -1,7 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class CreateFile {
-  @ApiProperty({ type: 'string', format: 'binary' })
+  @ApiProperty({ type: "string", format: "binary" })
   file: any;
   @ApiProperty()
   postId: string;
