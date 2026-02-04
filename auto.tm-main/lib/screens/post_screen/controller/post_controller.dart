@@ -669,6 +669,26 @@ class PostController extends GetxController {
       return null;
     }
 
+    // ===== CLIENT-SIDE VALIDATION =====
+    // Validate price
+    final priceValue = double.tryParse(price.text);
+    if (priceValue == null || priceValue.isNaN || priceValue < 0) {
+      Get.snackbar('Error', 'Please enter a valid price'.tr);
+      return null;
+    }
+
+    // Validate brand selection
+    if (selectedBrandUuid.value.isEmpty) {
+      Get.snackbar('Error', 'Please select a brand'.tr);
+      return null;
+    }
+
+    // Validate model selection
+    if (selectedModelUuid.value.isEmpty) {
+      Get.snackbar('Error', 'Please select a model'.tr);
+      return null;
+    }
+
     try {
       final token = box.read('ACCESS_TOKEN');
       final fullPhone = '+' + _buildFullPhoneDigits();
@@ -680,8 +700,12 @@ class PostController extends GetxController {
         },
         body: jsonEncode({
           // Backend expects brand/model UUID fields named brandsId / modelsId
-          'brandsId': selectedBrandUuid.value,
-          'modelsId': selectedModelUuid.value,
+          'brandsId': selectedBrandUuid.value.isNotEmpty
+              ? selectedBrandUuid.value
+              : null,
+          'modelsId': selectedModelUuid.value.isNotEmpty
+              ? selectedModelUuid.value
+              : null,
           'condition': selectedCondition.value,
           'transmission': selectedTransmission.value,
           'engineType': selectedEngineType.value,
@@ -697,8 +721,10 @@ class PostController extends GetxController {
           'exchange': exchange.value,
           'milleage': double.tryParse(milleage.text) ?? 0,
           'vin': vinCode.text,
-          'price': double.tryParse(price.text) ?? 0,
-          'currency': selectedCurrency.value,
+          'price': priceValue, // Use validated price
+          'currency': selectedCurrency.value.isNotEmpty
+              ? selectedCurrency.value
+              : 'TMT',
           'location': selectedLocation.value,
           'phone': fullPhone,
           'description': description.text,
@@ -718,10 +744,25 @@ class PostController extends GetxController {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return data['uuid']?.toString();
+      } else {
+        // Log the error response for debugging
+        final errorData = jsonDecode(response.body);
+        final errorMsg =
+            errorData['error'] ?? errorData['message'] ?? 'Unknown error';
+        debugPrint('Post creation failed (${response.statusCode}): $errorMsg');
+        uploadError.value = errorMsg;
+        Get.snackbar(
+          'error'.tr,
+          errorMsg,
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Get.theme.colorScheme.error,
+          colorText: Get.theme.colorScheme.onError,
+        );
       }
       return null;
     } catch (e) {
       debugPrint('Post creation error: $e');
+      uploadError.value = e.toString();
       return null;
     }
   }

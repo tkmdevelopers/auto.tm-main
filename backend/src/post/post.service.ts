@@ -353,32 +353,81 @@ export class PostService {
         vin,
         year,
       } = body;
-      const rate: any = await Convert.findOne({ where: { label: currency } });
-      const covertedCurrency = "TMT";
-      const convertedPrice = Math.ceil(rate?.rate * price);
+
+      // ===== INPUT VALIDATION =====
+      // Validate price is a valid number
+      const numericPrice = Number(price);
+      if (isNaN(numericPrice) || numericPrice < 0) {
+        return res.status(400).json({
+          message: "Invalid price value",
+          error: "Price must be a valid non-negative number",
+        });
+      }
+
+      // Validate brandsId exists (if provided)
+      if (brandsId) {
+        const brandExists = await this.brands.findOne({ where: { uuid: brandsId } });
+        if (!brandExists) {
+          return res.status(400).json({
+            message: "Invalid brand",
+            error: `Brand with ID '${brandsId}' does not exist. Please select a valid brand.`,
+          });
+        }
+      }
+
+      // Validate modelsId exists (if provided)
+      if (modelsId) {
+        const modelExists = await this.models.findOne({ where: { uuid: modelsId } });
+        if (!modelExists) {
+          return res.status(400).json({
+            message: "Invalid model",
+            error: `Model with ID '${modelsId}' does not exist. Please select a valid model.`,
+          });
+        }
+      }
+
+      // ===== CURRENCY CONVERSION =====
+      // Fetch conversion rate - default to 1.0 if currency not found (assume TMT)
+      const rate: any = await Convert.findOne({ where: { label: currency || 'TMT' } });
+      const conversionRate = rate?.rate ?? 1.0; // Default to 1:1 if no rate found
+      const convertedPrice = Math.ceil(conversionRate * numericPrice);
+
+      // Safety check: ensure convertedPrice is valid
+      if (isNaN(convertedPrice) || !isFinite(convertedPrice)) {
+        console.error('[PostService.create] Invalid convertedPrice:', {
+          currency,
+          rate: rate?.rate,
+          price: numericPrice,
+          convertedPrice,
+        });
+        return res.status(400).json({
+          message: "Price conversion failed",
+          error: "Unable to convert price. Please try again with currency TMT.",
+        });
+      }
       const new_post = await this.posts.create({
         uuid: uuidv4(),
-        brandsId,
+        brandsId: brandsId || null,  // Explicitly null if empty string
         location,
-        modelsId,
+        modelsId: modelsId || null,  // Explicitly null if empty string
         condition,
         vin,
         year,
         transmission,
-        originalPrice: Number(price),
-        price: Number(convertedPrice),
-        subscriptionId,
+        originalPrice: numericPrice,
+        price: convertedPrice,
+        subscriptionId: subscriptionId || null,
         exchange,
         credit,
-        originalCurrency: currency,
+        originalCurrency: currency || 'TMT',
         personalInfo: {
           name: personalInfo?.name,
           location: personalInfo?.location,
           phone: phone,
           region: (personalInfo as any)?.region,
         },
-        milleage: milleage,
-        enginePower: enginePower,
+        milleage: Number(milleage) || 0,
+        enginePower: Number(enginePower) || 0,
         engineType,
         currency: "TMT",
         description,
