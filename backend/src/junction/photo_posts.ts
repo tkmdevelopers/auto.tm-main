@@ -13,8 +13,10 @@ export class PhotoPosts extends Model {
   id: number;
 
   @ForeignKey(() => Posts)
+  @Column
   postId: string;
 
   @ForeignKey(() => Photo)
+  @Column
   photoUuid: string;
 }

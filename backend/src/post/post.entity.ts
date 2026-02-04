@@ -98,7 +98,7 @@ export class Posts extends Model {
   @HasMany(() => Comments)
   comments: Comments[];
   @ApiProperty()
-  @BelongsToMany(() => Photo, () => PhotoPosts, "postId")
+  @BelongsToMany(() => Photo, () => PhotoPosts, "postId", "photoUuid")
   photo: Photo[];
   @HasOne(() => Video)
   video: Video;

@@ -386,6 +386,22 @@ export class PostService {
         }
       }
 
+      // Validate userId exists (from JWT token)
+      const userId = req?.uuid;
+      if (!userId) {
+        return res.status(401).json({
+          message: "Unauthorized",
+          error: "User authentication required. Please login again.",
+        });
+      }
+      const userExists = await this.user.findOne({ where: { uuid: userId } });
+      if (!userExists) {
+        return res.status(400).json({
+          message: "User not found",
+          error: "Your user account was not found. Please login again or contact support.",
+        });
+      }
+
       // ===== CURRENCY CONVERSION =====
       // Fetch conversion rate - default to 1.0 if currency not found (assume TMT)
       const rate: any = await Convert.findOne({ where: { label: currency || 'TMT' } });
@@ -432,7 +448,7 @@ export class PostService {
         currency: "TMT",
         description,
         status: null,
-        userId: req?.uuid,
+        userId,  // Use validated userId
       });
       return res.status(200).json({
         message: "New Post successfully created",

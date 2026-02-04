@@ -15,6 +15,7 @@
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "config:generate": "node scripts/generate-config.js",
     "db:check-schema": "node scripts/check-db-schema.js",
+    "db:validate": "node scripts/validate-entities.js",
     "db:fix-users": "node scripts/fix-users-schema.js",
     "db:seed:all": "node scripts/seed-all.js",
     "db:seed:currencies": "node dumpCurrencies.js",
