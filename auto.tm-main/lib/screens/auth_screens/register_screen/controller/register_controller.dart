@@ -6,7 +6,6 @@ import 'package:auto_tm/services/auth/auth_service.dart';
 import 'package:auto_tm/services/auth/phone_formatter.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
 import 'package:auto_tm/services/notification_sevice/notification_service.dart';
-import 'package:auto_tm/services/token_service/token_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -15,7 +14,6 @@ import 'package:get_storage/get_storage.dart';
 import 'package:auto_tm/utils/logger.dart';
 
 class RegisterPageController extends GetxController {
-  final tokenService = Get.put(TokenService());
   final notificationService = Get.find<NotificationService>();
   final TextEditingController phoneController = TextEditingController();
   final FocusNode phoneFocus = FocusNode();
@@ -100,13 +98,7 @@ class RegisterPageController extends GetxController {
       isLoading.value = true;
       final result = await AuthService.to.verifyOtp(sub, code);
       if (result.success) {
-        // Persist tokens only if provided (some backends may signal success first then deliver tokens later)
-        if (result.accessToken != null) {
-          tokenService.saveToken(result.accessToken!, 'ACCESS_TOKEN');
-        }
-        if (result.refreshToken != null) {
-          tokenService.saveToken(result.refreshToken!, 'REFRESH_TOKEN');
-        }
+        // Tokens are persisted by AuthService via TokenStore.
         // Fire-and-forget device token registration to avoid blocking navigation
         unawaited(_registerDeviceToken());
         notificationService.enableNotifications();
@@ -124,7 +116,8 @@ class RegisterPageController extends GetxController {
         storage.write('user_phone', sub); // store subscriber only
         // Ensure default location persisted for brand new users
         final existingLoc = storage.read('user_location');
-        if (existingLoc == null || (existingLoc is String && existingLoc.isEmpty)) {
+        if (existingLoc == null ||
+            (existingLoc is String && existingLoc.isEmpty)) {
           storage.write('user_location', ProfileController.defaultLocation);
         }
         // Notify custom handler first

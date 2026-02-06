@@ -5,15 +5,14 @@ import 'package:auto_tm/screens/home_screen/home_screen.dart';
 import 'package:auto_tm/screens/post_screen/post_check_page.dart';
 import 'package:auto_tm/screens/profile_screen/profile_check_page.dart';
 import 'package:auto_tm/ui_components/images.dart';
-import 'package:auto_tm/services/token_service/token_service.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class BottomNavController extends GetxController {
   var selectedIndex = 0.obs;
-  final tokenService = Get.put(TokenService());
-  
-  void changeIndex(int index) {
+
+  Future<void> changeIndex(int index) async {
     // Prevent reopening or navigating if already on the selected tab
     if (selectedIndex.value == index) {
       if (index == 0) {
@@ -28,8 +27,8 @@ class BottomNavController extends GetxController {
     // Handle navigation and token checks only when changing tab
     // Protected tabs: Post (2) & Profile (4)
     if (index == 2 || index == 4) {
-      final token = tokenService.getToken();
-      if (token == null || token.isEmpty) {
+      final hasTokens = await TokenStore.to.hasTokens;
+      if (!hasTokens) {
         Get.toNamed('/register');
         return; // Don't change selectedIndex if redirecting
       }
@@ -49,11 +48,11 @@ class BottomNavController extends GetxController {
   ];
 
   final List selectedIcons = [
-    AppImages.searchF,     // home
-    AppImages.favouriteF,  // favourites
-    AppImages.postF,       // post (center)
-    AppImages.chatF,       // blog
-    AppImages.profileO,    // profile
+    AppImages.searchF, // home
+    AppImages.favouriteF, // favourites
+    AppImages.postF, // post (center)
+    AppImages.chatF, // blog
+    AppImages.profileO, // profile
   ];
   final List unSelectedIcons = [
     AppImages.searchO,

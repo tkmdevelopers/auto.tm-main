@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:auto_tm/services/auth/auth_service.dart';
@@ -690,13 +691,14 @@ class PostController extends GetxController {
     }
 
     try {
-      final token = box.read('ACCESS_TOKEN');
+      final token = await TokenStore.to.accessToken;
       final fullPhone = '+' + _buildFullPhoneDigits();
       final response = await http.post(
         Uri.parse(ApiKey.postPostsKey),
         headers: {
           'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
+          if (token != null && token.isNotEmpty)
+            'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
           // Backend expects brand/model UUID fields named brandsId / modelsId
@@ -780,13 +782,14 @@ class PostController extends GetxController {
     });
 
     try {
-      final token = box.read('ACCESS_TOKEN');
+      final token = await TokenStore.to.accessToken;
       final response = await http
           .get(
             Uri.parse(ApiKey.getMyPostsKey),
             headers: {
               'Content-Type': 'application/json',
-              if (token != null) 'Authorization': 'Bearer $token',
+              if (token != null && token.isNotEmpty)
+                'Authorization': 'Bearer $token',
             },
           )
           .timeout(const Duration(seconds: 15));
@@ -830,12 +833,13 @@ class PostController extends GetxController {
   /// Delete a specific post
   Future<void> deleteMyPost(String uuid) async {
     try {
-      final token = box.read('ACCESS_TOKEN');
+      final token = await TokenStore.to.accessToken;
       final response = await http.delete(
         Uri.parse('${ApiKey.getPostsKey}/$uuid'),
         headers: {
           'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
+          if (token != null && token.isNotEmpty)
+            'Authorization': 'Bearer $token',
         },
       );
 
@@ -918,10 +922,13 @@ class PostController extends GetxController {
         return true;
       }
 
-      final token = box.read('ACCESS_TOKEN');
+      final token = await TokenStore.to.accessToken;
       final client = dio.Dio(
         dio.BaseOptions(
-          headers: {'Authorization': token != null ? 'Bearer $token' : ''},
+          headers: {
+            if (token != null && token.isNotEmpty)
+              'Authorization': 'Bearer $token',
+          },
           connectTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(minutes: 2),
         ),
@@ -987,11 +994,14 @@ class PostController extends GetxController {
     try {
       final b64 = snap.photoBase64[index];
       final bytes = base64Decode(b64);
-      final token = box.read('ACCESS_TOKEN');
+      final token = await TokenStore.to.accessToken;
 
       final client = dio.Dio(
         dio.BaseOptions(
-          headers: {'Authorization': token != null ? 'Bearer $token' : ''},
+          headers: {
+            if (token != null && token.isNotEmpty)
+              'Authorization': 'Bearer $token',
+          },
           connectTimeout: const Duration(seconds: 25),
           receiveTimeout: const Duration(seconds: 60),
         ),
@@ -1060,8 +1070,8 @@ class PostController extends GetxController {
   }
 
   Future<void> _deleteCreatedPostCascade(String postUuid) async {
-    final token = box.read('ACCESS_TOKEN');
-    if (token == null) return;
+    final token = await TokenStore.to.accessToken;
+    if (token == null || token.isEmpty) return;
 
     try {
       final uri = Uri.parse('${ApiKey.getPostsKey}/$postUuid');
@@ -1212,7 +1222,7 @@ class PostController extends GetxController {
 
     isLoadingB.value = true;
     try {
-      final token = box.read('ACCESS_TOKEN');
+      final token = await TokenStore.to.accessToken;
 
       if (!forceRefresh && brands.isNotEmpty && brandsFromCache.value) {
         final fresh = _isBrandCacheFresh();
@@ -1227,7 +1237,8 @@ class PostController extends GetxController {
             Uri.parse(ApiKey.getBrandsKey),
             headers: {
               'Content-Type': 'application/json',
-              if (token != null) 'Authorization': 'Bearer $token',
+              if (token != null && token.isNotEmpty)
+                'Authorization': 'Bearer $token',
             },
           )
           .timeout(const Duration(seconds: 10));
@@ -1275,7 +1286,7 @@ class PostController extends GetxController {
     if (showLoading) isLoadingM.value = true;
 
     try {
-      final token = box.read('ACCESS_TOKEN');
+      final token = await TokenStore.to.accessToken;
       final uri = Uri.parse('${ApiKey.getModelsKey}?filter=$brandUuid');
 
       if (!forceRefresh) {
@@ -1296,7 +1307,8 @@ class PostController extends GetxController {
             uri,
             headers: {
               'Content-Type': 'application/json',
-              if (token != null) 'Authorization': 'Bearer $token',
+              if (token != null && token.isNotEmpty)
+                'Authorization': 'Bearer $token',
             },
           )
           .timeout(const Duration(seconds: 10));
@@ -1505,22 +1517,6 @@ class PostController extends GetxController {
 
   // Token refresh is now handled by the Dio ApiClient interceptor.
   // The duplicated refreshAccessToken() method has been removed.
-
-  // ---- Safe navigation to login (avoid mid-build tree mutation) ----
-  bool _navigatedToLogin = false;
-  void _navigateToLoginOnce() {
-    if (_navigatedToLogin) return;
-    _navigatedToLogin = true;
-    Future.microtask(() {
-      if (Get.currentRoute != '/login') {
-        try {
-          Get.offAllNamed('/login');
-        } catch (_) {
-          // Optionally log
-        }
-      }
-    });
-  }
 
   // Phone verification methods
   Future<void> sendOtp() async {
@@ -2214,13 +2210,14 @@ class PostController extends GetxController {
 
   Future<void> _maybeFetchBrands() async {
     if (brands.isNotEmpty) return;
-    final token = box.read('ACCESS_TOKEN');
+    final token = await TokenStore.to.accessToken;
     try {
       final resp = await http.get(
         Uri.parse(ApiKey.getBrandsKey),
         headers: {
           'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
+          if (token != null && token.isNotEmpty)
+            'Authorization': 'Bearer $token',
         },
       );
       if (resp.statusCode == 200) {
@@ -2240,13 +2237,14 @@ class PostController extends GetxController {
 
   Future<void> _maybeFetchModels() async {
     if (models.isNotEmpty) return;
-    final token = box.read('ACCESS_TOKEN');
+    final token = await TokenStore.to.accessToken;
     try {
       final resp = await http.get(
         Uri.parse(ApiKey.getModelsKey),
         headers: {
           'Content-Type': 'application/json',
-          if (token != null) 'Authorization': 'Bearer $token',
+          if (token != null && token.isNotEmpty)
+            'Authorization': 'Bearer $token',
         },
       );
       if (resp.statusCode == 200) {

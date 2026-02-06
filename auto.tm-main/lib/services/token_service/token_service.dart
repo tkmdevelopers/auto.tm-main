@@ -1,22 +1,22 @@
-import 'package:get_storage/get_storage.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
 
+@Deprecated('Use TokenStore instead. This wrapper is kept for compatibility.')
 class TokenService {
-  final GetStorage _storage = GetStorage();
-
-  void saveToken(String token, String key) {
-    _storage.write(key, token);
+  Future<void> saveToken(String token, String key) async {
+    if (key == 'ACCESS_TOKEN') {
+      await TokenStore.to.updateAccessToken(token);
+    } else if (key == 'REFRESH_TOKEN') {
+      await TokenStore.to.updateRefreshToken(token);
+    }
   }
 
-  String? getToken() {
-    return _storage.read('ACCESS_TOKEN');
+  Future<String?> getToken() => TokenStore.to.accessToken;
+
+  Future<void> deleteToken() async {
+    await TokenStore.to.clearAll();
   }
 
-  void deleteToken() {
-    _storage.remove('ACCESS_TOKEN');
-    _storage.remove('REFRESH_TOKEN');
-  }
-
-  void clearStorage() {
-    _storage.erase(); // Be careful: this wipes all persisted data (including preferences)
+  Future<void> clearStorage() async {
+    await TokenStore.to.clearAll();
   }
 }

@@ -123,6 +123,18 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 
 # Production flag
 NODE_ENV=production
+
+# OTP test controls (use ONLY if you want test OTP in production)
+OTP_TEST_MODE=true
+OTP_TEST_ALLOW_IN_PROD=true
+TEST_OTP_NUMBERS_PROD=99361999999,99361999991
+OTP_TEST_CODE_RESPONSE=true
+
+⚠️ Only allow test OTPs for a short allowlist. Disable once testing is done.
+
+# Per-phone OTP rate limiting
+OTP_PHONE_RATE_LIMIT_WINDOW_MS=60000
+OTP_PHONE_RATE_LIMIT_MAX=3
 ```
 
 **Generate random secrets:**

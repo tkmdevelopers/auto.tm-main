@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:auto_tm/screens/search_screen/model/search_model.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:auto_tm/utils/key.dart';
 
@@ -98,14 +98,12 @@ import 'package:auto_tm/utils/key.dart';
 //     searchController.dispose();
 //     searchFocus.dispose();
 //     super.onClose();
-//   } 
+//   }
 // }
-
 
 class SearchScreenController extends GetxController {
   final searchTextController = TextEditingController();
   final searchTextFocus = FocusNode();
-  final box = GetStorage();
   final RxList<SearchModel> hints = <SearchModel>[].obs;
   final RxBool isLoading = false.obs;
   final RxBool hasMore = true.obs;
@@ -159,11 +157,15 @@ class SearchScreenController extends GetxController {
     }
 
     try {
+      final accessToken = await TokenStore.to.accessToken;
       final response = await http.get(
-        Uri.parse('${ApiKey.apiKey}brands/search?search=$query&limit=$limit&offset=$offset'),
+        Uri.parse(
+          '${ApiKey.apiKey}brands/search?search=$query&limit=$limit&offset=$offset',
+        ),
         headers: {
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+          if (accessToken != null && accessToken.isNotEmpty)
+            'Authorization': 'Bearer $accessToken',
         },
       );
 
@@ -202,12 +204,16 @@ class SearchScreenController extends GetxController {
     indexBuilding.value = true;
     try {
       // Try broad fetch with empty search (backend should return list)
-  final uri = Uri.parse('${ApiKey.apiKey}brands/search?search=&limit=$_maxIndexFetch&offset=0');
+      final uri = Uri.parse(
+        '${ApiKey.apiKey}brands/search?search=&limit=$_maxIndexFetch&offset=0',
+      );
+      final accessToken = await TokenStore.to.accessToken;
       final resp = await http.get(
         uri,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+          if (accessToken != null && accessToken.isNotEmpty)
+            'Authorization': 'Bearer $accessToken',
         },
       );
       if (resp.statusCode == 200) {
@@ -246,7 +252,13 @@ class SearchScreenController extends GetxController {
       final brand = m.brandLabel.toLowerCase();
       final model = m.modelLabel.toLowerCase();
       final combo = '$brand $model';
-      final score = _score(tokens, brand, model, combo, m.compare.toLowerCase());
+      final score = _score(
+        tokens,
+        brand,
+        model,
+        combo,
+        m.compare.toLowerCase(),
+      );
       if (score > 0) {
         scored.add(_ScoredModel(m, score));
       }
@@ -259,11 +271,20 @@ class SearchScreenController extends GetxController {
 
   List<String> _tokenize(String q) {
     // Insert space between letters followed by digits (e.g., x5 -> x 5)
-    final normalized = q.replaceAllMapped(RegExp(r'([a-zA-Z])([0-9])'), (m) => '${m.group(1)} ${m.group(2)}');
+    final normalized = q.replaceAllMapped(
+      RegExp(r'([a-zA-Z])([0-9])'),
+      (m) => '${m.group(1)} ${m.group(2)}',
+    );
     return normalized.split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
   }
 
-  int _score(List<String> tokens, String brand, String model, String combo, String compare) {
+  int _score(
+    List<String> tokens,
+    String brand,
+    String model,
+    String combo,
+    String compare,
+  ) {
     int total = 0;
     for (final t in tokens) {
       if (brand == t || model == t) {
@@ -278,8 +299,15 @@ class SearchScreenController extends GetxController {
         final dBrand = _levenshtein(t, brand, max: 2);
         final dModel = _levenshtein(t, model, max: 2);
         final dCombo = _levenshtein(t, combo, max: 2);
-        final minD = [dBrand, dModel, dCombo].where((d) => d >= 0).fold<int>(999, (p, c) => c < p ? c : p);
-        if (minD == 1) total += 25; else if (minD == 2) total += 10;
+        final minD = [
+          dBrand,
+          dModel,
+          dCombo,
+        ].where((d) => d >= 0).fold<int>(999, (p, c) => c < p ? c : p);
+        if (minD == 1)
+          total += 25;
+        else if (minD == 2)
+          total += 10;
       }
     }
     return total;

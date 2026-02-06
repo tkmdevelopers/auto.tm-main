@@ -76,6 +76,7 @@ export interface VerifyOtpResult {
   userId?: string;
   message: string;
   requestId?: string;
+  code?: string;
 }
 
 /**
@@ -92,7 +93,14 @@ export interface VerifyOtpResult {
 export class OtpService {
   private readonly config: OtpConfig;
   private readonly testNumbers: Set<string>;
+  private readonly testNumbersProd: Set<string>;
   private readonly testOtpPrefix: string;
+  private readonly phoneRateLimitWindowMs: number;
+  private readonly phoneRateLimitMax: number;
+  private readonly testModeEnabled: boolean;
+  private readonly allowTestInProd: boolean;
+  private readonly isProd: boolean;
+  private readonly exposeTestCode: boolean;
 
   constructor(
     @Inject("USERS_REPOSITORY") private userRepository: typeof User,
@@ -115,8 +123,32 @@ export class OtpService {
       saltRounds: 10,
     };
 
+    this.phoneRateLimitWindowMs = parseInt(
+      this.configService.get("OTP_PHONE_RATE_LIMIT_WINDOW_MS") || "60000",
+      10,
+    );
+    this.phoneRateLimitMax = parseInt(
+      this.configService.get("OTP_PHONE_RATE_LIMIT_MAX") || "3",
+      10,
+    );
+
+    this.isProd =
+      (this.configService.get("NODE_ENV") || "").toLowerCase() ===
+      "production";
+    this.testModeEnabled =
+      (this.configService.get("OTP_TEST_MODE") || "false").toLowerCase() ===
+      "true";
+    this.allowTestInProd =
+      (this.configService.get("OTP_TEST_ALLOW_IN_PROD") || "false")
+        .toLowerCase() === "true";
+    this.exposeTestCode =
+      (this.configService.get("OTP_TEST_CODE_RESPONSE") || "false")
+        .toLowerCase() === "true";
+
     // Initialize test numbers from environment
     const envListRaw = this.configService.get("TEST_OTP_NUMBERS") || "";
+    const envListProdRaw =
+      this.configService.get("TEST_OTP_NUMBERS_PROD") || "";
     this.testOtpPrefix =
       this.configService.get("TEST_OTP_PREFIX") || "9936199999";
 
@@ -128,6 +160,13 @@ export class OtpService {
       "99361999993",
       // From environment
       ...envListRaw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ]);
+
+    this.testNumbersProd = new Set<string>([
+      ...envListProdRaw
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
@@ -160,9 +199,18 @@ export class OtpService {
    */
   private isTestNumber(phone: string): boolean {
     const digits = this.getDigits(phone);
-    return (
-      this.testNumbers.has(digits) || digits.startsWith(this.testOtpPrefix)
-    );
+    if (!this.testModeEnabled) return false;
+    if (this.isProd && !this.allowTestInProd) return false;
+
+    if (this.isProd && this.allowTestInProd) {
+      if (this.testNumbersProd.size > 0) {
+        return this.testNumbersProd.has(digits);
+      }
+      return this.testNumbers.has(digits) ||
+          digits.startsWith(this.testOtpPrefix);
+    }
+
+    return this.testNumbers.has(digits) || digits.startsWith(this.testOtpPrefix);
   }
 
   /**
@@ -207,6 +255,29 @@ export class OtpService {
 
     // Check if this is a test number
     const isTestNumber = this.isTestNumber(phone);
+
+    // Per-phone rate limit (independent of IP throttling)
+    if (!isTestNumber) {
+      const windowStart = new Date(
+        Date.now() - this.phoneRateLimitWindowMs,
+      );
+      const recentCount = await this.otpCodeRepository.count({
+        where: {
+          phone,
+          purpose,
+          createdAt: { [Op.gte]: windowStart },
+        },
+      });
+      if (recentCount >= this.phoneRateLimitMax) {
+        throw new HttpException(
+          {
+            code: "OTP_RATE_LIMIT",
+            message: "Too many OTP requests for this phone. Please wait.",
+          },
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
 
     // Generate OTP (deterministic for test numbers)
     const code = isTestNumber ? "12345" : this.generateOtp();
@@ -318,6 +389,7 @@ export class OtpService {
       return {
         valid: false,
         message: "No valid OTP found. Please request a new one.",
+        code: "OTP_NOT_FOUND",
       };
     }
 
@@ -328,6 +400,7 @@ export class OtpService {
         message:
           "Maximum verification attempts exceeded. Please request a new OTP.",
         requestId: otpRecord.id,
+        code: "OTP_MAX_ATTEMPTS",
       };
     }
 
@@ -343,6 +416,7 @@ export class OtpService {
         valid: false,
         message: `Incorrect OTP. ${remainingAttempts} attempts remaining.`,
         requestId: otpRecord.id,
+        code: "OTP_INVALID",
       };
     }
 
@@ -485,13 +559,18 @@ export class OtpService {
         expiresAt: result.expiresAt,
         smsDispatched: result.smsDispatched || false,
         // For test numbers, return the code so testing can proceed
-        ...(result.isTestNumber ? { testCode: result.code } : {}),
+        ...(result.isTestNumber && this.exposeTestCode
+          ? { testCode: result.code }
+          : {}),
       });
     } catch (error) {
       const status = error?.status || HttpStatus.INTERNAL_SERVER_ERROR;
       return res
         .status(status)
-        .json({ message: error?.message || "OTP send failed" });
+        .json({
+          code: error?.response?.code,
+          message: error?.message || "OTP send failed",
+        });
     }
   }
 
@@ -511,7 +590,9 @@ export class OtpService {
 
       if (!result.valid) {
         return res.status(HttpStatus.UNAUTHORIZED).json({
+          code: result.code || "OTP_INVALID",
           message: result.message,
+          requestId: result.requestId,
         });
       }
 
@@ -526,7 +607,10 @@ export class OtpService {
       const status = error?.status || HttpStatus.INTERNAL_SERVER_ERROR;
       return res
         .status(status)
-        .json({ message: error?.message || "OTP verification failed" });
+        .json({
+          code: error?.response?.code,
+          message: error?.message || "OTP verification failed",
+        });
     }
   }
 
@@ -546,8 +630,10 @@ export class OtpService {
 
       if (!result.valid) {
         return res.status(HttpStatus.NOT_ACCEPTABLE).json({
+          code: result.code || "OTP_INVALID",
           message: result.message,
           response: false,
+          requestId: result.requestId,
         });
       }
 
@@ -560,7 +646,10 @@ export class OtpService {
       const status = error?.status || HttpStatus.INTERNAL_SERVER_ERROR;
       return res
         .status(status)
-        .json({ message: error?.message || "Verification failed" });
+        .json({
+          code: error?.response?.code,
+          message: error?.message || "Verification failed",
+        });
     }
   }
 }

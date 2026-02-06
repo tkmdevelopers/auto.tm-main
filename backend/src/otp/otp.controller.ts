@@ -32,7 +32,7 @@ export class OtpController {
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
     description: "Invalid phone number",
-    schema: { example: { message: "Phone number is required" } },
+    schema: { example: { code: "OTP_INVALID_PHONE", message: "Phone number is required" } },
   })
   @ApiResponse({
     status: HttpStatus.TOO_MANY_REQUESTS,

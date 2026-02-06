@@ -1,9 +1,9 @@
 import 'dart:io';
+import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -12,7 +12,6 @@ import 'package:path/path.dart' as path; // Import path
 
 // Controller
 class CreateBlogController extends GetxController {
-  final box = GetStorage();
   final titleController = TextEditingController();
   final descriptionController =
       TextEditingController(); // Use обычный TextEditingController
@@ -22,8 +21,9 @@ class CreateBlogController extends GetxController {
 
   // Pick an image from device
   Future<void> pickImage() async {
-    final pickedFile =
-        await picker.pickImage(source: ImageSource.gallery); // Use the instance
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+    ); // Use the instance
 
     if (pickedFile != null) {
       await uploadImage(File(pickedFile.path));
@@ -36,9 +36,16 @@ class CreateBlogController extends GetxController {
   Future<void> uploadImage(File imageFile) async {
     isUploading.value = true;
     try {
+      final accessToken = await TokenStore.to.accessToken;
+      if (accessToken == null || accessToken.isEmpty) {
+        imageLink.value = null;
+        return;
+      }
       // 1. Prepare the image for upload
       var request = http.MultipartRequest(
-          'POST', Uri.parse(ApiKey.postBlogPhotoKey)); // Replace with your upload URL
+        'POST',
+        Uri.parse(ApiKey.postBlogPhotoKey),
+      ); // Replace with your upload URL
       var stream = http.ByteStream(imageFile.openRead());
       var length = await imageFile.length();
 
@@ -51,7 +58,7 @@ class CreateBlogController extends GetxController {
         contentType: MediaType('image', 'jpeg'),
       );
 
-      request.headers['Authorization'] = 'Bearer ${box.read('ACCESS_TOKEN')}';
+      request.headers['Authorization'] = 'Bearer $accessToken';
 
       // 3. Add the file to the request
       request.files.add(multipartFile);
@@ -62,7 +69,9 @@ class CreateBlogController extends GetxController {
       // 5. Get the response
       var responseBody = await response.stream.bytesToString();
 
-      await Future.delayed(const Duration(seconds: 2)); // Simulate network delay
+      await Future.delayed(
+        const Duration(seconds: 2),
+      ); // Simulate network delay
 
       if (response.statusCode == 200) {
         var responseJson = jsonDecode(responseBody);
@@ -70,8 +79,10 @@ class CreateBlogController extends GetxController {
         imageLink.value = ApiKey.ip + responseJson['uuid']['path']['medium'];
         ('Uploaded', 'Image uploaded successfully!');
       } else {
-        ('Upload Failed',
-            'Failed to upload image. Status code: ${response.statusCode}, Response: $responseBody');
+        (
+          'Upload Failed',
+          'Failed to upload image. Status code: ${response.statusCode}, Response: $responseBody',
+        );
         imageLink.value = null; //important
       }
     } catch (error) {
@@ -84,8 +95,8 @@ class CreateBlogController extends GetxController {
 
   // Post the blog with image link
   Future<void> postBlog() async {
-    if (titleController.text.isEmpty ||
-        descriptionController.text.isEmpty) { // Изменено на text.isEmpty
+    if (titleController.text.isEmpty || descriptionController.text.isEmpty) {
+      // Изменено на text.isEmpty
       ('Error', 'Please fill in title and description.');
       return;
     }
@@ -96,22 +107,22 @@ class CreateBlogController extends GetxController {
       description =
           '${imageLink.value}${descriptionController.text}'; // Изменено на  descriptionController.text
     } else {
-      description = descriptionController.text; // Изменено на  descriptionController.text
+      description =
+          descriptionController.text; // Изменено на  descriptionController.text
     }
 
     // Simulate posting the blog.  Replace with your actual API call.
     try {
+      final accessToken = await TokenStore.to.accessToken;
+      if (accessToken == null || accessToken.isEmpty) return;
       var response = await http.post(
         Uri.parse(ApiKey.postBlogsKey), // Replace
         headers: {
           // "Accept": "application/json",
           // "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}'
+          'Authorization': 'Bearer $accessToken',
         },
-        body: {
-          'title': titleController.text,
-          'description': description,
-        },
+        body: {'title': titleController.text, 'description': description},
       );
       await Future.delayed(const Duration(seconds: 1));
 
@@ -123,8 +134,10 @@ class CreateBlogController extends GetxController {
         imageLink.value = null;
         Get.back(); // Go back to previous screen
       } else {
-        ('Error',
-            'Failed to post blog. Status code: ${response.statusCode}, Response: ${response.body}');
+        (
+          'Error',
+          'Failed to post blog. Status code: ${response.statusCode}, Response: ${response.body}',
+        );
       }
     } catch (error) {
       ('Error', 'Error posting blog: $error');
@@ -151,7 +164,8 @@ class CreateBlogScreen extends StatelessWidget {
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(elevation:4,
+      appBar: AppBar(
+        elevation: 4,
         backgroundColor: theme.appBarTheme.backgroundColor,
         surfaceTintColor: theme.appBarTheme.backgroundColor,
         title: Text(
@@ -162,7 +176,8 @@ class CreateBlogScreen extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Form( //wrap form
+        child: Form(
+          //wrap form
           key: _formKey,
           child: SingleChildScrollView(
             child: Column(
@@ -193,7 +208,10 @@ class CreateBlogScreen extends StatelessWidget {
                 // Description Input (Plain TextField)
                 Text(
                   'Description'.tr,
-                  style: TextStyle(color: AppColors.textTertiaryColor, fontSize: 16),
+                  style: TextStyle(
+                    color: AppColors.textTertiaryColor,
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: 5),
                 TextFormField(
@@ -257,7 +275,10 @@ class CreateBlogScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Uploaded Image:'.tr,
-                          style: TextStyle(color: AppColors.textTertiaryColor, fontSize: 16),
+                          style: TextStyle(
+                            color: AppColors.textTertiaryColor,
+                            fontSize: 16,
+                          ),
                         ),
                         const SizedBox(height: 10),
                         Image.network(
@@ -275,7 +296,8 @@ class CreateBlogScreen extends StatelessWidget {
                 // Post Button
                 ElevatedButton(
                   onPressed: () {
-                    if(_formKey.currentState!.validate()){ //validate form
+                    if (_formKey.currentState!.validate()) {
+                      //validate form
                       controller.postBlog();
                     }
                   },
@@ -287,10 +309,7 @@ class CreateBlogScreen extends StatelessWidget {
                     ),
                     minimumSize: const Size(double.infinity, 50),
                   ),
-                  child: Text(
-                    'Publish'.tr,
-                    style: TextStyle(fontSize: 18.0),
-                  ),
+                  child: Text('Publish'.tr, style: TextStyle(fontSize: 18.0)),
                 ),
               ],
             ),
@@ -300,4 +319,3 @@ class CreateBlogScreen extends StatelessWidget {
     );
   }
 }
-

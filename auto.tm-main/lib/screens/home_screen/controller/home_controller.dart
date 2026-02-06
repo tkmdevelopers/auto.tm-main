@@ -2,15 +2,14 @@ import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 
 class HomeController extends GetxController {
-  final box = GetStorage();
   final ScrollController scrollController = ScrollController();
 
   var posts = <Post>[].obs;
@@ -115,12 +114,14 @@ class HomeController extends GetxController {
 
   Future<http.Response?> _makeGetRequest(String url) async {
     try {
+      final accessToken = await TokenStore.to.accessToken;
       final response = await http
           .get(
             Uri.parse(url),
             headers: {
               "Content-Type": "application/json",
-              'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+              if (accessToken != null && accessToken.isNotEmpty)
+                'Authorization': 'Bearer $accessToken',
             },
           )
           .timeout(const Duration(seconds: 10));

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:auto_tm/firebase_options.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -7,15 +6,24 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'dart:convert';
 
-void _logDebugNS(String location, String message, Map<String, dynamic> data, {String? hypothesisId}) {
+void _logDebugNS(
+  String location,
+  String message,
+  Map<String, dynamic> data, {
+  String? hypothesisId,
+}) {
   try {
-    final logFile = File('/Users/bagtyyar/Projects/auto.tm-main/.cursor/debug.log');
+    final logFile = File(
+      '/Users/bagtyyar/Projects/auto.tm-main/.cursor/debug.log',
+    );
     final logEntry = {
-      'id': 'log_${DateTime.now().millisecondsSinceEpoch}_${location.replaceAll(':', '_')}',
+      'id':
+          'log_${DateTime.now().millisecondsSinceEpoch}_${location.replaceAll(':', '_')}',
       'timestamp': DateTime.now().millisecondsSinceEpoch,
       'location': location,
       'message': message,
@@ -24,7 +32,10 @@ void _logDebugNS(String location, String message, Map<String, dynamic> data, {St
       'runId': 'run1',
       if (hypothesisId != null) 'hypothesisId': hypothesisId,
     };
-    logFile.writeAsStringSync('${jsonEncode(logEntry)}\n', mode: FileMode.append);
+    logFile.writeAsStringSync(
+      '${jsonEncode(logEntry)}\n',
+      mode: FileMode.append,
+    );
   } catch (e) {
     // Silently fail if logging fails
   }
@@ -40,15 +51,25 @@ class NotificationService extends GetxService {
 
   Future<void> init() async {
     // #region agent log
-    _logDebugNS('notification_service.dart:init:33', 'NotificationService.init() started', {}, hypothesisId: 'E');
+    _logDebugNS(
+      'notification_service.dart:init:33',
+      'NotificationService.init() started',
+      {},
+      hypothesisId: 'E',
+    );
     // #endregion
-    
+
     // Check if Firebase is already initialized to avoid double initialization
     try {
       Firebase.app();
       // Firebase is already initialized
       // #region agent log
-      _logDebugNS('notification_service.dart:init:39', 'Firebase already initialized', {}, hypothesisId: 'E');
+      _logDebugNS(
+        'notification_service.dart:init:39',
+        'Firebase already initialized',
+        {},
+        hypothesisId: 'E',
+      );
       // #endregion
     } catch (e) {
       // Firebase is not initialized, initialize it now
@@ -57,42 +78,77 @@ class NotificationService extends GetxService {
           options: DefaultFirebaseOptions.currentPlatform,
         );
         // #region agent log
-        _logDebugNS('notification_service.dart:init:47', 'Firebase initialized in NotificationService', {}, hypothesisId: 'E');
+        _logDebugNS(
+          'notification_service.dart:init:47',
+          'Firebase initialized in NotificationService',
+          {},
+          hypothesisId: 'E',
+        );
         // #endregion
       } catch (e2) {
         // #region agent log
-        _logDebugNS('notification_service.dart:init:51', 'Firebase initialization failed in NotificationService', {'error': e2.toString(), 'errorType': e2.runtimeType.toString()}, hypothesisId: 'E');
+        _logDebugNS(
+          'notification_service.dart:init:51',
+          'Firebase initialization failed in NotificationService',
+          {'error': e2.toString(), 'errorType': e2.runtimeType.toString()},
+          hypothesisId: 'E',
+        );
         // #endregion
         rethrow;
       }
     }
-    
+
     try {
       _firebaseMessaging = FirebaseMessaging.instance;
       // #region agent log
-      _logDebugNS('notification_service.dart:init:59', 'FirebaseMessaging.instance obtained', {}, hypothesisId: 'E');
+      _logDebugNS(
+        'notification_service.dart:init:59',
+        'FirebaseMessaging.instance obtained',
+        {},
+        hypothesisId: 'E',
+      );
       // #endregion
     } catch (e) {
       // #region agent log
-      _logDebugNS('notification_service.dart:init:62', 'FirebaseMessaging.instance failed', {'error': e.toString()}, hypothesisId: 'E');
+      _logDebugNS(
+        'notification_service.dart:init:62',
+        'FirebaseMessaging.instance failed',
+        {'error': e.toString()},
+        hypothesisId: 'E',
+      );
       // #endregion
       rethrow;
     }
-    
+
     try {
       await _initializeLocalNotifications();
       // #region agent log
-      _logDebugNS('notification_service.dart:init:69', '_initializeLocalNotifications() completed', {}, hypothesisId: 'E');
+      _logDebugNS(
+        'notification_service.dart:init:69',
+        '_initializeLocalNotifications() completed',
+        {},
+        hypothesisId: 'E',
+      );
       // #endregion
     } catch (e) {
       // #region agent log
-      _logDebugNS('notification_service.dart:init:72', '_initializeLocalNotifications() failed', {'error': e.toString()}, hypothesisId: 'E');
+      _logDebugNS(
+        'notification_service.dart:init:72',
+        '_initializeLocalNotifications() failed',
+        {'error': e.toString()},
+        hypothesisId: 'E',
+      );
       // #endregion
       rethrow;
     }
-    
+
     // #region agent log
-    _logDebugNS('notification_service.dart:init:76', 'NotificationService.init() completed', {}, hypothesisId: 'E');
+    _logDebugNS(
+      'notification_service.dart:init:76',
+      'NotificationService.init() completed',
+      {},
+      hypothesisId: 'E',
+    );
     // #endregion
   }
 
@@ -104,8 +160,8 @@ class NotificationService extends GetxService {
     await _sendDeviceTokenToBackend();
 
     final isSubscribed = _storage.read<bool>(_globalTopicKey) ?? false;
-    final accessToken = _storage.read('ACCESS_TOKEN');
-    if (!isSubscribed && accessToken != null) {
+    final accessToken = await TokenStore.to.accessToken;
+    if (!isSubscribed && accessToken != null && accessToken.isNotEmpty) {
       await subscribeToGlobalTopic();
     }
   }
@@ -145,8 +201,8 @@ class NotificationService extends GetxService {
   }
 
   Future<void> _uploadToken(String token) async {
-    final accessToken = _storage.read('ACCESS_TOKEN');
-    if (accessToken == null) {
+    final accessToken = await TokenStore.to.accessToken;
+    if (accessToken == null || accessToken.isEmpty) {
       _log("No access token found. Cannot send FCM token.");
       return;
     }

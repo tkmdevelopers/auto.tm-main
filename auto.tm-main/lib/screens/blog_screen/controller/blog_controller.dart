@@ -1,14 +1,13 @@
 import 'dart:convert';
 
 import 'package:auto_tm/screens/blog_screen/model/blog_model.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 class BlogController extends GetxController {
-  final box = GetStorage();
   var blogs = <Blog>[].obs;
   var isLoading = false.obs;
 
@@ -22,11 +21,13 @@ class BlogController extends GetxController {
     if (isLoading.value) return; // prevent concurrent fetches
     isLoading.value = true;
     try {
+      final accessToken = await TokenStore.to.accessToken;
       final response = await http.get(
         Uri.parse(ApiKey.getBlogsKey),
         headers: {
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+          if (accessToken != null && accessToken.isNotEmpty)
+            'Authorization': 'Bearer $accessToken',
         },
       );
       final jsonResponse = json.decode(response.body);
@@ -45,13 +46,21 @@ class BlogController extends GetxController {
         }
         blogs.value = map.values.toList()
           ..sort((a, b) => b.date.compareTo(a.date)); // keep newest first
-      } 
+      }
       // Auth errors (401) are now handled by ApiClient interceptor for Dio calls.
       else {
-        ('Error', 'Failed to load blogs. Please try again later.'.tr, snackPosition: SnackPosition.BOTTOM);
+        (
+          'Error',
+          'Failed to load blogs. Please try again later.'.tr,
+          snackPosition: SnackPosition.BOTTOM,
+        );
       }
     } catch (e) {
-      ('Error', 'Error fetching blogs. Please check your internet connection.'.tr, snackPosition: SnackPosition.BOTTOM);
+      (
+        'Error',
+        'Error fetching blogs. Please check your internet connection.'.tr,
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -62,11 +71,13 @@ class BlogController extends GetxController {
 
   Future<String> fetchBlogDetails(String blogId) async {
     try {
+      final accessToken = await TokenStore.to.accessToken;
       final response = await http.get(
         Uri.parse("${ApiKey.getOneBlogKey}$blogId"),
         headers: {
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+          if (accessToken != null && accessToken.isNotEmpty)
+            'Authorization': 'Bearer $accessToken',
         },
       );
 
@@ -83,8 +94,9 @@ class BlogController extends GetxController {
 
   String formatDate(String isoDate) {
     DateTime dateTime = DateTime.parse(isoDate); // Convert string to DateTime
-    String formattedDate =
-        DateFormat('dd.MM.yyyy').format(dateTime); // Format to dd.MM.yyyy
+    String formattedDate = DateFormat(
+      'dd.MM.yyyy',
+    ).format(dateTime); // Format to dd.MM.yyyy
     return formattedDate;
   }
 }

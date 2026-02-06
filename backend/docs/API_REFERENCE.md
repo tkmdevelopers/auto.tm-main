@@ -56,7 +56,8 @@ All authentication uses phone-based OTP. There are no email/password endpoints.
     |<-----------------------------|
 ```
 
-Test phone numbers (e.g. `+99361999999`) always accept OTP code `12345`.
+Test OTP behavior is controlled by env flags. In production, test OTP can be
+disabled or limited to an allowlist (see Environment section in deployment docs).
 
 ---
 
@@ -70,6 +71,9 @@ All paths are prefixed with `/api/v1`.
 |--------|------|----------------|------------------|
 | POST | `/otp/send` | `{ "phone": "993XXXXXXXX" }` | `200` — request info (requestId, expiresAt) |
 | POST | `/otp/verify` | `{ "phone": "993XXXXXXXX", "otp": "12345" }` | `200` — `{ accessToken, refreshToken }` |
+
+**Test OTP response:** If `OTP_TEST_CODE_RESPONSE=true` and the phone matches a
+test number, `/otp/send` will include `testCode` in the response.
 
 ### Auth
 
@@ -100,7 +104,11 @@ All authentication errors return HTTP **401** with a JSON body containing a `cod
 | `TOKEN_INVALID` | Token is malformed, missing, or not a valid JWT. |
 | `TOKEN_REUSE` | A previously used refresh token was presented. The session has been revoked as a security precaution — the user must log in again. |
 | `USER_DELETED` | The user account has been deleted by an administrator. The client must log out and clear all local data. |
-| `OTP_INVALID` | The OTP code is wrong or expired. |
+| `OTP_INVALID` | The OTP code is wrong. |
+| `OTP_NOT_FOUND` | No valid OTP found (expired or not requested). |
+| `OTP_MAX_ATTEMPTS` | Maximum OTP attempts exceeded. |
+| `OTP_RATE_LIMIT` | Too many OTP requests (per phone or IP). |
+| `OTP_INVALID_PHONE` | Phone number missing or invalid. |
 
 Admin-only endpoints return **403** with `code: "FORBIDDEN"` if the user is not an admin.
 
@@ -110,11 +118,12 @@ Rate-limited requests return **429** (see below).
 
 ## Rate Limiting
 
-Rate limits are enforced per IP using `@nestjs/throttler`.
+Rate limits are enforced per IP using `@nestjs/throttler`, and per phone
+using OTP service settings.
 
 | Scope | Limit |
 |-------|-------|
-| OTP send (`POST /otp/send`) | 3 requests per 60 seconds |
+| OTP send (`POST /otp/send`) | 3 requests per 60 seconds (IP) + per-phone limits |
 | OTP verify (`POST /otp/verify`) | 5 requests per 60 seconds |
 | All other endpoints (global) | 60 requests per 60 seconds |
 

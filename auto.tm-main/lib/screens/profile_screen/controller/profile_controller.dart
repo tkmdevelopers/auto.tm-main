@@ -7,9 +7,12 @@ import 'dart:typed_data';
 import 'package:auto_tm/global_controllers/connection_controller.dart';
 import 'package:auto_tm/screens/profile_screen/model/profile_model.dart';
 import 'package:auto_tm/services/auth/auth_service.dart';
+import 'package:auto_tm/services/network/api_client.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:auto_tm/utils/logger.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -146,9 +149,9 @@ class ProfileController extends GetxController {
     AppLogger.d('API Key: ${ApiKey.apiKey}');
     AppLogger.d('Get Profile Key: ${ApiKey.getProfileKey}');
 
-    final accessToken = box.read('ACCESS_TOKEN');
+    final accessToken = await TokenStore.to.accessToken;
     AppLogger.d('Access Token exists: ${accessToken != null}');
-    if (accessToken != null) {
+    if (accessToken != null && accessToken.isNotEmpty) {
       AppLogger.d('Access Token preview: ${accessToken.substring(0, 20)}...');
     }
 
@@ -197,8 +200,8 @@ class ProfileController extends GetxController {
 
     try {
       // Check if access token exists
-      final accessToken = box.read('ACCESS_TOKEN');
-      if (accessToken == null) {
+      final hasTokens = await TokenStore.to.hasTokens;
+      if (!hasTokens) {
         AppLogger.w('fetchProfile: No access token found');
         Get.snackbar(
           'Error',
@@ -232,17 +235,10 @@ class ProfileController extends GetxController {
         return _earlyReturnCleanup('no_connection');
       }
 
-      AppLogger.i('Fetching profile from: ${ApiKey.getProfileKey}');
-      AppLogger.d('Using token: ${accessToken.substring(0, 20)}...');
+      AppLogger.i('Fetching profile from: auth/me');
 
-      final response = await http
-          .get(
-            Uri.parse(ApiKey.getProfileKey),
-            headers: {
-              "Content-Type": "application/json",
-              'Authorization': 'Bearer $accessToken',
-            },
-          )
+      final response = await ApiClient.to.dio
+          .get('auth/me')
           .timeout(
             const Duration(seconds: 12),
             onTimeout: () {
@@ -251,13 +247,11 @@ class ProfileController extends GetxController {
           );
 
       AppLogger.d('Response status code: ${response.statusCode}');
-      AppLogger.d('Response body: ${response.body}');
-      AppLogger.d('Response headers: ${response.headers}');
+      AppLogger.d('Response body: ${response.data}');
 
       if (response.statusCode == 200) {
         try {
-          // Check if response body is empty
-          if (response.body.isEmpty) {
+          if (response.data == null) {
             AppLogger.w('fetchProfile: Empty response body received');
             Get.snackbar(
               'Error',
@@ -267,16 +261,17 @@ class ProfileController extends GetxController {
             return _earlyReturnCleanup('empty_body');
           }
 
-          // Test JSON parsing first
-          await testJsonParsing(response.body);
+          final dynamic raw = response.data;
+          final Map<String, dynamic> data = raw is String
+              ? Map<String, dynamic>.from(json.decode(raw))
+              : Map<String, dynamic>.from(raw as Map);
 
-          final data = json.decode(response.body);
           AppLogger.d('Parsed JSON data: $data');
 
           profile.value = ProfileModel.fromJson(data);
           box.write('USER_ID', data['uuid']);
           phone.value = data['phone']?.toString() ?? '';
-          box.write('cached_profile_json', response.body);
+          box.write('cached_profile_json', json.encode(data));
           isOffline.value = false;
 
           AppLogger.i('Profile fetched successfully: ${profile.value?.name}');
@@ -293,7 +288,7 @@ class ProfileController extends GetxController {
             error: parseError,
             stackTrace: st,
           );
-          AppLogger.d('Response body that failed to parse: ${response.body}');
+          AppLogger.d('Response body that failed to parse: ${response.data}');
           Get.snackbar(
             'Error',
             'Failed to parse profile data: $parseError',
@@ -301,47 +296,6 @@ class ProfileController extends GetxController {
           );
           // parsing error should still resolve initial load so UI can present fallback
         }
-      } else if (response.statusCode == 401) {
-        // Check if account was deleted by admin
-        try {
-          final body = json.decode(response.body);
-          final code = body is Map ? body['code'] : null;
-          if (code == 'USER_DELETED') {
-            AppLogger.w('fetchProfile: account deleted by administrator');
-            Get.snackbar(
-              'Account Deleted',
-              'Your account has been deleted by an administrator.',
-              snackPosition: SnackPosition.TOP,
-              backgroundColor: Get.theme.colorScheme.error,
-              colorText: Get.theme.colorScheme.onError,
-              duration: const Duration(seconds: 5),
-            );
-            _forceLogoutDeleted();
-            return;
-          }
-        } catch (_) {}
-        // Token expired or invalid — redirect to login
-        AppLogger.w('fetchProfile: 401 — session invalid, forcing logout');
-        Get.snackbar(
-          'Error',
-          'Session expired. Please log in again.',
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        _forceLogoutDeleted();
-        return;
-      } else if (response.statusCode == 404) {
-        // User not found in database — account was deleted
-        AppLogger.w('fetchProfile: 404 — user not found, account deleted');
-        Get.snackbar(
-          'Account Not Found',
-          'Your account could not be found. Please register again.',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Get.theme.colorScheme.error,
-          colorText: Get.theme.colorScheme.onError,
-          duration: const Duration(seconds: 5),
-        );
-        _forceLogoutDeleted();
-        return;
       } else {
         AppLogger.w('Unexpected status code: ${response.statusCode}');
         Get.snackbar(
@@ -357,6 +311,10 @@ class ProfileController extends GetxController {
         'Profile request took too long. Pull to retry.',
         snackPosition: SnackPosition.BOTTOM,
       );
+      isOffline.value = true;
+      _restoreCachedProfile();
+    } on DioException catch (e) {
+      AppLogger.e('Error fetching profile (Dio)', error: e);
       isOffline.value = true;
       _restoreCachedProfile();
     } catch (e) {
@@ -589,11 +547,15 @@ class ProfileController extends GetxController {
   }
 
   Future<void> uploadImage(Uint8List imageBytes) async {
+    final accessToken = await TokenStore.to.accessToken;
+    if (accessToken == null || accessToken.isEmpty) {
+      AppLogger.w('uploadImage: No access token found');
+      return;
+    }
     final uri = Uri.parse(ApiKey.putUserPhotoKey); // Replace with your API URL
 
     final request = http.MultipartRequest('PUT', uri)
-      ..headers['Authorization'] =
-          'Bearer ${box.read('ACCESS_TOKEN')}' // if needed
+      ..headers['Authorization'] = 'Bearer $accessToken'
       ..fields['uuid'] = profile
           .value!
           .uuid // Attach UUID
@@ -722,6 +684,11 @@ class ProfileController extends GetxController {
 
   Future<bool> postUserDataSave() async {
     try {
+      final accessToken = await TokenStore.to.accessToken;
+      if (accessToken == null || accessToken.isEmpty) {
+        AppLogger.w('postUserDataSave: No access token found');
+        return false;
+      }
       final trimmedName = nameController.text.trim();
       final Map<String, dynamic> body = {
         if (trimmedName.isNotEmpty) 'name': trimmedName,
@@ -732,7 +699,7 @@ class ProfileController extends GetxController {
         Uri.parse(ApiKey.setPasswordKey),
         headers: {
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+          'Authorization': 'Bearer $accessToken',
         },
         body: json.encode(body),
       );
@@ -840,39 +807,6 @@ class ProfileController extends GetxController {
     isOffline.value = false;
     // Navigate to login (or splash) route; adjust if different
     Get.offAllNamed('/login');
-  }
-
-  /// Force-logout when backend reports the user account no longer exists.
-  /// Clears all local state and navigates to the registration screen.
-  void _forceLogoutDeleted() {
-    // Clean up flags so no spinner is left behind during navigation
-    isLoading.value = false;
-    isRefreshing.value = false;
-    isFetchingProfile.value = false;
-    if (_initialLoadCompleter != null && !_initialLoadCompleter!.isCompleted) {
-      _initialLoadCompleter!.complete();
-    }
-    // Wipe local session data
-    profile.value = null;
-    name.value = '';
-    phone.value = '';
-    location.value = defaultLocation;
-    nameController.clear();
-    locationController.text = defaultLocation;
-    selectedImage.value = null;
-    fieldsInitialized.value = false;
-    hasLoadedProfile.value = false;
-    box.remove('ACCESS_TOKEN');
-    box.remove('REFRESH_TOKEN');
-    box.remove('USER_PHONE');
-    box.remove('user_name');
-    box.remove('user_phone');
-    box.remove('user_location');
-    box.remove('USER_ID');
-    box.remove('cached_profile_json');
-    isOffline.value = false;
-    // Navigate to registration screen (clears entire navigation stack)
-    Get.offAllNamed('/register');
   }
 
   // void showBottomSheet(

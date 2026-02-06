@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -77,7 +78,7 @@ class FavoritesController extends GetxController {
         headers: {
           // "Accept": "application/json",
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+          'Authorization': 'Bearer ${await TokenStore.to.accessToken}',
         },
         body: json.encode({
           "uuids": favorites,
@@ -179,7 +180,7 @@ class FavoritesController extends GetxController {
         headers: {
           // "Accept": "application/json",
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+          'Authorization': 'Bearer ${await TokenStore.to.accessToken}',
         },
         body: json.encode(requestdata),
       );
@@ -211,7 +212,7 @@ class FavoritesController extends GetxController {
         headers: {
           // "Accept": "application/json",
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+          'Authorization': 'Bearer ${await TokenStore.to.accessToken}',
         },
         body: json.encode(requestdata),
       );

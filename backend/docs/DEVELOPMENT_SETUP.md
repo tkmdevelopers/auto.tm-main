@@ -40,6 +40,12 @@ nano .env
 | `DATABASE_PORT` | `5432` | Postgres port |
 | `DATABASE_PASSWORD` | `Key_bismynick1` | Local dev password |
 | `PORT` | `3080` | API port |
+| `OTP_PHONE_RATE_LIMIT_WINDOW_MS` | `60000` | Per-phone rate limit window |
+| `OTP_PHONE_RATE_LIMIT_MAX` | `3` | Per-phone OTP send limit |
+| `OTP_TEST_MODE` | `true` | Enable test OTP numbers |
+| `OTP_TEST_ALLOW_IN_PROD` | `false` | Allow test OTP in production |
+| `OTP_TEST_CODE_RESPONSE` | `false` | Return `testCode` in response |
+| `TEST_OTP_NUMBERS_PROD` | empty | Allowlist for test numbers in prod |
 
 ### 3. Build and Start
 

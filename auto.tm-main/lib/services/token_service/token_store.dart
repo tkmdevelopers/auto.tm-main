@@ -36,14 +36,17 @@ class TokenStore extends GetxService {
     ]);
   }
 
-  Future<void> updateAccessToken(String token) =>
-      _storage.write(key: _keyAccess, value: token);
+  Future<void> updateAccessToken(String token) async {
+    await _storage.write(key: _keyAccess, value: token);
+  }
 
-  Future<void> updateRefreshToken(String token) =>
-      _storage.write(key: _keyRefresh, value: token);
+  Future<void> updateRefreshToken(String token) async {
+    await _storage.write(key: _keyRefresh, value: token);
+  }
 
-  Future<void> savePhone(String phone) =>
-      _storage.write(key: _keyPhone, value: phone);
+  Future<void> savePhone(String phone) async {
+    await _storage.write(key: _keyPhone, value: phone);
+  }
 
   // ── Delete ────────────────────────────────────────────────────
 

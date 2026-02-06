@@ -8,6 +8,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
 
@@ -22,7 +23,7 @@ class FilterController extends GetxController {
   final int limit = 20;
   // Tracks whether user has already opened the results page in this session.
   final RxBool hasViewedResults = false.obs;
-  
+
   // Debounce timer for auto-search
   Timer? _debounce;
   void debouncedSearch() {
@@ -52,7 +53,10 @@ class FilterController extends GetxController {
   // Slider bounds (will initialize lazily from data or defaults)
   final RxInt yearLowerBound = 1990.obs;
   final RxInt yearUpperBound = DateTime.now().year.obs;
-  final Rx<RangeValues> yearRange = RangeValues(1990, DateTime.now().year.toDouble()).obs;
+  final Rx<RangeValues> yearRange = RangeValues(
+    1990,
+    DateTime.now().year.toDouble(),
+  ).obs;
   // Legacy date objects kept temporarily for compatibility; will be removed once UI updated.
   final selectedMinDate = DateTime.now().obs; // TODO: remove
   final selectedMaxDate = DateTime.now().obs; // TODO: remove
@@ -174,7 +178,10 @@ class FilterController extends GetxController {
     premium.clear();
     minYear.value = '';
     maxYear.value = '';
-  yearRange.value = RangeValues(yearLowerBound.value.toDouble(), yearUpperBound.value.toDouble());
+    yearRange.value = RangeValues(
+      yearLowerBound.value.toDouble(),
+      yearUpperBound.value.toDouble(),
+    );
     location.value = '';
     selectedCountry.value = 'Local';
     if (includeBrandModel) {
@@ -230,10 +237,9 @@ class FilterController extends GetxController {
       return;
     }
     filteredBrands.assignAll(
-      brands.where((brand) => brand['name']
-          .toString()
-          .toLowerCase()
-          .contains(q)).toList(),
+      brands
+          .where((brand) => brand['name'].toString().toLowerCase().contains(q))
+          .toList(),
     );
   }
 
@@ -244,10 +250,9 @@ class FilterController extends GetxController {
       return;
     }
     filteredModels.assignAll(
-      models.where((model) => model['name']
-          .toString()
-          .toLowerCase()
-          .contains(q)).toList(),
+      models
+          .where((model) => model['name'].toString().toLowerCase().contains(q))
+          .toList(),
     );
   }
 
@@ -294,19 +299,24 @@ class FilterController extends GetxController {
       final rv = yearRange.value;
       final defaultMin = yearLowerBound.value.toDouble();
       final defaultMax = yearUpperBound.value.toDouble();
-      if (rv.start != defaultMin) queryParams['minYear'] = rv.start.round().toString();
-      if (rv.end != defaultMax) queryParams['maxYear'] = rv.end.round().toString();
+      if (rv.start != defaultMin)
+        queryParams['minYear'] = rv.start.round().toString();
+      if (rv.end != defaultMax)
+        queryParams['maxYear'] = rv.end.round().toString();
     }
 
     // Price logic: explicit minPrice/maxPrice if set, else slider delta from defaults
     if (minPrice.value != null || maxPrice.value != null) {
-      if (minPrice.value != null) queryParams['minPrice'] = minPrice.value.toString();
-      if (maxPrice.value != null) queryParams['maxPrice'] = maxPrice.value.toString();
+      if (minPrice.value != null)
+        queryParams['minPrice'] = minPrice.value.toString();
+      if (maxPrice.value != null)
+        queryParams['maxPrice'] = maxPrice.value.toString();
     } else {
       final pr = priceRange.value;
       final dMin = priceLowerBound.value.toDouble();
       final dMax = priceUpperBound.value.toDouble();
-      if (pr.start != dMin) queryParams['minPrice'] = pr.start.round().toString();
+      if (pr.start != dMin)
+        queryParams['minPrice'] = pr.start.round().toString();
       if (pr.end != dMax) queryParams['maxPrice'] = pr.end.round().toString();
     }
 
@@ -341,11 +351,13 @@ class FilterController extends GetxController {
 
     isSearchLoading.value = true;
     try {
+      final accessToken = await TokenStore.to.accessToken;
       final response = await http.get(
         Uri.parse(searchApiUrl),
         headers: {
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+          if (accessToken != null && accessToken.isNotEmpty)
+            'Authorization': 'Bearer $accessToken',
         },
       );
 
@@ -442,11 +454,13 @@ class FilterController extends GetxController {
         'uuid': selectedBrandUuid.value,
       };
 
+      final accessToken = await TokenStore.to.accessToken;
       final response = await http.post(
         Uri.parse(ApiKey.subscribeToBrandKey),
         headers: {
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+          if (accessToken != null && accessToken.isNotEmpty)
+            'Authorization': 'Bearer $accessToken',
         },
         body: json.encode(requestdata),
       );
@@ -468,11 +482,13 @@ class FilterController extends GetxController {
         'uuid': selectedBrandUuid.value,
       };
 
+      final accessToken = await TokenStore.to.accessToken;
       final response = await http.post(
         Uri.parse(ApiKey.unsubscribeToBrandKey),
         headers: {
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+          if (accessToken != null && accessToken.isNotEmpty)
+            'Authorization': 'Bearer $accessToken',
         },
         body: json.encode(requestdata),
       );
@@ -501,12 +517,14 @@ class FilterController extends GetxController {
   void fetchBrands() async {
     isLoadingBrands.value = true;
     try {
+      final accessToken = await TokenStore.to.accessToken;
       final response = await http
           .get(
             Uri.parse(ApiKey.getBrandsKey),
             headers: {
               "Content-Type": "application/json",
-              'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+              if (accessToken != null && accessToken.isNotEmpty)
+                'Authorization': 'Bearer $accessToken',
             },
           )
           .timeout(Duration(seconds: 10));
@@ -526,12 +544,14 @@ class FilterController extends GetxController {
   void fetchModels(String brand) async {
     isLoadingModels.value = true;
     try {
+      final accessToken = await TokenStore.to.accessToken;
       final response = await http
           .get(
             Uri.parse("${ApiKey.getModelsKey}?filter=$brand"),
             headers: {
               "Content-Type": "application/json",
-              'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}',
+              if (accessToken != null && accessToken.isNotEmpty)
+                'Authorization': 'Bearer $accessToken',
             },
           )
           .timeout(Duration(seconds: 10));
