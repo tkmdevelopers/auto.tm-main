@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'package:auto_tm/utils/key.dart';
-import 'package:auto_tm/services/token_service/token_store.dart';
+import 'package:auto_tm/services/network/api_client.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 
 class CommentsController extends GetxController {
   final TextEditingController commentTextController = TextEditingController();
@@ -40,20 +38,23 @@ class CommentsController extends GetxController {
 
   // Fetch comments for a specific post
   Future<void> fetchComments(String postId) async {
-    // isLoading.value = true;
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http.get(
-        Uri.parse("${ApiKey.getCommentsKey}?postId=$postId"),
-        headers: {
-          "Content-Type": "application/json",
-          if (accessToken != null && accessToken.isNotEmpty)
-            'Authorization': 'Bearer $accessToken',
-        },
+      final response = await ApiClient.to.dio.get(
+        'comments',
+        queryParameters: {'postId': postId},
       );
-      if (response.statusCode == 200) {
-        final decodedData = json.decode(response.body);
-        final rawList = List<Map<String, dynamic>>.from(decodedData);
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        final List<dynamic> list = data is List
+            ? data as List
+            : (data is Map && data['data'] != null)
+                ? (data['data'] as List)
+                : (data is Map && data['results'] != null)
+                    ? (data['results'] as List)
+                    : [];
+        final rawList = list
+            .map((e) => e is Map<String, dynamic> ? e : Map<String, dynamic>.from(e as Map))
+            .toList();
         // Deduplicate by uuid
         final seen = <String>{};
         final unique = <Map<String, dynamic>>[];
@@ -122,19 +123,15 @@ class CommentsController extends GetxController {
     }
 
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http.post(
-        Uri.parse(ApiKey.postCommentsKey),
-        headers: {
-          "Content-Type": "application/json",
-          if (accessToken != null && accessToken.isNotEmpty)
-            'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode(commentData),
+      final response = await ApiClient.to.dio.post(
+        'comments',
+        data: commentData,
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final newComment = jsonDecode(response.body);
+        final newComment = response.data is Map<String, dynamic>
+            ? response.data as Map<String, dynamic>
+            : jsonDecode(response.data is String ? response.data as String : '{}') as Map<String, dynamic>;
         final id = newComment['uuid']?.toString();
         final exists =
             id != null && comments.any((c) => c['uuid']?.toString() == id);

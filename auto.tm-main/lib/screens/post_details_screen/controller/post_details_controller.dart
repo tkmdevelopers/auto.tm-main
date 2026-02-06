@@ -4,10 +4,9 @@ import 'package:auto_tm/screens/post_details_screen/controller/video_controller.
 import 'package:flutter/foundation.dart';
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
 import 'package:auto_tm/screens/post_details_screen/widgets/video_player.dart';
-import 'package:auto_tm/services/token_service/token_store.dart';
+import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 class PostDetailsController extends GetxController {
@@ -28,20 +27,15 @@ class PostDetailsController extends GetxController {
   Future<void> fetchProductDetails(String uuid) async {
     isLoading.value = true;
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http.get(
-        Uri.parse(
-          '${ApiKey.getPostDetailsKey}$uuid?model=true&brand=true&photo=true',
-        ),
-        headers: {
-          "Content-Type": "application/json",
-          if (accessToken != null && accessToken.isNotEmpty)
-            'Authorization': 'Bearer $accessToken',
-        },
+      final response = await ApiClient.to.dio.get(
+        'posts/$uuid',
+        queryParameters: {'model': true, 'brand': true, 'photo': true},
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data is Map<String, dynamic>
+            ? response.data as Map<String, dynamic>
+            : json.decode(response.data is String ? response.data as String : '{}') as Map<String, dynamic>;
         if (kDebugMode) {
           final videoSection = data['video'];
           debugPrint(

@@ -39,7 +39,7 @@ For Auth/OTP endpoint contracts (payloads and responses), see [API_REFERENCE.md]
    - Expiration is enforced via `OTP_TTL_SECONDS` (default 300s)
 3. Backend attempts SMS dispatch (unless test number): `SmsService` → `SmsGateway`.
 
-Rate limiting (Throttler): send is limited per IP.
+Rate limiting: Throttler per IP (e.g. 3 per 60s for send); per-phone rate limit via `OTP_PHONE_RATE_LIMIT_WINDOW_MS` / `OTP_PHONE_RATE_LIMIT_MAX` (returns `OTP_RATE_LIMIT` when exceeded).
 
 ### 2) Verify OTP
 
@@ -87,7 +87,8 @@ Platform note:
 ## Migrations and Startup
 
 - Migrations live in [backend/migrations/](../migrations/) and are executed on container start via [backend/docker/entrypoint.sh](../docker/entrypoint.sh).
-- Seed data (currencies + brands/models) is required for core flows; see [backend/docs/DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md).
+- Seed data (currencies + brands/models) is required for core flows; see [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md).
+- For full schema and table reference, see [DATABASE.md](DATABASE.md).
 
 ## Known Risks / Flaws (Current)
 

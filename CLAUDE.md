@@ -74,11 +74,11 @@ src/{feature}/
 
 **Database**: PostgreSQL 16 via Sequelize ORM with `sequelize-typescript` decorators. Migrations in `backend/migrations/` (timestamped, run automatically via Docker entrypoint). Config generated at runtime from env vars in `docker/entrypoint.sh`.
 
-**Auth flow**: Phone OTP → JWT (access 24h + refresh token). Guards in `src/guards/` (`AuthGuard`, `AdminGuard`, `RefreshGuard`). Passport strategies in `src/strategy/`. Test phone numbers return deterministic OTP `12345`.
+**Auth flow**: Phone OTP → JWT (access 15min + refresh 7d). Guards in `src/guards/` (`AuthGuard`, `AdminGuard`, `RefreshGuard`). Passport strategies in `src/strategy/`. Test phone numbers return deterministic OTP `12345`.
 
 **Junction tables**: Many-to-many relationships defined in `src/junction/` (photo_posts, photo_vlog, brands_user).
 
-**WebSockets**: `src/chat/chat.gateway.ts` uses Socket.io for real-time OTP events.
+**WebSockets**: `src/chat/chat.gateway.ts` uses Socket.io for real-time chat/notifications; OTP SMS device gateway is `src/sms/sms.gateway.ts` (port 3091).
 
 **File processing**: Sharp for image compression, Fluent-FFmpeg for video processing. Uploads stored in `uploads/` directory, served at `/media`.
 

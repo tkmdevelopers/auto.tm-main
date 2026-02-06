@@ -248,7 +248,10 @@ export class OtpService {
 
     if (!phone) {
       throw new HttpException(
-        "Phone number is required",
+        {
+          code: "OTP_INVALID_PHONE",
+          message: "Phone number is required",
+        },
         HttpStatus.BAD_REQUEST,
       );
     }

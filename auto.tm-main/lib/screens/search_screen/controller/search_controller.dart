@@ -2,12 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:auto_tm/screens/search_screen/model/search_model.dart';
-import 'package:auto_tm/services/token_service/token_store.dart';
+import 'package:auto_tm/services/network/api_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
-import 'package:auto_tm/utils/key.dart';
 
 // class SearchScreenController extends GetxController {
 
@@ -157,23 +155,25 @@ class SearchScreenController extends GetxController {
     }
 
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http.get(
-        Uri.parse(
-          '${ApiKey.apiKey}brands/search?search=$query&limit=$limit&offset=$offset',
-        ),
-        headers: {
-          "Content-Type": "application/json",
-          if (accessToken != null && accessToken.isNotEmpty)
-            'Authorization': 'Bearer $accessToken',
+      final response = await ApiClient.to.dio.get(
+        'brands/search',
+        queryParameters: {
+          'search': query,
+          'limit': limit,
+          'offset': offset,
         },
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        List<SearchModel> fetched = (data['results'] as List)
-            .map((item) => SearchModel.fromJson(item))
-            .toList();
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data is Map
+            ? response.data as Map<String, dynamic>
+            : jsonDecode(response.data is String ? response.data as String : '{}') as Map<String, dynamic>;
+        final results = data['results'];
+        List<SearchModel> fetched = (results is List)
+            ? (results as List)
+                .map((item) => SearchModel.fromJson(item as Map<String, dynamic>))
+                .toList()
+            : <SearchModel>[];
 
         hints.addAll(fetched);
         if (fetched.length < limit) {
@@ -203,23 +203,18 @@ class SearchScreenController extends GetxController {
     if (indexBuilding.value) return;
     indexBuilding.value = true;
     try {
-      // Try broad fetch with empty search (backend should return list)
-      final uri = Uri.parse(
-        '${ApiKey.apiKey}brands/search?search=&limit=$_maxIndexFetch&offset=0',
+      final resp = await ApiClient.to.dio.get(
+        'brands/search',
+        queryParameters: {'search': '', 'limit': _maxIndexFetch, 'offset': 0},
       );
-      final accessToken = await TokenStore.to.accessToken;
-      final resp = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          if (accessToken != null && accessToken.isNotEmpty)
-            'Authorization': 'Bearer $accessToken',
-        },
-      );
-      if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body);
-        final list = (data['results'] as List)
-            .map((e) => SearchModel.fromJson(e))
+      if (resp.statusCode == 200 && resp.data != null) {
+        final data = resp.data is Map
+            ? resp.data as Map<String, dynamic>
+            : jsonDecode(resp.data is String ? resp.data as String : '{}') as Map<String, dynamic>;
+        final results = data['results'];
+        final list = (results is List
+                ? (results as List).map((e) => SearchModel.fromJson(e as Map<String, dynamic>))
+                : <SearchModel>[])
             .where((m) => m.brandLabel.isNotEmpty || m.modelLabel.isNotEmpty)
             .toList();
         _index

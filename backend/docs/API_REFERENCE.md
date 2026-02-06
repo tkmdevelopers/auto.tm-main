@@ -108,7 +108,7 @@ All authentication errors return HTTP **401** with a JSON body containing a `cod
 | `OTP_NOT_FOUND` | No valid OTP found (expired or not requested). |
 | `OTP_MAX_ATTEMPTS` | Maximum OTP attempts exceeded. |
 | `OTP_RATE_LIMIT` | Too many OTP requests (per phone or IP). |
-| `OTP_INVALID_PHONE` | Phone number missing or invalid. |
+| `OTP_INVALID_PHONE` | Phone number missing or invalid. Returned by `/otp/send` when phone is missing or invalid (400). |
 
 Admin-only endpoints return **403** with `code: "FORBIDDEN"` if the user is not an admin.
 

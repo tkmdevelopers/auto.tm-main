@@ -2,10 +2,8 @@ import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:auto_tm/screens/home_screen/model/banner_model.dart';
-import 'package:auto_tm/services/token_service/token_store.dart';
-import 'package:auto_tm/utils/key.dart';
+import 'package:auto_tm/services/network/api_client.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 
 class BannerController extends GetxController {
   var banners = <BannerModel>[].obs; // Observable list of BannerModel
@@ -25,23 +23,19 @@ class BannerController extends GetxController {
   Future<void> fetchBanners() async {
     try {
       isLoading.value = true;
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http
-          .get(
-            Uri.parse(ApiKey.getBannersKey),
-            headers: {
-              "Content-Type": "application/json",
-              if (accessToken != null && accessToken.isNotEmpty)
-                'Authorization': 'Bearer $accessToken',
-            },
-          )
-          .timeout(Duration(seconds: 5));
-      if (response.statusCode == 200) {
+      final response = await ApiClient.to.dio
+          .get('banners')
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200 && response.data != null) {
         banners.value = await Isolate.run(() {
-          List<dynamic> data = json.decode(response.body);
+          final data = response.data is List
+              ? response.data as List
+              : (response.data is String
+                  ? json.decode(response.data as String) as List
+                  : <dynamic>[]);
           return data
-              .map((item) => BannerModel.fromJson(item))
-              .toList(); // Parse JSON into BannerModel
+              .map((item) => BannerModel.fromJson(item as Map<String, dynamic>))
+              .toList();
         });
       }
     } catch (e) {
@@ -50,6 +44,4 @@ class BannerController extends GetxController {
       isLoading.value = false;
     }
   }
-
-  // Token refresh is now handled by the Dio ApiClient interceptor.
 }

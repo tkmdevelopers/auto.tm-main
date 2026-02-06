@@ -2,10 +2,8 @@ import 'dart:convert';
 
 import 'package:auto_tm/screens/home_screen/model/category_model.dart';
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/services/token_service/token_store.dart';
-import 'package:auto_tm/utils/key.dart';
+import 'package:auto_tm/services/network/api_client.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 
 class CategoryController extends GetxController {
   var isLoading = true.obs;
@@ -14,66 +12,46 @@ class CategoryController extends GetxController {
   var category = <Category>[].obs;
   var posts = <Post>[].obs;
 
-  // @override
-  // void onInit() {
-  //   fetchCategories();
-  //   super.onInit();
-  // }
-
-  // Fetch subcategories with products and photos
   Future<void> fetchCategories() async {
     isLoading.value = true;
-    final String baseUrl = ApiKey.getCategoriesKey;
-
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http.get(
-        Uri.parse('$baseUrl?photo=true&post=true'),
-        headers: {
-          // "Accept": "application/json",
-          "Content-Type": "application/json",
-          if (accessToken != null && accessToken.isNotEmpty)
-            'Authorization': 'Bearer $accessToken',
-        },
+      final response = await ApiClient.to.dio.get(
+        'categories',
+        queryParameters: {'photo': true, 'post': true},
       );
-
-      if (response.statusCode == 200) {
-        // print('Response: ${response.body}');
-        List<dynamic> jsonResponse = json.decode(response.body);
+      if (response.statusCode == 200 && response.data != null) {
+        List<dynamic> jsonResponse = response.data is List
+            ? response.data as List
+            : json.decode(response.data is String ? response.data as String : '[]');
         categories.assignAll(
-          jsonResponse.map((json) => Category.fromJson(json)).toList(),
+          jsonResponse
+              .map((j) => Category.fromJson(j as Map<String, dynamic>))
+              .toList(),
         );
       } else {
         throw Exception('Failed to load subcategories');
       }
-      // ignore: empty_catches
     } finally {
       isLoading.value = false;
     }
   }
 
-  void fetchCategoryPosts(String uuid) async {
-    final String baseUrl = ApiKey.getCategoriesKey;
+  Future<void> fetchCategoryPosts(String uuid) async {
     isLoading1.value = true;
-
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http
+      final response = await ApiClient.to.dio
           .get(
-            Uri.parse('$baseUrl?photo=true&post=true'),
-            headers: {
-              // "Accept": "application/json",
-              "Content-Type": "application/json",
-              if (accessToken != null && accessToken.isNotEmpty)
-                'Authorization': 'Bearer $accessToken',
-            },
+            'categories',
+            queryParameters: {'photo': true, 'post': true},
           )
-          .timeout(Duration(seconds: 5));
-      if (response.statusCode == 200) {
-        List<dynamic> jsonResponse = json.decode(response.body);
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200 && response.data != null) {
+        List<dynamic> jsonResponse = response.data is List
+            ? response.data as List
+            : json.decode(response.data is String ? response.data as String : '[]');
         category.assignAll(
           jsonResponse
-              .map((json) => Category.fromJson(json))
+              .map((j) => Category.fromJson(j as Map<String, dynamic>))
               .where((item) => item.uuid == uuid)
               .toList(),
         );

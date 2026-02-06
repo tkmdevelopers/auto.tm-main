@@ -2,12 +2,10 @@ import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/services/token_service/token_store.dart';
-import 'package:auto_tm/utils/key.dart';
+import 'package:auto_tm/services/network/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 
 class HomeController extends GetxController {
   final ScrollController scrollController = ScrollController();
@@ -64,21 +62,31 @@ class HomeController extends GetxController {
   }
 
   Future<void> fetchPosts() async {
-    // Guard against multiple simultaneous fetches
     if (!hasMore.value || isLoading.value) return;
 
     isLoading.value = true;
 
     try {
-      final response = await _makeGetRequest(
-        "${ApiKey.getPostsKey}?offset=$offset&limit=20&brand=true&model=true&photo=true&subscription=true&status=true",
+      final response = await ApiClient.to.dio.get(
+        'posts',
+        queryParameters: {
+          'offset': offset,
+          'limit': 20,
+          'brand': true,
+          'model': true,
+          'photo': true,
+          'subscription': true,
+          'status': true,
+        },
       );
 
-      if (response != null) {
+      if (response.statusCode == 200 && response.data != null) {
         final newPosts = await Isolate.run(() {
-          final data = jsonDecode(response.body);
+          final data = response.data;
           return data is List
-              ? data.map((e) => Post.fromJson(e)).toList()
+              ? (data as List)
+                  .map((e) => Post.fromJson(e as Map<String, dynamic>))
+                  .toList()
               : <Post>[];
         });
 
@@ -90,10 +98,8 @@ class HomeController extends GetxController {
         }
       }
     } catch (e) {
-      // Handle any errors during fetch
       debugPrint('Error fetching posts: $e');
     } finally {
-      // This is crucial: always set isLoading to false after the attempt.
       isLoading.value = false;
     }
   }
@@ -112,22 +118,4 @@ class HomeController extends GetxController {
     }
   }
 
-  Future<http.Response?> _makeGetRequest(String url) async {
-    try {
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http
-          .get(
-            Uri.parse(url),
-            headers: {
-              "Content-Type": "application/json",
-              if (accessToken != null && accessToken.isNotEmpty)
-                'Authorization': 'Bearer $accessToken',
-            },
-          )
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) return response;
-    } catch (_) {}
-    return null;
-  }
 }

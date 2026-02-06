@@ -1,15 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:auto_tm/firebase_options.dart';
-import 'package:auto_tm/utils/key.dart';
+import 'package:auto_tm/services/network/api_client.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:auto_tm/services/token_service/token_store.dart';
-import 'package:http/http.dart' as http;
-import 'dart:io';
-import 'dart:convert';
 
 void _logDebugNS(
   String location,
@@ -201,27 +201,27 @@ class NotificationService extends GetxService {
   }
 
   Future<void> _uploadToken(String token) async {
-    final accessToken = await TokenStore.to.accessToken;
-    if (accessToken == null || accessToken.isEmpty) {
+    if (!Get.isRegistered<ApiClient>()) {
+      _log("ApiClient not ready. Cannot send FCM token.");
+      return;
+    }
+    final hasToken = await TokenStore.to.hasTokens;
+    if (!hasToken) {
       _log("No access token found. Cannot send FCM token.");
       return;
     }
 
     try {
-      final response = await http.put(
-        Uri.parse(ApiKey.setFirebaseKey),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode({'token': token}),
+      final response = await ApiClient.to.dio.put(
+        'auth/setFirebase',
+        data: {'token': token},
       );
 
       if (response.statusCode == 200) {
         _log("Token sent to backend successfully.");
       } else {
         _log(
-          "Backend rejected token: ${response.statusCode} - ${response.body}",
+          "Backend rejected token: ${response.statusCode} - ${response.data}",
         );
       }
     } catch (e) {

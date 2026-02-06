@@ -1,51 +1,88 @@
 # Alpha Motors (auto.tm)
 
-Full-stack automotive marketplace:
-- **Mobile app**: Flutter (iOS/Android) in [auto.tm-main/](auto.tm-main/)
-- **Backend API**: NestJS + Sequelize + PostgreSQL in [backend/](backend/)
+Full-stack automotive marketplace: **Flutter** mobile app (iOS/Android) and **NestJS** backend API with PostgreSQL. Users authenticate via phone OTP, create listings with photos/videos, comment, subscribe to premium features, and receive push notifications.
 
-## Start Here
-
-- Backend development setup: [backend/docs/DEVELOPMENT_SETUP.md](backend/docs/DEVELOPMENT_SETUP.md)
-- Production deployment (air-gapped friendly): [backend/docs/PRODUCTION_DEPLOYMENT.md](backend/docs/PRODUCTION_DEPLOYMENT.md)
-- Release/update checklist: [backend/docs/UPDATE_CHECKLIST.md](backend/docs/UPDATE_CHECKLIST.md)
-- Auth/OTP API contract (source of truth): [backend/docs/API_REFERENCE.md](backend/docs/API_REFERENCE.md)
-- Backend architecture (detailed, includes OTP flow + risks): [backend/docs/ARCHITECTURE.md](backend/docs/ARCHITECTURE.md)
+---
 
 ## Repository Layout
 
 ```
 .
-├── auto.tm-main/            # Flutter mobile app
-├── backend/                 # NestJS API + Sequelize migrations + Docker
-├── assets/                  # UI assets (Flutter)
-├── CLAUDE.md                # Assistant/dev notes for this repo
-└── README.md                # This file (documentation index)
+├── auto.tm-main/          # Flutter mobile app (Dart, GetX)
+├── backend/               # NestJS API (TypeScript, Sequelize, PostgreSQL)
+├── docs/                  # Cross-cutting documentation
+│   ├── ARCHITECTURE_OVERVIEW.md   # Full-stack architecture
+│   ├── TESTING.md                 # Manual & smoke testing
+│   └── ROADMAP.md                 # Auth improvements & plans
+├── CLAUDE.md              # AI/assistant rules for this repo
+└── README.md              # This file (documentation index)
 ```
 
-## Where To Find What
+---
 
-### Backend
+## Documentation Index
 
-- Local dev workflow, Docker, seeding: [backend/docs/DEVELOPMENT_SETUP.md](backend/docs/DEVELOPMENT_SETUP.md)
-- Production deploy, rollback, backups: [backend/docs/PRODUCTION_DEPLOYMENT.md](backend/docs/PRODUCTION_DEPLOYMENT.md)
-- Operational checklists (updates, seeding changes): [backend/docs/UPDATE_CHECKLIST.md](backend/docs/UPDATE_CHECKLIST.md)
-- Architecture and system flows: [backend/docs/ARCHITECTURE.md](backend/docs/ARCHITECTURE.md)
+### Start here
 
-### API Contract
+| Document | Purpose |
+|----------|---------|
+| [docs/ARCHITECTURE_OVERVIEW.md](docs/ARCHITECTURE_OVERVIEW.md) | Full-stack overview: app, API, DB, auth flow, ports, where to find more |
+| [backend/docs/DEVELOPMENT_SETUP.md](backend/docs/DEVELOPMENT_SETUP.md) | Backend local setup: Docker, env, seeding, migrations |
+| [backend/docs/API_REFERENCE.md](backend/docs/API_REFERENCE.md) | Auth/OTP API contract (source of truth for endpoints and error codes) |
 
-- Auth/OTP endpoints and semantics: [backend/docs/API_REFERENCE.md](backend/docs/API_REFERENCE.md)
-- Interactive Swagger docs (when running): `http://localhost:3080/api-docs`
+### Backend (NestJS)
+
+| Document | Purpose |
+|----------|---------|
+| [backend/docs/DEVELOPMENT_SETUP.md](backend/docs/DEVELOPMENT_SETUP.md) | Dev workflow, Docker, native run, DB access, troubleshooting |
+| [backend/docs/PRODUCTION_DEPLOYMENT.md](backend/docs/PRODUCTION_DEPLOYMENT.md) | Production deploy (air-gapped friendly), rollback, backups |
+| [backend/docs/UPDATE_CHECKLIST.md](backend/docs/UPDATE_CHECKLIST.md) | Release checklists: code-only, migrations, seeds, rollback |
+| [backend/docs/ARCHITECTURE.md](backend/docs/ARCHITECTURE.md) | Backend architecture: OTP/SMS flows, gateways, risks |
+| [backend/docs/API_REFERENCE.md](backend/docs/API_REFERENCE.md) | Auth/OTP endpoints, error codes, rate limits, Flutter integration |
+| [backend/docs/DATABASE.md](backend/docs/DATABASE.md) | Database schema summary, migrations, seeding |
+
+### Cross-cutting
+
+| Document | Purpose |
+|----------|---------|
+| [docs/TESTING.md](docs/TESTING.md) | Manual testing, deleted-user scenarios, smoke tests |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Auth improvements plan, migration checklist, future work |
 
 ### Mobile (Flutter)
 
-- Flutter app sources: [auto.tm-main/](auto.tm-main/)
-- If you need Flutter environment/build notes, add them to [auto.tm-main/README.md](auto.tm-main/README.md).
+| Document | Purpose |
+|----------|---------|
+| [auto.tm-main/README.md](auto.tm-main/README.md) | Flutter app: env, run, build, project structure |
 
-## Quick Pointers
+---
 
-- Backend entry point: [backend/src/main.ts](backend/src/main.ts)
-- Docker compose (dev): [backend/docker-compose.yml](backend/docker-compose.yml)
-- Docker compose (prod): [backend/docker-compose.prod.yml](backend/docker-compose.prod.yml)
+## Quick start
+
+**Backend (from `backend/`):**
+
+```bash
+cp .env.example .env
+docker compose -f docker-compose.build.yml build
+docker compose up -d
+# Seed: export DATABASE_HOST=localhost DATABASE_PORT=5432 ... && npm run db:seed:all
+```
+
+**API:** http://localhost:3080 — **Swagger:** http://localhost:3080/api-docs
+
+**Flutter (from `auto.tm-main/`):**
+
+```bash
+# Set API_BASE in .env (e.g. http://10.0.2.2:3080 for Android emulator)
+flutter pub get
+flutter run
+```
+
+---
+
+## Key pointers
+
+- Backend entry: [backend/src/main.ts](backend/src/main.ts)
+- Docker dev: [backend/docker-compose.yml](backend/docker-compose.yml)
+- Docker prod: [backend/docker-compose.prod.yml](backend/docker-compose.prod.yml)
 - Migrations: [backend/migrations/](backend/migrations/)
-- Seed scripts: [backend/scripts/](backend/scripts/) and [backend/dumpCurrencies.js](backend/dumpCurrencies.js), [backend/dumpCarBrands.js](backend/dumpCarBrands.js)
+- Seeds: [backend/scripts/](backend/scripts/), [backend/dumpCurrencies.js](backend/dumpCurrencies.js), [backend/dumpCarBrands.js](backend/dumpCarBrands.js)

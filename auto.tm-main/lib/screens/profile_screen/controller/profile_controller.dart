@@ -779,14 +779,14 @@ class ProfileController extends GetxController {
   }
 
   void logout() {
-    // Use central auth service logout to ensure consistent cleanup
+    // Use central auth service logout to ensure consistent cleanup (tokens + backend)
     if (Get.isRegistered<AuthService>()) {
       AuthService.to.logout();
     } else {
-      // Fallback selective removal if auth service not yet initialized
-      box.remove('ACCESS_TOKEN');
-      box.remove('REFRESH_TOKEN');
-      box.remove('USER_PHONE');
+      // Fallback: clear tokens via TokenStore only; clear profile cache from GetStorage
+      if (Get.isRegistered<TokenStore>()) {
+        TokenStore.to.clearAll();
+      }
       box.remove('user_name');
       box.remove('user_phone');
       box.remove('user_location');
