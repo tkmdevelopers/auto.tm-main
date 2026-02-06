@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:auto_tm/global_controllers/connection_controller.dart';
 import 'package:auto_tm/screens/profile_screen/model/profile_model.dart';
 import 'package:auto_tm/services/auth/auth_service.dart';
 import 'package:auto_tm/ui_components/colors.dart';
@@ -20,6 +21,7 @@ import 'package:permission_handler/permission_handler.dart';
 class ProfileController extends GetxController {
   // Application-wide default location for newly registered users
   static const String defaultLocation = 'Aşgabat';
+
   /// Singleton accessor to avoid accidental duplicate Get.put() calls scattered in UI.
   static ProfileController ensure() {
     if (Get.isRegistered<ProfileController>()) {
@@ -49,6 +51,9 @@ class ProfileController extends GetxController {
   // New: lightweight refresh indicator for background/secondary refreshes
   final RxBool isRefreshing =
       false.obs; // use instead of full-screen spinner for non-initial pulls
+  final RxBool isOffline = false.obs;
+
+  late final ConnectionController _connectionController;
 
   var profile = Rxn<ProfileModel>();
 
@@ -77,6 +82,13 @@ class ProfileController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _connectionController = Get.isRegistered<ConnectionController>()
+        ? Get.find<ConnectionController>()
+        : Get.put(ConnectionController(), permanent: true);
+    isOffline.value = !_connectionController.hasConnection.value;
+    ever<bool>(_connectionController.hasConnection, (hasConnection) {
+      isOffline.value = !hasConnection;
+    });
     // Load initial values from local storage as fallback
     name.value = box.read('user_name') ?? '';
     phone.value = box.read('user_phone') ?? '993';
@@ -88,6 +100,9 @@ class ProfileController extends GetxController {
     }
     locationController.text = location.value;
 
+    // Attempt to restore cached profile immediately for offline UX
+    _restoreCachedProfile();
+
     // Test API configuration
     testApiConnection();
 
@@ -96,7 +111,8 @@ class ProfileController extends GetxController {
 
     // Late-arrival profile listener: if profile loads after screen build and fields not initialized, prefill.
     ever<ProfileModel?>(profile, (p) {
-      if (p != null && (!fieldsInitialized.value || nameController.text.isEmpty)) {
+      if (p != null &&
+          (!fieldsInitialized.value || nameController.text.isEmpty)) {
         ensureFormFieldPrefill(force: true);
       }
     });
@@ -209,6 +225,13 @@ class ProfileController extends GetxController {
         return _earlyReturnCleanup('bad_api_url');
       }
 
+      if (!_connectionController.hasConnection.value) {
+        AppLogger.w('fetchProfile: no connection detected, using cache');
+        isOffline.value = true;
+        _restoreCachedProfile();
+        return _earlyReturnCleanup('no_connection');
+      }
+
       AppLogger.i('Fetching profile from: ${ApiKey.getProfileKey}');
       AppLogger.d('Using token: ${accessToken.substring(0, 20)}...');
 
@@ -253,6 +276,8 @@ class ProfileController extends GetxController {
           profile.value = ProfileModel.fromJson(data);
           box.write('USER_ID', data['uuid']);
           phone.value = data['phone']?.toString() ?? '';
+          box.write('cached_profile_json', response.body);
+          isOffline.value = false;
 
           AppLogger.i('Profile fetched successfully: ${profile.value?.name}');
           hasLoadedProfile.value = true;
@@ -277,13 +302,46 @@ class ProfileController extends GetxController {
           // parsing error should still resolve initial load so UI can present fallback
         }
       } else if (response.statusCode == 401) {
-        // Token expired or invalid — ApiClient interceptor handles refresh for Dio calls.
-        // For legacy http calls, redirect to login.
+        // Check if account was deleted by admin
+        try {
+          final body = json.decode(response.body);
+          final code = body is Map ? body['code'] : null;
+          if (code == 'USER_DELETED') {
+            AppLogger.w('fetchProfile: account deleted by administrator');
+            Get.snackbar(
+              'Account Deleted',
+              'Your account has been deleted by an administrator.',
+              snackPosition: SnackPosition.TOP,
+              backgroundColor: Get.theme.colorScheme.error,
+              colorText: Get.theme.colorScheme.onError,
+              duration: const Duration(seconds: 5),
+            );
+            _forceLogoutDeleted();
+            return;
+          }
+        } catch (_) {}
+        // Token expired or invalid — redirect to login
+        AppLogger.w('fetchProfile: 401 — session invalid, forcing logout');
         Get.snackbar(
           'Error',
           'Session expired. Please log in again.',
           snackPosition: SnackPosition.BOTTOM,
         );
+        _forceLogoutDeleted();
+        return;
+      } else if (response.statusCode == 404) {
+        // User not found in database — account was deleted
+        AppLogger.w('fetchProfile: 404 — user not found, account deleted');
+        Get.snackbar(
+          'Account Not Found',
+          'Your account could not be found. Please register again.',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Get.theme.colorScheme.error,
+          colorText: Get.theme.colorScheme.onError,
+          duration: const Duration(seconds: 5),
+        );
+        _forceLogoutDeleted();
+        return;
       } else {
         AppLogger.w('Unexpected status code: ${response.statusCode}');
         Get.snackbar(
@@ -299,6 +357,8 @@ class ProfileController extends GetxController {
         'Profile request took too long. Pull to retry.',
         snackPosition: SnackPosition.BOTTOM,
       );
+      isOffline.value = true;
+      _restoreCachedProfile();
     } catch (e) {
       AppLogger.e('Error fetching profile', error: e);
       Get.snackbar(
@@ -306,6 +366,8 @@ class ProfileController extends GetxController {
         'Failed to fetch profile: $e',
         snackPosition: SnackPosition.BOTTOM,
       );
+      isOffline.value = true;
+      _restoreCachedProfile();
     } finally {
       AppLogger.d(
         'fetchProfile: finalizing. hasLoaded=${hasLoadedProfile.value} isLoading=${isLoading.value} isRefreshing=${isRefreshing.value} isFetching=${isFetchingProfile.value}',
@@ -417,6 +479,43 @@ class ProfileController extends GetxController {
     }
   }
 
+  /// Restore profile from cached JSON stored in GetStorage.
+  /// Returns true if a valid cached profile was loaded.
+  bool _restoreCachedProfile() {
+    final cached = box.read('cached_profile_json');
+    if (cached == null || cached is! String || cached.isEmpty) {
+      return false;
+    }
+    try {
+      final data = json.decode(cached);
+      if (data is! Map) return false;
+
+      profile.value = ProfileModel.fromJson(Map<String, dynamic>.from(data));
+      hasLoadedProfile.value = true;
+      name.value = profile.value?.name ?? name.value;
+      phone.value = profile.value?.phone ?? phone.value;
+      final restoredLocation = profile.value?.location ?? location.value;
+      location.value = restoredLocation.isNotEmpty
+          ? restoredLocation
+          : defaultLocation;
+      locationController.text = location.value;
+
+      if (name.value.isNotEmpty) {
+        box.write('user_name', name.value);
+      }
+      if (phone.value.isNotEmpty) {
+        box.write('user_phone', phone.value);
+      }
+      if (location.value.isNotEmpty) {
+        box.write('user_location', location.value);
+      }
+      return true;
+    } catch (e, st) {
+      AppLogger.w('Failed to restore cached profile', error: e, stackTrace: st);
+      return false;
+    }
+  }
+
   /// Ensure form text controllers are prefilled with the latest known values.
   /// This is idempotent and will only run once per screen lifecycle unless
   /// [force] is true. It prefers freshly fetched profile data, then reactive
@@ -436,7 +535,8 @@ class ProfileController extends GetxController {
 
     // Resolve best-known location
     String existingLocation = '';
-    if (profile.value?.location != null && profile.value!.location!.isNotEmpty) {
+    if (profile.value?.location != null &&
+        profile.value!.location!.isNotEmpty) {
       existingLocation = profile.value!.location!;
     } else if (location.value.isNotEmpty) {
       existingLocation = location.value;
@@ -520,7 +620,8 @@ class ProfileController extends GetxController {
       final paths = jsonBody['paths'];
       String? chosen;
       if (paths is Map) {
-        chosen = paths['medium']?.toString() ??
+        chosen =
+            paths['medium']?.toString() ??
             paths['large']?.toString() ??
             paths['small']?.toString();
       }
@@ -670,10 +771,10 @@ class ProfileController extends GetxController {
     final preservedName = enteredName.isNotEmpty
         ? enteredName
         : (current?.name.isNotEmpty == true
-            ? current!.name
-            : (name.value.isNotEmpty
-                ? name.value
-                : (box.read('user_name') ?? '')));
+              ? current!.name
+              : (name.value.isNotEmpty
+                    ? name.value
+                    : (box.read('user_name') ?? '')));
     if (current == null) {
       profile.value = ProfileModel(
         uuid: box.read('USER_ID') ?? '',
@@ -723,6 +824,7 @@ class ProfileController extends GetxController {
       box.remove('user_phone');
       box.remove('user_location');
       box.remove('USER_ID');
+      box.remove('cached_profile_json');
     }
     // Clear local reactive state
     profile.value = null;
@@ -731,11 +833,46 @@ class ProfileController extends GetxController {
     location.value = defaultLocation;
     nameController.clear();
     locationController.text = defaultLocation;
-    selectedImage.value = null; // ensure previous avatar bytes aren't shown for next user
+    selectedImage.value =
+        null; // ensure previous avatar bytes aren't shown for next user
     fieldsInitialized.value = false;
     hasLoadedProfile.value = false;
+    isOffline.value = false;
     // Navigate to login (or splash) route; adjust if different
     Get.offAllNamed('/login');
+  }
+
+  /// Force-logout when backend reports the user account no longer exists.
+  /// Clears all local state and navigates to the registration screen.
+  void _forceLogoutDeleted() {
+    // Clean up flags so no spinner is left behind during navigation
+    isLoading.value = false;
+    isRefreshing.value = false;
+    isFetchingProfile.value = false;
+    if (_initialLoadCompleter != null && !_initialLoadCompleter!.isCompleted) {
+      _initialLoadCompleter!.complete();
+    }
+    // Wipe local session data
+    profile.value = null;
+    name.value = '';
+    phone.value = '';
+    location.value = defaultLocation;
+    nameController.clear();
+    locationController.text = defaultLocation;
+    selectedImage.value = null;
+    fieldsInitialized.value = false;
+    hasLoadedProfile.value = false;
+    box.remove('ACCESS_TOKEN');
+    box.remove('REFRESH_TOKEN');
+    box.remove('USER_PHONE');
+    box.remove('user_name');
+    box.remove('user_phone');
+    box.remove('user_location');
+    box.remove('USER_ID');
+    box.remove('cached_profile_json');
+    isOffline.value = false;
+    // Navigate to registration screen (clears entire navigation stack)
+    Get.offAllNamed('/register');
   }
 
   // void showBottomSheet(

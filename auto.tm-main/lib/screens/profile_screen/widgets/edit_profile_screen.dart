@@ -18,9 +18,9 @@ class EditProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-  // Attempt a prefill from existing data sources (profile -> reactive -> storage).
-  // Do NOT force if we already populated once; late profile arrival listener in controller will re-run with force.
-  controller.ensureFormFieldPrefill();
+    // Attempt a prefill from existing data sources (profile -> reactive -> storage).
+    // Do NOT force if we already populated once; late profile arrival listener in controller will re-run with force.
+    controller.ensureFormFieldPrefill();
 
     // Trigger profile fetch+populate only if not already loaded or currently fetching.
     if (!(controller.hasLoadedProfile.value ||
@@ -39,36 +39,85 @@ class EditProfileScreen extends StatelessWidget {
         ),
         automaticallyImplyLeading: true,
         actions: [
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: theme.colorScheme.onSurface,
-              backgroundColor: theme.colorScheme.surface.withOpacity(0.6),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          Obx(() {
+            final canSubmit =
+                controller.hasLoadedProfile.value &&
+                !controller.isOffline.value;
+            return TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.onSurface,
+                backgroundColor: theme.colorScheme.surface.withOpacity(0.6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-            ),
-            onPressed: controller.uploadProfile,
-            child: Text(
-              'Done'.tr,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface,
+              onPressed: canSubmit ? controller.uploadProfile : null,
+              child: Text(
+                'Done'.tr,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
-            ),
-          ),
+            );
+          }),
         ],
         backgroundColor: theme.appBarTheme.backgroundColor,
         surfaceTintColor: theme.appBarTheme.backgroundColor,
       ),
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Obx(() {
+        final canEdit =
+            controller.hasLoadedProfile.value && !controller.isOffline.value;
         return SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
+                if (controller.isOffline.value)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant.withOpacity(
+                          0.4,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.cloud_off,
+                          size: 18,
+                          color: AppColors.primaryColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'profile_edit_offline'.tr,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                0.75,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 if (controller.isLoading.value)
                   Container(
                     width: double.infinity,
@@ -137,8 +186,7 @@ class EditProfileScreen extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Profile data not loaded yet. You can fill the form now or retry.'
-                                .tr,
+                            'profile_edit_not_loaded'.tr,
                             style: TextStyle(
                               fontSize: 12,
                               color: theme.colorScheme.onSurface.withOpacity(
@@ -199,67 +247,79 @@ class EditProfileScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                // Avatar block
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Obx(
-                      () => ProfileAvatar(
-                        radius: 40,
-                        backgroundRadiusDelta: 4,
-                        localBytes: controller.selectedImage.value,
-                        remotePath: controller.profile.value?.avatar,
-                        onTap: controller.pickImage,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: controller.pickImage,
-                      child: Text(
-                        'Change avatar'.tr,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          // Use surface/onSurface palette instead of primary accent
-                          color: theme.colorScheme.onSurface.withOpacity(0.75),
+                IgnorePointer(
+                  ignoring: !canEdit,
+                  child: Opacity(
+                    opacity: canEdit ? 1 : 0.5,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Avatar block
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Obx(
+                              () => ProfileAvatar(
+                                radius: 40,
+                                backgroundRadiusDelta: 4,
+                                localBytes: controller.selectedImage.value,
+                                remotePath: controller.profile.value?.avatar,
+                                onTap: controller.pickImage,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: controller.pickImage,
+                              child: Text(
+                                'Change avatar'.tr,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  // Use surface/onSurface palette instead of primary accent
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.75),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                FocusScope(
-                  child: Builder(
-                    builder: (ctx) {
-                      return ProfileFormFields(
-                        label: 'Name'.tr,
-                        controller: controller.nameController,
-                        focus: controller.nameFocus,
-                        onsubmit: (_) => controller.nameFocus.unfocus(),
-                        hint: 'Enter your name'.tr,
-                      );
-                    },
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () async {
-                    final selected = await Get.to(
-                      () => SLocationSelectionProfile(),
-                    );
-                    if (selected != null && selected is String) {
-                      controller.location.value = selected;
-                      controller.locationController.text = selected;
-                      final box = GetStorage();
-                      box.write('user_location', selected);
-                      // Allow re-entry to re-edit with newly chosen location
-                      controller.fieldsInitialized.value = false;
-                    }
-                  },
-                  child: AbsorbPointer(
-                    child: ProfileFormFields(
-                      label: 'Location'.tr,
-                      controller: controller.locationController,
-                      focus: controller.locationFocus,
-                      hint: 'Enter your location'.tr,
+                        const SizedBox(height: 20),
+                        FocusScope(
+                          child: Builder(
+                            builder: (ctx) {
+                              return ProfileFormFields(
+                                label: 'Name'.tr,
+                                controller: controller.nameController,
+                                focus: controller.nameFocus,
+                                onsubmit: (_) => controller.nameFocus.unfocus(),
+                                hint: 'Enter your name'.tr,
+                              );
+                            },
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () async {
+                            final selected = await Get.to(
+                              () => SLocationSelectionProfile(),
+                            );
+                            if (selected != null && selected is String) {
+                              controller.location.value = selected;
+                              controller.locationController.text = selected;
+                              final box = GetStorage();
+                              box.write('user_location', selected);
+                              // Allow re-entry to re-edit with newly chosen location
+                              controller.fieldsInitialized.value = false;
+                            }
+                          },
+                          child: AbsorbPointer(
+                            child: ProfileFormFields(
+                              label: 'Location'.tr,
+                              controller: controller.locationController,
+                              focus: controller.locationFocus,
+                              hint: 'Enter your location'.tr,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

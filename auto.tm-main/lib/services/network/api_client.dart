@@ -62,17 +62,17 @@ class ApiClient extends GetxService {
       }
 
       // Use a fresh Dio instance to avoid interceptor recursion
-      final freshDio = Dio(BaseOptions(
-        baseUrl: ApiKey.apiKey,
-        connectTimeout: const Duration(seconds: 10),
-        receiveTimeout: const Duration(seconds: 10),
-      ));
+      final freshDio = Dio(
+        BaseOptions(
+          baseUrl: ApiKey.apiKey,
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
 
       final response = await freshDio.post(
         'auth/refresh',
-        options: Options(headers: {
-          'Authorization': 'Bearer $refreshToken',
-        }),
+        options: Options(headers: {'Authorization': 'Bearer $refreshToken'}),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -133,7 +133,7 @@ class _AuthInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     final response = err.response;
 
-    // Only handle 401 with TOKEN_EXPIRED code
+    // Handle 401 errors
     if (response != null && response.statusCode == 401) {
       final data = response.data;
       final code = data is Map ? data['code'] : null;
@@ -155,6 +155,36 @@ class _AuthInterceptor extends Interceptor {
         }
 
         // Refresh failed or retry failed — force logout
+        await _client.forceLogout();
+        return handler.reject(err);
+      }
+
+      // Handle deleted user account
+      if (code == 'USER_DELETED') {
+        Get.snackbar(
+          'Account Deleted',
+          'Your account has been deleted by an administrator',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Get.theme.colorScheme.error,
+          colorText: Get.theme.colorScheme.onError,
+          duration: const Duration(seconds: 5),
+        );
+        await _client.forceLogout();
+        return handler.reject(err);
+      }
+    }
+
+    // Handle 404 on critical auth endpoints (user not found in DB)
+    if (response != null && response.statusCode == 404) {
+      final url = err.requestOptions.path;
+      if (url.contains('/auth/me') || url.contains('auth/me')) {
+        Get.snackbar(
+          'Account Not Found',
+          'Your account could not be found. Please log in again.',
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Get.theme.colorScheme.error,
+          colorText: Get.theme.colorScheme.onError,
+        );
         await _client.forceLogout();
         return handler.reject(err);
       }

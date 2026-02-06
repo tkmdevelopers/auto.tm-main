@@ -99,6 +99,7 @@ All authentication errors return HTTP **401** with a JSON body containing a `cod
 | `TOKEN_EXPIRED` | Access or refresh token has expired. Client should attempt a refresh. |
 | `TOKEN_INVALID` | Token is malformed, missing, or not a valid JWT. |
 | `TOKEN_REUSE` | A previously used refresh token was presented. The session has been revoked as a security precaution — the user must log in again. |
+| `USER_DELETED` | The user account has been deleted by an administrator. The client must log out and clear all local data. |
 | `OTP_INVALID` | The OTP code is wrong or expired. |
 
 Admin-only endpoints return **403** with `code: "FORBIDDEN"` if the user is not an admin.
