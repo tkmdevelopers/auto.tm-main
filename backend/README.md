@@ -8,7 +8,7 @@ This folder contains the NestJS API (Sequelize + PostgreSQL) for Alpha Motors.
 - Production deployment (air-gapped friendly): [docs/PRODUCTION_DEPLOYMENT.md](docs/PRODUCTION_DEPLOYMENT.md)
 - Update/runbook checklists: [docs/UPDATE_CHECKLIST.md](docs/UPDATE_CHECKLIST.md)
 - Backend architecture (flows + known risks): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- Auth/OTP API reference (source of truth for endpoints): [API_REFERENCE.md](API_REFERENCE.md)
+- Auth/OTP API reference (source of truth for endpoints): [docs/API_REFERENCE.md](docs/API_REFERENCE.md)
 
 ## Common Commands
 

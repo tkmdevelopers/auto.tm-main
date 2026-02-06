@@ -9,7 +9,7 @@ Full-stack automotive marketplace:
 - Backend development setup: [backend/docs/DEVELOPMENT_SETUP.md](backend/docs/DEVELOPMENT_SETUP.md)
 - Production deployment (air-gapped friendly): [backend/docs/PRODUCTION_DEPLOYMENT.md](backend/docs/PRODUCTION_DEPLOYMENT.md)
 - Release/update checklist: [backend/docs/UPDATE_CHECKLIST.md](backend/docs/UPDATE_CHECKLIST.md)
-- Auth/OTP API contract (source of truth): [backend/API_REFERENCE.md](backend/API_REFERENCE.md)
+- Auth/OTP API contract (source of truth): [backend/docs/API_REFERENCE.md](backend/docs/API_REFERENCE.md)
 - Backend architecture (detailed, includes OTP flow + risks): [backend/docs/ARCHITECTURE.md](backend/docs/ARCHITECTURE.md)
 
 ## Repository Layout
@@ -34,7 +34,7 @@ Full-stack automotive marketplace:
 
 ### API Contract
 
-- Auth/OTP endpoints and semantics: [backend/API_REFERENCE.md](backend/API_REFERENCE.md)
+- Auth/OTP endpoints and semantics: [backend/docs/API_REFERENCE.md](backend/docs/API_REFERENCE.md)
 - Interactive Swagger docs (when running): `http://localhost:3080/api-docs`
 
 ### Mobile (Flutter)
