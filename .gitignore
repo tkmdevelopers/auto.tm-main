@@ -1,0 +1,12 @@
+# OS
+.DS_Store
+
+# IDEs / editors
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Local tooling / caches
+.cursor/
