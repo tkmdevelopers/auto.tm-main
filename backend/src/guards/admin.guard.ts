@@ -1,10 +1,9 @@
-/* eslint-disable prettier/prettier */
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Inject,
   Injectable,
-  NotAcceptableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -21,51 +20,38 @@ export class AdminGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const token = await this.extractTokenFromHeader(request);
-    const uuid = await this.extractUUIDFromHeader(token);
-    console.log(uuid);
+    const token = this.extractTokenFromHeader(request);
+    const uuid = await this.extractUUIDFromToken(token);
     if (!uuid) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException({ code: 'TOKEN_INVALID', message: 'Missing or invalid token' });
     }
-    try {
-      const admin = await this.Users.findOne({
-        where: { uuid },
-      });
-      if (!(admin?.role == 'admin')) {
-        throw new NotAcceptableException();
-      }
-
-      return true;
-      // 💡 We're assigning the payload to the request object here
-      // so that we can access it in our route handlers
-    } catch (error) {
-      console.log(error);
-      throw new NotAcceptableException();
+    const admin = await this.Users.findOne({ where: { uuid } });
+    if (!admin || admin.role !== 'admin') {
+      throw new ForbiddenException({ code: 'FORBIDDEN', message: 'Admin access required' });
     }
+    request['uuid'] = uuid;
     return true;
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
-
     return type === 'Bearer' ? token : undefined;
   }
-  private async extractUUIDFromHeader(token?: string) {
+
+  private async extractUUIDFromToken(token?: string): Promise<string | undefined> {
     if (!token) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException({ code: 'TOKEN_INVALID', message: 'Missing token' });
     }
     try {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: process.env.ACCESS_TOKEN_SECRET_KEY,
       });
-
       return payload?.uuid;
     } catch (error) {
-      console.log(error);
-      if (error?.message == 'jwt expired') {
-        throw new NotAcceptableException();
+      if (error?.message === 'jwt expired') {
+        throw new UnauthorizedException({ code: 'TOKEN_EXPIRED', message: 'Access token expired' });
       }
-      throw new UnauthorizedException();
+      throw new UnauthorizedException({ code: 'TOKEN_INVALID', message: 'Invalid access token' });
     }
   }
 }

@@ -433,7 +433,7 @@ export class OtpService {
         { uuid: userId, phone },
         {
           secret: this.configService.get<string>("ACCESS_TOKEN_SECRET_KEY"),
-          expiresIn: "24h",
+          expiresIn: "15m",
         },
       ),
       this.jwtService.signAsync(
@@ -445,9 +445,10 @@ export class OtpService {
       ),
     ]);
 
-    // Store refresh token
+    // Store hash of refresh token (never store plaintext)
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
     await this.userRepository.update(
-      { refreshToken },
+      { refreshTokenHash },
       { where: { uuid: userId } },
     );
 

@@ -361,13 +361,8 @@ class FilterController extends GetxController {
         }
 
         _applyRegionAndCityFilters();
-      } else if (response.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return searchProducts(loadMore: loadMore);
-        } else {
-          Get.snackbar('Error', 'Login expired. Please log in again.');
-        }
+      } else if (response.statusCode == 401) {
+        Get.snackbar('Error', 'Login expired. Please log in again.');
       } else {
         if (!loadMore) searchResults.clear();
       }
@@ -459,18 +454,7 @@ class FilterController extends GetxController {
       if (response.statusCode == 200 || response.statusCode == 201) {
         addToSubscribes(selectedBrandUuid.value);
       }
-      if (response.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return subscribeToBrand();
-        } else {
-          Get.snackbar(
-            'Error',
-            'Failed to refresh access token. Please log in again.',
-            snackPosition: SnackPosition.BOTTOM,
-          );
-        }
-      }
+      // Auth errors are handled by ApiClient interceptor for Dio calls.
     } catch (e) {
       // Handle error silently
     } finally {
@@ -496,18 +480,7 @@ class FilterController extends GetxController {
       if (response.statusCode == 200 || response.statusCode == 201) {
         removeFromSubscribes(selectedBrandUuid.value);
       }
-      if (response.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return unSubscribeFromBrand();
-        } else {
-          Get.snackbar(
-            'Error',
-            'Failed to refresh access token. Please log in again.',
-            snackPosition: SnackPosition.BOTTOM,
-          );
-        }
-      }
+      // Auth errors are handled by ApiClient interceptor for Dio calls.
     } catch (e) {
       // Handle error silently
     } finally {
@@ -542,18 +515,7 @@ class FilterController extends GetxController {
         brands.value = List<Map<String, dynamic>>.from(decodedData);
         filteredBrands.value = List<Map<String, dynamic>>.from(decodedData);
       }
-      if (response.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return fetchBrands();
-        } else {
-          Get.snackbar(
-            'Error',
-            'Failed to refresh access token. Please log in again.',
-            snackPosition: SnackPosition.BOTTOM,
-          );
-        }
-      }
+      // Auth errors are handled by ApiClient interceptor for Dio calls.
     } catch (e) {
       // Handle error silently
     } finally {
@@ -578,9 +540,7 @@ class FilterController extends GetxController {
         models.value = List<Map<String, dynamic>>.from(decodedData);
         filteredModels.value = List<Map<String, dynamic>>.from(decodedData);
       }
-      if (response.statusCode == 406) {
-        await refreshAccessToken();
-      }
+      // Auth errors are handled by ApiClient interceptor for Dio calls.
     } catch (e) {
       // Handle error silently
     } finally {
@@ -588,39 +548,8 @@ class FilterController extends GetxController {
     }
   }
 
-  Future<bool> refreshAccessToken() async {
-    try {
-      final refreshToken = box.read('REFRESH_TOKEN');
-
-      final response = await http.get(
-        Uri.parse(ApiKey.refreshTokenKey),
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': 'Bearer $refreshToken',
-        },
-      );
-
-      if (response.statusCode == 200 && response.body.isNotEmpty) {
-        final data = jsonDecode(response.body);
-        final newAccessToken = data['accessToken'];
-        if (newAccessToken != null) {
-          box.remove('ACCESS_TOKEN');
-          box.write('ACCESS_TOKEN', newAccessToken);
-          return true;
-        } else {
-          return false;
-        }
-      }
-      if (response.statusCode == 406) {
-        Get.offAllNamed('/login');
-        return false;
-      } else {
-        return false;
-      }
-    } catch (e) {
-      return false;
-    }
-  }
+  // Token refresh is now handled by the Dio ApiClient interceptor.
+  // The duplicated refreshAccessToken() method has been removed.
   @override
   void onClose() {
     _debounce?.cancel();

@@ -40,9 +40,6 @@ class BannerController extends GetxController {
               .map((item) => BannerModel.fromJson(item))
               .toList(); // Parse JSON into BannerModel
         });
-      } if (response.statusCode == 406) {
-        // await refreshAccessToken();
-        return fetchBanners(); // Retry after refreshing token
       }
     } catch (e) {
       return;
@@ -51,31 +48,5 @@ class BannerController extends GetxController {
     }
   }
 
-  Future<void> refreshAccessToken() async {
-    try {
-      final refreshToken = box.read('REFRESH_TOKEN');
-
-      final response = await http.get(
-        Uri.parse(ApiKey.refreshTokenKey),
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': 'Bearer $refreshToken'
-        },
-      );
-
-      if (response.statusCode == 200 && response.body.isNotEmpty) {
-        final data = jsonDecode(response.body);
-        final newAccessToken = data['accessToken'];
-        if (newAccessToken != null) {
-          box.write('ACCESS_TOKEN', newAccessToken);
-        } else {
-        }
-      } if (response.statusCode == 406) {
-        Get.offAllNamed('/login');
-      } else {
-      }
-    } catch (e) {
-      return;
-    }
-  }
+  // Token refresh is now handled by the Dio ApiClient interceptor.
 }

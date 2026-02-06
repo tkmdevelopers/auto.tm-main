@@ -1,36 +1,40 @@
-import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
-import 'package:http/http.dart' as http;
-import 'package:get_storage/get_storage.dart';
+import 'package:auto_tm/services/network/api_client.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
+import 'package:flutter/foundation.dart';
 import 'auth_models.dart';
 import 'phone_formatter.dart';
-import '../../utils/key.dart';
-import 'package:flutter/foundation.dart';
 
+/// Central authentication service (GetxService).
+///
+/// Uses [ApiClient] (Dio) for HTTP and [TokenStore] (flutter_secure_storage)
+/// for persisting tokens. OTP send/verify are now POST requests with JSON body.
 class AuthService extends GetxService {
-  final _box = GetStorage();
-  final _client = http.Client();
-
-  // Reactive session (null when logged out)
+  /// Reactive session — null when logged out.
   final Rx<AuthSession?> currentSession = Rx<AuthSession?>(null);
 
   static AuthService get to => Get.find<AuthService>();
 
+  // ── Initialization ────────────────────────────────────────────
+
   Future<AuthService> init() async {
-    // Attempt restore
-    final phone = _box.read('USER_PHONE');
-    final access = _box.read('ACCESS_TOKEN');
-    final refresh = _box.read('REFRESH_TOKEN');
-    if (phone is String && access is String) {
+    // Restore session from secure storage
+    final store = TokenStore.to;
+    final phone = await store.phone;
+    final access = await store.accessToken;
+    final refresh = await store.refreshToken;
+    if (phone != null && access != null && access.isNotEmpty) {
       currentSession.value = AuthSession(
         phone: phone,
         accessToken: access,
-        refreshToken: refresh is String ? refresh : null,
+        refreshToken: refresh,
       );
     }
     return this;
   }
+
+  // ── OTP ───────────────────────────────────────────────────────
 
   Future<OtpSendResult> sendOtp(String subscriberDigits) async {
     if (!PhoneFormatter.isValidSubscriber(subscriberDigits)) {
@@ -39,24 +43,17 @@ class AuthService extends GetxService {
         message: 'Invalid subscriber digits',
       );
     }
-    final full = PhoneFormatter.buildFullDigits(
-      subscriberDigits,
-    ); // 993 + digits
-    final uri = Uri.parse('${ApiKey.sendOtpKey}?phone=$full');
+    final full = PhoneFormatter.buildFullDigits(subscriberDigits);
     try {
-      final resp = await _client.get(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
+      final resp = await ApiClient.to.dio.post(
+        'otp/send',
+        data: {'phone': full},
       );
-      final body = resp.body.isNotEmpty ? jsonDecode(resp.body) : {};
-      if (kDebugMode) {
-        // ignore: avoid_print
-        print('[auth] sendOtp status=${resp.statusCode} body=$body');
-      }
-      final success = _isOtpSendSuccess(body, resp.statusCode);
+      final body = resp.data is Map<String, dynamic>
+          ? resp.data as Map<String, dynamic>
+          : <String, dynamic>{};
+      if (kDebugMode) print('[auth] sendOtp status=${resp.statusCode}');
+      final success = _isOtpSendSuccess(body, resp.statusCode ?? 0);
       return OtpSendResult(
         success: success,
         message: body['message']?.toString(),
@@ -85,33 +82,32 @@ class AuthService extends GetxService {
       );
     }
     final full = PhoneFormatter.buildFullDigits(subscriberDigits);
-    final uri = Uri.parse('${ApiKey.checkOtpKey}?phone=$full&otp=$code');
     try {
-      final resp = await _client.get(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
+      final resp = await ApiClient.to.dio.post(
+        'otp/verify',
+        data: {'phone': full, 'otp': code},
       );
-      final body = resp.body.isNotEmpty ? jsonDecode(resp.body) : {};
-      if (kDebugMode) {
-        // ignore: avoid_print
-        print('[auth] verifyOtp status=${resp.statusCode} body=$body');
-      }
-      final success = _isOtpVerifySuccess(body, resp.statusCode);
+      final body = resp.data is Map<String, dynamic>
+          ? resp.data as Map<String, dynamic>
+          : <String, dynamic>{};
+      if (kDebugMode) print('[auth] verifyOtp status=${resp.statusCode}');
+      final success = _isOtpVerifySuccess(body, resp.statusCode ?? 0);
       if (success) {
         final access =
             body['accessToken']?.toString() ?? body['token']?.toString();
         final refresh = body['refreshToken']?.toString();
-        if (access != null) {
+        if (access != null && refresh != null) {
           final session = AuthSession(
             phone: full,
             accessToken: access,
             refreshToken: refresh,
           );
           currentSession.value = session;
-          _persistSession(session);
+          await TokenStore.to.saveTokens(
+            accessToken: access,
+            refreshToken: refresh,
+            phone: full,
+          );
         }
         return OtpVerifyResult(
           success: true,
@@ -131,58 +127,47 @@ class AuthService extends GetxService {
     }
   }
 
+  // ── Token Refresh ─────────────────────────────────────────────
+
+  /// Delegates to ApiClient which handles mutex + rotation.
+  /// Updates the in-memory session after a successful refresh.
   Future<AuthSession?> refreshTokens() async {
-    final refresh = _box.read('REFRESH_TOKEN');
-    if (refresh is! String) return null;
-    try {
-      final resp = await _client.get(
-        Uri.parse(ApiKey.refreshTokenKey),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $refresh',
-        },
+    final ok = await ApiClient.to.tryRefresh();
+    if (!ok) return null;
+    // Re-read from store (ApiClient already saved new tokens)
+    final store = TokenStore.to;
+    final access = await store.accessToken;
+    final refresh = await store.refreshToken;
+    if (access != null && currentSession.value != null) {
+      final updated = currentSession.value!.copyWith(
+        accessToken: access,
+        refreshToken: refresh,
       );
-      if (resp.statusCode == 200 && resp.body.isNotEmpty) {
-        final body = jsonDecode(resp.body);
-        final newAccess = body['accessToken']?.toString();
-        if (newAccess != null && currentSession.value != null) {
-          final updated = currentSession.value!.copyWith(
-            accessToken: newAccess,
-          );
-          currentSession.value = updated;
-          _persistSession(updated);
-          return updated;
-        }
-      } else if (resp.statusCode == 406) {
-        logout();
-      }
-    } catch (_) {}
+      currentSession.value = updated;
+      return updated;
+    }
     return null;
   }
 
-  void logout() {
+  // ── Logout ────────────────────────────────────────────────────
+
+  Future<void> logout() async {
+    // Tell the backend to invalidate the refresh token
+    try {
+      await ApiClient.to.dio.post('auth/logout');
+    } catch (_) {
+      // Best-effort; even if it fails, clear local state.
+    }
+
     currentSession.value = null;
-    // Core auth tokens
-    _box.remove('ACCESS_TOKEN');
-    _box.remove('REFRESH_TOKEN');
-    _box.remove('USER_PHONE');
-    // User profile cached fields
-    _box.remove('user_name');
-    _box.remove('user_phone');
-    _box.remove('user_location');
-    _box.remove('USER_ID');
-    // Session derived flags (extend here if more keys added later)
-    // Notify interested controllers (profile, favorites, etc.) to reset if registered
-    // We do not erase the entire storage to preserve unrelated preferences (theme, language)
+    await TokenStore.to.clearAll();
     _notifyControllersOfLogout();
   }
 
   void _notifyControllersOfLogout() {
-    // Use Get.isRegistered to avoid creating new instances during logout.
     if (Get.isRegistered<ProfileController>()) {
       try {
         final pc = Get.find<ProfileController>();
-        // Reset reactive fields without disposing controller (or dispose forcefully if desired)
         pc.profile.value = null;
         pc.name.value = '';
         pc.phone.value = '';
@@ -192,16 +177,9 @@ class AuthService extends GetxService {
         pc.hasLoadedProfile.value = false;
       } catch (_) {}
     }
-    // Add other controllers reset logic here (favorites, posts cache, etc.) when needed.
   }
 
-  void _persistSession(AuthSession session) {
-    _box.write('ACCESS_TOKEN', session.accessToken);
-    if (session.refreshToken != null) {
-      _box.write('REFRESH_TOKEN', session.refreshToken);
-    }
-    _box.write('USER_PHONE', session.phone);
-  }
+  // ── Helpers ───────────────────────────────────────────────────
 
   bool _isOtpSendSuccess(Map body, int status) {
     if (status == 200 || status == 201) {
@@ -216,7 +194,7 @@ class AuthService extends GetxService {
           body.containsKey('code')) {
         return true;
       }
-      if (body.isNotEmpty) return true; // fallback
+      if (body.isNotEmpty) return true;
     }
     return false;
   }

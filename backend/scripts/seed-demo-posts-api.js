@@ -197,13 +197,17 @@ async function preflight() {
 async function login() {
   console.log(`  Logging in with test phone ${SEED_PHONE}...`);
 
-  // Send OTP
-  await apiFetch(`/otp/send?phone=${encodeURIComponent(SEED_PHONE)}`);
+  // Send OTP (POST with JSON body)
+  await apiFetch('/otp/send', {
+    method: 'POST',
+    body: JSON.stringify({ phone: SEED_PHONE }),
+  });
 
   // Verify OTP (test numbers always accept 12345)
-  const verifyRes = await apiFetch(
-    `/otp/verify?phone=${encodeURIComponent(SEED_PHONE)}&otp=12345`,
-  );
+  const verifyRes = await apiFetch('/otp/verify', {
+    method: 'POST',
+    body: JSON.stringify({ phone: SEED_PHONE, otp: '12345' }),
+  });
 
   if (!verifyRes.accessToken) {
     throw new Error('OTP verify did not return an accessToken: ' + JSON.stringify(verifyRes));

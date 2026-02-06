@@ -276,24 +276,12 @@ class ProfileController extends GetxController {
           );
           // parsing error should still resolve initial load so UI can present fallback
         }
-      } else if (response.statusCode == 406 || response.statusCode == 401) {
-        if (!retry) {
-          // attempt one refresh
-          final refreshed = await refreshAccessToken();
-          if (refreshed) {
-            // Release current fetch flags before re-calling to avoid guard blocking
-            isFetchingProfile.value = false;
-            if (!hasLoadedProfile.value)
-              isLoading.value = false;
-            else
-              isRefreshing.value = false;
-            await fetchProfile(retry: true);
-            return; // prevent finally double reset below from firing twice in perception
-          }
-        }
+      } else if (response.statusCode == 401) {
+        // Token expired or invalid — ApiClient interceptor handles refresh for Dio calls.
+        // For legacy http calls, redirect to login.
         Get.snackbar(
           'Error',
-          'Failed to refresh access token. Please log in again.',
+          'Session expired. Please log in again.',
           snackPosition: SnackPosition.BOTTOM,
         );
       } else {
@@ -552,14 +540,7 @@ class ProfileController extends GetxController {
         }
       }
     }
-    if (response.statusCode == 406) {
-      await refreshAccessToken();
-      // if (refreshed) {
-      //   return fetchBlogs(); // Call fetchBlogs again only if refresh was successful
-      // } else {
-      //   ('Error', 'Failed to refresh access token. Please log in again.', snackPosition: SnackPosition.BOTTOM);
-      // }
-    } else {}
+    // Auth errors (401/406) are now handled by ApiClient interceptor for Dio calls.
   }
 
   Future<void> uploadProfile() async {
@@ -665,9 +646,9 @@ class ProfileController extends GetxController {
         return true; // local merge will happen in uploadProfile
       }
 
-      if (response.statusCode == 406 || response.statusCode == 401) {
-        final retried = await _tryWithTokenRefresh(() => postUserDataSave());
-        return retried;
+      if (response.statusCode == 401) {
+        // Session expired — redirect to login
+        return false;
       }
 
       return false;
@@ -678,51 +659,9 @@ class ProfileController extends GetxController {
     }
   }
 
-  Future<bool> refreshAccessToken() async {
-    try {
-      final refreshToken = box.read('REFRESH_TOKEN');
-
-      final response = await http.get(
-        Uri.parse(ApiKey.refreshTokenKey),
-        headers: {
-          "Content-Type": "application/json",
-          // 'Authorization': 'Bearer $refreshToken',
-          'Authorization': 'Bearer $refreshToken',
-        },
-      );
-      if (response.statusCode == 200) {
-        //  && response.body.isNotEmpty
-        final data = jsonDecode(response.body);
-        final newAccessToken = data['accessToken'];
-        if (newAccessToken != null) {
-          box.remove('ACCESS_TOKEN');
-          box.write('ACCESS_TOKEN', newAccessToken);
-          return true; // Indicate successful refresh
-        } else {
-          return false; // Indicate failed refresh
-        }
-      }
-      if (response.statusCode == 406) {
-        Get.offAllNamed('/login');
-        return false; // Indicate failed refresh
-      } else {
-        return false; // Indicate failed refresh
-      }
-    } catch (e) {
-      return false; // Indicate failed refresh
-    }
-  }
-
-  /// Centralized helper to attempt an action and refresh token once if it fails with auth errors.
-  /// The [action] must throw or return normally; for fetchProfile recursion we call directly above.
-  Future<bool> _tryWithTokenRefresh(Future<void> Function() action) async {
-    final refreshed = await refreshAccessToken();
-    if (refreshed) {
-      await action();
-      return true;
-    }
-    return false;
-  }
+  // Token refresh is now handled by the Dio ApiClient interceptor.
+  // The duplicated refreshAccessToken() method has been removed.
+  // See: lib/services/network/api_client.dart
 
   /// Merge current edited fields into existing profile model without waiting for network.
   void _mergeLocalProfileAfterEdit() {

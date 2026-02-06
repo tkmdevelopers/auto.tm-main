@@ -41,13 +41,11 @@ import { muletrOptionsForUsers } from "src/photo/config/multer.config";
  * Auth Controller
  *
  * OTP-only authentication flow:
- * 1. POST /api/v1/otp/send?phone=... - Request OTP
- * 2. GET /api/v1/otp/verify?phone=...&otp=... - Verify OTP, get tokens
- * 3. GET /api/v1/auth/me - Get current user (with token)
- * 4. GET /api/v1/auth/refresh - Refresh access token
- *
- * Note: Email/password login has been removed. All authentication
- * now flows through the OTP endpoints.
+ * 1. POST /api/v1/otp/send       - Request OTP (body: { phone })
+ * 2. POST /api/v1/otp/verify      - Verify OTP (body: { phone, otp }) → { accessToken, refreshToken }
+ * 3. GET  /api/v1/auth/me          - Get current user (Bearer access token)
+ * 4. POST /api/v1/auth/refresh     - Rotate tokens (Bearer refresh token) → { accessToken, refreshToken }
+ * 5. POST /api/v1/auth/logout      - Invalidate session (Bearer access token)
  */
 @Controller({ path: "auth", version: "1" })
 @ApiTags("Auth")
@@ -58,24 +56,29 @@ export class AuthController {
   // Token Management
   // ============================================================
 
-  @Get("refresh")
-  @ApiOperation({ summary: "Refresh access token using refresh token" })
+  @Post("refresh")
+  @ApiOperation({ summary: "Rotate tokens — returns new access + refresh" })
   @ApiSecurity("token")
   @UseGuards(RefreshGuard)
   @ApiResponse({
     status: HttpStatus.OK,
-    description: "New access token returned",
+    description: "Rotated tokens returned",
     schema: {
       example: {
         accessToken: "new-jwt-access-token",
+        refreshToken: "new-jwt-refresh-token",
       },
     },
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "Token reuse detected or invalid refresh token",
   })
   async refresh(@Req() req: Request) {
     return this.authService.refresh(req);
   }
 
-  @Get("/logout")
+  @Post("logout")
   @ApiOperation({ summary: "Logout (invalidate refresh token)" })
   @UseGuards(AuthGuard)
   @ApiSecurity("token")

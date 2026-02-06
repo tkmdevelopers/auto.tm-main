@@ -806,13 +806,8 @@ class PostController extends GetxController {
             .map((json) => PostDto.fromJson(json as Map<String, dynamic>))
             .toList();
         posts.assignAll(postDtos);
-      } else if (response.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return fetchMyPosts(); // Retry with new token
-        } else {
-          Get.snackbar('Error', 'Session expired. Please login again.');
-        }
+      } else if (response.statusCode == 401) {
+        Get.snackbar('Error', 'Session expired. Please login again.');
       } else {
         Get.snackbar(
           'Error',
@@ -1243,14 +1238,9 @@ class PostController extends GetxController {
         brands.assignAll(parsed);
         brandsFromCache.value = false;
         _saveBrandCache(parsed);
-      } else if (resp.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return fetchBrands(forceRefresh: forceRefresh);
-        } else {
-          _showFailure('Failed to load brands', Failure('Session expired'));
-          _fallbackBrandCache();
-        }
+      } else if (resp.statusCode == 401) {
+        _showFailure('Failed to load brands', Failure('Session expired'));
+        _fallbackBrandCache();
       } else {
         _showFailure(
           'Failed to load brands',
@@ -1318,18 +1308,9 @@ class PostController extends GetxController {
         selectedBrandUuid.value = brandUuid;
         modelsFromCache.value = false;
         _saveModelCache(brandUuid, parsed);
-      } else if (resp.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return fetchModels(
-            brandUuid,
-            forceRefresh: forceRefresh,
-            showLoading: showLoading,
-          );
-        } else {
-          _showFailure('Failed to load models', Failure('Session expired'));
-          _fallbackModelCache(brandUuid);
-        }
+      } else if (resp.statusCode == 401) {
+        _showFailure('Failed to load models', Failure('Session expired'));
+        _fallbackModelCache(brandUuid);
       } else {
         _showFailure(
           'Failed to load models',
@@ -1522,35 +1503,8 @@ class PostController extends GetxController {
     );
   }
 
-  // Token refresh
-  Future<bool> refreshAccessToken() async {
-    try {
-      final refreshToken = box.read('REFRESH_TOKEN');
-      final response = await http.get(
-        Uri.parse(ApiKey.refreshTokenKey),
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': 'Bearer $refreshToken',
-        },
-      );
-
-      if (response.statusCode == 200 && response.body.isNotEmpty) {
-        final data = jsonDecode(response.body);
-        final newAccessToken = data['accessToken'];
-        if (newAccessToken != null) {
-          box.write('ACCESS_TOKEN', newAccessToken);
-          return true;
-        }
-      }
-
-      if (response.statusCode == 406) {
-        _navigateToLoginOnce();
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }
+  // Token refresh is now handled by the Dio ApiClient interceptor.
+  // The duplicated refreshAccessToken() method has been removed.
 
   // ---- Safe navigation to login (avoid mid-build tree mutation) ----
   bool _navigatedToLogin = false;

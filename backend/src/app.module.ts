@@ -8,6 +8,8 @@ import { MailService } from "./mail/mail.service";
 import { OtpController } from "./otp/otp.controller";
 import { ConfigModule } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
+import { APP_GUARD } from "@nestjs/core";
 import { PostModule } from "./post/post.module";
 import { BrandsModule } from "./brands/brands.module";
 import { ModelsService } from "./models/models.service";
@@ -32,6 +34,8 @@ import { SmsModule } from "./sms/sms.module";
 
 @Module({
   imports: [
+    // Global rate limiter: 60 requests per minute per IP (general baseline)
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
     AuthModule,
     SmsModule,
     DatabaseModule,
@@ -62,6 +66,8 @@ import { SmsModule } from "./sms/sms.module";
   ],
   controllers: [AppController, OtpController],
   providers: [
+    // Enable global throttler guard — individual routes can override with @Throttle()
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     AppService,
     OtpService,
     ChatGateway,

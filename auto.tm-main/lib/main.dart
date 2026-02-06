@@ -17,6 +17,8 @@ import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
 import 'package:auto_tm/screens/splash_screen/custom_splash_screen.dart';
 import 'package:auto_tm/services/notification_sevice/notification_service.dart';
 import 'package:auto_tm/services/auth/auth_service.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
+import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/utils/themes.dart';
 import 'package:auto_tm/utils/translation.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -264,7 +266,17 @@ Future<void> initServices() async {
     }
   }
   
-  // Register AuthService (phone OTP + session). Must come after GetStorage.init().
+  // Register TokenStore (secure token persistence). Must come before ApiClient and AuthService.
+  if (!Get.isRegistered<TokenStore>()) {
+    Get.put(TokenStore(), permanent: true);
+  }
+
+  // Register ApiClient (Dio + auth interceptor). Must come before AuthService.
+  if (!Get.isRegistered<ApiClient>()) {
+    await Get.putAsync(() async => await ApiClient().init());
+  }
+
+  // Register AuthService (phone OTP + session). Must come after TokenStore and ApiClient.
   if (!Get.isRegistered<AuthService>()) {
     try {
       await Get.putAsync(() async => await AuthService().init());

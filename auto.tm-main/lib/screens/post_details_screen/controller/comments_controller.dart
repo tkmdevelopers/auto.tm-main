@@ -86,28 +86,15 @@ class CommentsController extends GetxController {
         Future.delayed(Duration.zero, () { // Schedule for next frame
         isLoading.value = false;
       });
-      } if (response.statusCode == 406) {
-        await refreshAccessToken();
-        // if (refreshed) {
-        //   return fetchBlogs(); // Call fetchBlogs again only if refresh was successful
-        // } else {
-        //   // Handle the case where token refresh failed (e.g., show an error)
-        //   ('Error', 'Failed to refresh access token. Please log in again.', snackPosition: SnackPosition.BOTTOM);
-        //   // Optionally navigate to the login screen if refresh consistently fails
-        //   // Get.offAllNamed('/login');
-        // }
       } else {
-Future.delayed(Duration.zero, () { // Schedule for next frame
-        isLoading.value = false;
-      });
-      // isLoading.value = false;
+        Future.delayed(Duration.zero, () {
+          isLoading.value = false;
+        });
       }
     } catch (e) {
-      Future.delayed(Duration.zero, () { // Schedule for next frame
-      isLoading.value = false;
-    });
-    } finally {
-      // isLoading.value = false;
+      Future.delayed(Duration.zero, () {
+        isLoading.value = false;
+      });
     }
   }
 
@@ -148,17 +135,6 @@ Future.delayed(Duration.zero, () { // Schedule for next frame
           comments.add(newComment); // Add new unique comment to list
         }
         replyToComment.value = null; // Clear reply after sending
-      } if (response.statusCode == 406) {
-        await refreshAccessToken();
-        // if (refreshed) {
-        //   return fetchBlogs(); // Call fetchBlogs again only if refresh was successful
-        // } else {
-        //   // Handle the case where token refresh failed (e.g., show an error)
-        //   ('Error', 'Failed to refresh access token. Please log in again.', snackPosition: SnackPosition.BOTTOM);
-        //   // Optionally navigate to the login screen if refresh consistently fails
-        //   // Get.offAllNamed('/login');
-        // }
-      } else {
       }
     } catch (e) {
       // ignore error silently
@@ -167,38 +143,8 @@ Future.delayed(Duration.zero, () { // Schedule for next frame
     }
   }
 
-  Future<bool> refreshAccessToken() async {
-    try {
-      final refreshToken = box.read('REFRESH_TOKEN');
-
-      final response = await http.get(
-        Uri.parse(ApiKey.refreshTokenKey),
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': 'Bearer $refreshToken'
-        },
-      );
-
-      if (response.statusCode == 200 && response.body.isNotEmpty) {
-        final data = jsonDecode(response.body);
-        final newAccessToken = data['accessToken'];
-        if (newAccessToken != null) {
-          box.remove('ACCESS_TOKEN');
-          box.write('ACCESS_TOKEN', newAccessToken);
-          return true; // Indicate successful refresh
-        } else {
-          return false; // Indicate failed refresh
-        }
-      } if (response.statusCode == 406) {
-        Get.offAllNamed('/login');
-        return false; // Indicate failed refresh
-      } else {
-        return false; // Indicate failed refresh
-      }
-    } catch (e) {
-      return false; // Indicate failed refresh
-    }
-  }
+  // Token refresh is now handled by the Dio ApiClient interceptor.
+  // The duplicated refreshAccessToken() method has been removed.
 
   // Set a comment as the one being replied to
   void setReplyTo(Map<String, dynamic> comment) {

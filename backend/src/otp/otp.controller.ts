@@ -1,5 +1,6 @@
-import { Controller, Get, HttpStatus, Query, Req, Res } from "@nestjs/common";
-import { ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { Body, Controller, HttpStatus, Post, Req, Res } from "@nestjs/common";
+import { ApiBody, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { Request, Response } from "express";
 import { OtpService } from "./otp.service";
 import { GetTime, SendOtp } from "./get-time.dto";
@@ -12,6 +13,10 @@ import { GetTime, SendOtp } from "./get-time.dto";
 export class OtpController {
   constructor(private readonly otpService: OtpService) {}
 
+  // Strict rate limit: 3 requests per 60 seconds per IP
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
+  @Post("send")
+  @ApiBody({ type: SendOtp })
   @ApiResponse({
     status: HttpStatus.OK,
     description: "OTP sent successfully",
@@ -27,27 +32,31 @@ export class OtpController {
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
     description: "Invalid phone number",
-    schema: {
-      example: {
-        message: "Phone number is required",
-      },
-    },
+    schema: { example: { message: "Phone number is required" } },
   })
-  @ApiQuery({ name: "phone", required: true, description: "Phone number" })
-  @Get("send")
+  @ApiResponse({
+    status: HttpStatus.TOO_MANY_REQUESTS,
+    description: "Rate limit exceeded",
+    schema: { example: { code: "OTP_RATE_LIMIT", message: "Too many OTP requests" } },
+  })
   async sendOtp(
-    @Query("phone") phone: string,
+    @Body() body: SendOtp,
     @Req() req: Request,
     @Res() res: Response,
   ): Promise<any> {
+    const phone = body?.phone;
     if (!phone) {
       return res
         .status(HttpStatus.BAD_REQUEST)
-        .json({ message: "Invalid Phone Number" });
+        .json({ message: "Phone number is required" });
     }
     return this.otpService.sendOtp({ phone } as SendOtp, res, req);
   }
 
+  // Strict rate limit: 5 requests per 60 seconds per IP
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
+  @Post("verify")
+  @ApiBody({ type: GetTime })
   @ApiResponse({
     status: HttpStatus.OK,
     description: "OTP verified, tokens returned",
@@ -64,67 +73,15 @@ export class OtpController {
     description: "Invalid OTP",
     schema: {
       example: {
+        code: "OTP_INVALID",
         message: "Incorrect OTP. 4 attempts remaining.",
       },
     },
   })
-  @Get("verify")
-  async verifyOtp(@Query() query: GetTime, @Res() res: Response): Promise<any> {
-    return this.otpService.checkOtp(query, res);
-  }
-
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: "OTP sent for verification",
-    schema: {
-      example: {
-        message: "OTP sent successfully",
-        requestId: "uuid",
-        phone: "+99362120020",
-        expiresAt: "2026-02-02T12:00:00.000Z",
-      },
-    },
-  })
-  @Get("sendVerification")
-  async sendVerification(
-    @Query("phone") phone: string,
-    @Req() req: Request,
+  async verifyOtp(
+    @Body() body: GetTime,
     @Res() res: Response,
   ): Promise<any> {
-    if (!phone) {
-      return res
-        .status(HttpStatus.BAD_REQUEST)
-        .json({ message: "Invalid Phone Number" });
-    }
-    return this.otpService.sendOtp({ phone } as SendOtp, res, req);
-  }
-
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: "Phone verification successful",
-    schema: {
-      example: {
-        message: "Verification successful",
-        response: true,
-        userId: "uuid",
-      },
-    },
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_ACCEPTABLE,
-    description: "Invalid verification code",
-    schema: {
-      example: {
-        message: "Incorrect OTP. 4 attempts remaining.",
-        response: false,
-      },
-    },
-  })
-  @Get("verifyVerification")
-  async verifyVerification(
-    @Query() query: GetTime,
-    @Res() res: Response,
-  ): Promise<any> {
-    return this.otpService.checkVerification(query, res);
+    return this.otpService.checkOtp(body, res);
   }
 }

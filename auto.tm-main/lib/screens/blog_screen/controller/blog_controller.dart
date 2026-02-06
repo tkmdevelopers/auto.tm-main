@@ -46,17 +46,8 @@ class BlogController extends GetxController {
         blogs.value = map.values.toList()
           ..sort((a, b) => b.date.compareTo(a.date)); // keep newest first
       } 
-      if (response.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return fetchBlogs(); // Call fetchBlogs again only if refresh was successful
-        } else {
-          // Handle the case where token refresh failed (e.g., show an error)
-          ('Error', 'Failed to refresh access token. Please log in again.'.tr, snackPosition: SnackPosition.BOTTOM);
-          // Optionally navigate to the login screen if refresh consistently fails
-          // Get.offAllNamed('/login');
-        }
-      } else {
+      // Auth errors (401) are now handled by ApiClient interceptor for Dio calls.
+      else {
         ('Error', 'Failed to load blogs. Please try again later.'.tr, snackPosition: SnackPosition.BOTTOM);
       }
     } catch (e) {
@@ -66,39 +57,8 @@ class BlogController extends GetxController {
     }
   }
 
-  Future<bool> refreshAccessToken() async {
-    try {
-      final refreshToken = box.read('REFRESH_TOKEN');
-
-      final response = await http.get(
-        Uri.parse(ApiKey.refreshTokenKey),
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': 'Bearer $refreshToken'
-        },
-      );
-
-      if (response.statusCode == 200 && response.body.isNotEmpty) {
-        final data = jsonDecode(response.body);
-        final newAccessToken = data['accessToken'];
-        if (newAccessToken != null) {
-          box.remove('ACCESS_TOKEN');
-          box.write('ACCESS_TOKEN', newAccessToken);
-          return true; // Indicate successful refresh
-        } else {
-          return false; // Indicate failed refresh
-        }
-      } 
-      if (response.statusCode == 406) {
-        Get.offAllNamed('/login');
-        return false; // Indicate failed refresh
-      } else {
-        return false; // Indicate failed refresh
-      }
-    } catch (e) {
-      return false; // Indicate failed refresh
-    }
-  }
+  // Token refresh is now handled by the Dio ApiClient interceptor.
+  // The duplicated refreshAccessToken() method has been removed.
 
   Future<String> fetchBlogDetails(String blogId) async {
     try {

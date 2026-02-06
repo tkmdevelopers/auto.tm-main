@@ -92,8 +92,6 @@ class FavoritesController extends GetxController {
           favoriteProducts
               .assignAll(data.map((item) => Post.fromJson(item)).toList());
         }
-      } if (response.statusCode == 406) {
-        await refreshAccessToken();
       }
       // ignore: empty_catches
     } catch (e) {}
@@ -166,40 +164,8 @@ class FavoritesController extends GetxController {
     _favoritesDebounce = null;
   }
 
-  Future<bool> refreshAccessToken() async {
-    isRefreshingToken.value = true;
-    try {
-      final refreshToken = box.read('REFRESH_TOKEN');
-
-      final response = await http.get(
-        Uri.parse(ApiKey.refreshTokenKey),
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': 'Bearer $refreshToken'
-        },
-      );
-
-      if (response.statusCode == 200 && response.body.isNotEmpty) {
-        final data = jsonDecode(response.body);
-        final newAccessToken = data['accessToken'];
-        if (newAccessToken != null) {
-          box.write('ACCESS_TOKEN', newAccessToken);
-          return true;
-        } else {
-          return false;
-        }
-      } if (response.statusCode == 406) {
-        Get.offAllNamed('/login');
-        return false;
-      } else {
-        return false;
-      }
-    } catch (e) {
-      return false;
-    } finally {
-      isRefreshingToken.value = false;
-    }
-  }
+  // Token refresh is now handled by the Dio ApiClient interceptor.
+  // The duplicated refreshAccessToken() method has been removed.
 
   Future<void> subscribeToBrand(String brandUuid) async {
     try {
@@ -226,19 +192,7 @@ class FavoritesController extends GetxController {
         );
         addToSubscribes(brandUuid);
         fetchBrandSubscribes();
-      } if (response.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return subscribeToBrand(brandUuid);
-        } else {
-          Get.snackbar(
-            'common_error'.tr,
-            'blogs_token_refresh_failed'.tr,
-            snackPosition: SnackPosition.BOTTOM,
-            duration: const Duration(seconds: 3),
-          );
-        }
-      }
+      // Auth errors are handled by ApiClient interceptor for Dio calls.
     } catch (e) {
       // searchResults.clear();
     } finally {
@@ -271,20 +225,7 @@ class FavoritesController extends GetxController {
         );
         removeFromSubscribes(brandUuid);
         fetchBrandSubscribes(); // Обновляем список после удаления
-      } if (response.statusCode == 406) {
-        final refreshed = await refreshAccessToken();
-        if (refreshed) {
-          return unSubscribeFromBrand(
-              brandUuid); // Call fetchBlogs again only if refresh was successful
-        } else {
-          Get.snackbar(
-            'common_error'.tr,
-            'blogs_token_refresh_failed'.tr,
-            snackPosition: SnackPosition.BOTTOM,
-            duration: const Duration(seconds: 3),
-          );
-        }
-      }
+      // Auth errors are handled by ApiClient interceptor for Dio calls.
     } catch (e) {
       // searchResults.clear();
     } finally {

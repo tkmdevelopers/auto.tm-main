@@ -6,12 +6,15 @@ class ApiKey {
 
   static final String apiKey = "${ip}api/v1/";
 
+  // Legacy keys (kept for backward compatibility; prefer ApiClient.to.dio for new code)
   static final String registerKey = "${apiKey}auth/register";
   static final String loginKey = "${apiKey}auth/login";
   static final String setPasswordKey = "${apiKey}auth";
-  static final String refreshTokenKey = "${apiKey}auth/refresh";
-  static final String sendOtpKey = "${apiKey}otp/send";
-  static final String checkOtpKey = "${apiKey}otp/verify";
+  // Auth endpoints — all POST now (breaking change)
+  static final String refreshTokenKey = "${apiKey}auth/refresh"; // POST
+  static final String logoutKey = "${apiKey}auth/logout"; // POST
+  static final String sendOtpKey = "${apiKey}otp/send"; // POST body: {phone}
+  static final String checkOtpKey = "${apiKey}otp/verify"; // POST body: {phone, otp}
 
   static final String getProfileKey = "${apiKey}auth/me";
   static final String getPostsKey = "${apiKey}posts";

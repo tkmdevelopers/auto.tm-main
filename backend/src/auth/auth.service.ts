@@ -14,6 +14,7 @@ import { Photo } from "src/photo/photo.entity";
 import * as sharp from "sharp";
 import * as path from "path";
 import * as fs from "fs";
+import * as bcrypt from "bcryptjs";
 import { promisify } from "util";
 import { v4 as uuidv4 } from "uuid";
 
@@ -43,38 +44,69 @@ export class AuthService {
   // ============================================================
 
   /**
-   * Refresh access token using refresh token
+   * Refresh access token using refresh token.
+   * Implements token rotation: returns both a new access AND refresh token.
+   * Implements reuse detection: if the presented token doesn't match the stored
+   * hash, assume compromise and revoke the session.
    */
   async refresh(req: any): Promise<any> {
-    try {
-      const user = await this.Users.findOne({
-        where: { uuid: req?.uuid },
-        attributes: ["uuid", "refreshToken", "phone"],
-      });
+    const user = await this.Users.findOne({
+      where: { uuid: req?.uuid },
+      attributes: ["uuid", "refreshTokenHash", "phone"],
+    });
 
-      const refreshToken = req
-        .get("authorization")
-        .replace("Bearer", "")
-        .trim();
-
-      if (user?.refreshToken === refreshToken) {
-        const [accessToken] = await Promise.all([
-          this.jwtService.signAsync(
-            { uuid: user?.uuid, phone: user?.phone },
-            {
-              secret: this.configService.get<string>("ACCESS_TOKEN_SECRET_KEY"),
-              expiresIn: "24h",
-            },
-          ),
-        ]);
-        return { accessToken };
-      }
-
-      throw new HttpException("Invalid refresh token", HttpStatus.UNAUTHORIZED);
-    } catch (error) {
-      console.error("[AuthService] Refresh error:", error);
-      throw error;
+    if (!user || !user.refreshTokenHash) {
+      throw new HttpException(
+        { code: "TOKEN_INVALID", message: "Session revoked or user not found" },
+        HttpStatus.UNAUTHORIZED,
+      );
     }
+
+    const refreshToken = req
+      .get("authorization")
+      .replace("Bearer", "")
+      .trim();
+
+    // Compare presented token against stored hash
+    const isValid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
+    if (!isValid) {
+      // Reuse detected — revoke session entirely (force re-login)
+      await this.Users.update(
+        { refreshTokenHash: null },
+        { where: { uuid: user.uuid } },
+      );
+      throw new HttpException(
+        { code: "TOKEN_REUSE", message: "Refresh token reuse detected. Session revoked." },
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    // Issue new access + new refresh (rotation)
+    const [accessToken, newRefreshToken] = await Promise.all([
+      this.jwtService.signAsync(
+        { uuid: user.uuid, phone: user.phone },
+        {
+          secret: this.configService.get<string>("ACCESS_TOKEN_SECRET_KEY"),
+          expiresIn: "15m",
+        },
+      ),
+      this.jwtService.signAsync(
+        { uuid: user.uuid, phone: user.phone },
+        {
+          secret: this.configService.get<string>("REFRESH_TOKEN_SECRET_KEY"),
+          expiresIn: "7d",
+        },
+      ),
+    ]);
+
+    // Store hash of the new refresh token
+    const newHash = await bcrypt.hash(newRefreshToken, 10);
+    await this.Users.update(
+      { refreshTokenHash: newHash },
+      { where: { uuid: user.uuid } },
+    );
+
+    return { accessToken, refreshToken: newRefreshToken };
   }
 
   /**
@@ -83,7 +115,7 @@ export class AuthService {
   async logout(req: Request | any, res: Response) {
     try {
       await this.Users.update(
-        { refreshToken: null },
+        { refreshTokenHash: null },
         { where: { uuid: req?.uuid } },
       );
       return res.status(HttpStatus.OK).json({

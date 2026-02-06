@@ -58,9 +58,9 @@ export class User extends Model {
     defaultValue: UserRole?.USER,
   })
   role: UserRole;
-  // OTP removed - now stored in otp_codes table
+  // Stores bcrypt hash of the current valid refresh token (never store plaintext)
   @Column({ type: DataType.TEXT, allowNull: true })
-  refreshToken: string;
+  refreshTokenHash: string;
   @Column({ allowNull: true })
   location: string;
   @HasMany(() => Posts)
