@@ -6,6 +6,10 @@
  * 1. Currencies (TMT, USD, CNY)
  * 2. Car Brands and Models
  * 
+ * NOTE: Demo posts with images are seeded separately via the API because
+ * they require the NestJS server to be running (OTP auth + photo pipeline).
+ * After starting the API, run:  npm run db:seed:demo-posts
+ * 
  * Usage:
  *   npm run db:seed:all
  *   or

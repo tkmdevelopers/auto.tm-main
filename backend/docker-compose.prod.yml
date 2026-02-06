@@ -23,11 +23,12 @@ services:
     networks:
       - internal
   api:
-    image: alpha-motors-backend:1.0.0
+    image: ${API_IMAGE_TAG:-alpha-motors-backend:latest}
     container_name: alpha_backend
     restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -35,7 +36,7 @@ services:
       PORT: 3080
       NODE_ENV: production
     volumes:
-      - ./uploads:/app/uploads
+      - /var/lib/alpha/uploads:/app/uploads
     ports:
       - "3080:3080"  # Only expose API port
     healthcheck:

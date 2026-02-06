@@ -48,6 +48,12 @@ COPY --from=build /app/migrations ./migrations
 # Copy uploads directory structure (will be volume-mounted for persistence)
 COPY uploads ./uploads
 
+# Copy seed scripts and data (for seeding inside the container via docker exec)
+COPY dumpCurrencies.js dumpCarBrands.js cars.brands.json ./
+COPY scripts/seed-all.js scripts/seed-demo-posts-api.js ./scripts/
+COPY scripts/seed-data ./scripts/seed-data
+COPY scripts/sample-images ./scripts/sample-images
+
 # Entry script waits for DB then runs migrations then starts app
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

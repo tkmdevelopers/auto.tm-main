@@ -61,6 +61,18 @@ if ! node_modules/.bin/sequelize-cli db:migrate; then
   exit 1
 fi
 
+# Optional: seed base data (currencies + brands/models) on start.
+# Set SEED_ON_START=true in environment or docker-compose to enable.
+# Safe to run repeatedly — seed scripts use INSERT ... ON CONFLICT.
+if [ "${SEED_ON_START:-false}" = "true" ]; then
+  echo "[entrypoint] SEED_ON_START=true — seeding base data (currencies, brands, models)"
+  if node scripts/seed-all.js; then
+    echo "[entrypoint] Base seed completed"
+  else
+    echo "[entrypoint] Base seed failed (non-fatal, continuing startup)" >&2
+  fi
+fi
+
 echo "[entrypoint] Starting application"
 echo "[entrypoint] Launching app with DATABASE_HOST=$DATABASE_HOST"
 exec "$@"

@@ -128,9 +128,14 @@ docker compose -f docker-compose.build.yml build api
 If building offline, pre-build elsewhere:
 
 ```bash
-docker save alpha-motors-backend:1.0.0 | gzip > alpha_backend_1.0.0.tar.gz
-scp alpha_backend_1.0.0.tar.gz user@server:/opt/alpha-motors-backend
-gunzip -c alpha_backend_1.0.0.tar.gz | docker load
+# Build a versioned release bundle (reads version from package.json)
+./scripts/build-release.sh
+
+# Transfer the release folder to the server
+scp -r release/alpha-motors-v0.2.0 user@server:/opt/alpha-motors/
+
+# On the server, run the deploy script
+./deploy-update.sh alpha-motors-backend-0.2.0.tar.gz
 ```
 
 ### 6. Start Production Stack

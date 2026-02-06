@@ -1,0 +1,282 @@
+[
+  {
+    "brandSlug": "toyota",
+    "modelSlug": "camry",
+    "year": 2023,
+    "engineType": "Gasoline",
+    "transmission": "Automatic",
+    "condition": "New",
+    "enginePower": 203,
+    "milleage": 12000,
+    "vin": "SEED-TOY-CAMRY-2023-A",
+    "price": 32000,
+    "currency": "USD",
+    "credit": false,
+    "exchange": true,
+    "location": "Aşgabat",
+    "phone": "+99361999999",
+    "personalInfo": {
+      "name": "Auto.tm Demo",
+      "location": "Aşgabat",
+      "region": "Ahal"
+    },
+    "description": "2023 Toyota Camry XSE — well-equipped sedan with a 2.5L Dynamic Force engine, leather interior, and JBL audio. Single owner, full service history at authorised dealer. [seed:demo-posts]",
+    "images": [
+      "sven-d-a4S6KUuLeoM-unsplash.jpg",
+      "samuele-errico-piccarini-FMbWFDiVRPs-unsplash.jpg",
+      "samuele-errico-piccarini-MyjVReZ5GLQ-unsplash.jpg"
+    ]
+  },
+  {
+    "brandSlug": "bmw",
+    "modelSlug": "3-series",
+    "year": 2022,
+    "engineType": "Gasoline",
+    "transmission": "Automatic",
+    "condition": "Used",
+    "enginePower": 255,
+    "milleage": 28500,
+    "vin": "SEED-BMW-3SER-2022-B",
+    "price": 42000,
+    "currency": "USD",
+    "credit": true,
+    "exchange": true,
+    "location": "Aşgabat",
+    "phone": "+99361999999",
+    "personalInfo": {
+      "name": "Auto.tm Demo",
+      "location": "Aşgabat",
+      "region": "Ahal"
+    },
+    "description": "2022 BMW 330i M Sport (G20) — turbocharged 2.0L with 255 hp, M Sport package, adaptive suspension. Premium condition, garage-kept. [seed:demo-posts]",
+    "images": [
+      "BMW_G20_(2022)_IMG_7316_(2).jpg",
+      "benjamin-child-7Cdw956mZ4w-unsplash.jpg",
+      "dan-gold-N7RiDzfF2iw-unsplash.jpg"
+    ]
+  },
+  {
+    "brandSlug": "bmw",
+    "modelSlug": "5-series",
+    "year": 2024,
+    "engineType": "Gasoline",
+    "transmission": "Automatic",
+    "condition": "New",
+    "enginePower": 375,
+    "milleage": 3200,
+    "vin": "SEED-BMW-5SER-2024-C",
+    "price": 62000,
+    "currency": "USD",
+    "credit": true,
+    "exchange": false,
+    "location": "Aşgabat",
+    "phone": "+99361999999",
+    "personalInfo": {
+      "name": "Auto.tm Demo",
+      "location": "Aşgabat",
+      "region": "Ahal"
+    },
+    "description": "2024 BMW 540i xDrive (G60) — latest generation 5-Series with a 3.0L inline-6. Executive Lounge package with rear comfort seats and Bowers & Wilkins surround sound. [seed:demo-posts]",
+    "images": [
+      "BMW_G60_520i_1X7A2443.jpg",
+      "florian-schneider-799KfBloSFQ-unsplash.jpg",
+      "martin-katler-7RzPuV3-xyI-unsplash.jpg"
+    ]
+  },
+  {
+    "brandSlug": "porsche",
+    "modelSlug": "911",
+    "year": 2024,
+    "engineType": "Gasoline",
+    "transmission": "Automatic",
+    "condition": "New",
+    "enginePower": 473,
+    "milleage": 850,
+    "vin": "SEED-POR-911-2024-D",
+    "price": 165000,
+    "currency": "USD",
+    "credit": false,
+    "exchange": false,
+    "location": "Aşgabat",
+    "phone": "+99361999999",
+    "personalInfo": {
+      "name": "Auto.tm Demo",
+      "location": "Aşgabat",
+      "region": "Ahal"
+    },
+    "description": "2024 Porsche 911 Carrera GTS (992.2) — twin-turbo 3.0L flat-six producing 473 hp, PDK dual-clutch, PASM sport suspension. Only 850 km from new. [seed:demo-posts]",
+    "images": [
+      "1-Porsche-911-GTS-review.jpg",
+      "erik-odiin-DH_IAgZkJP4-unsplash.jpg",
+      "evgeny-tchebotarev-aiwuLjLPFnU-unsplash.jpg"
+    ]
+  },
+  {
+    "brandSlug": "porsche",
+    "modelSlug": "taycan",
+    "year": 2023,
+    "engineType": "Electric",
+    "transmission": "Automatic",
+    "condition": "Used",
+    "enginePower": 402,
+    "milleage": 15400,
+    "vin": "SEED-POR-TAY-2023-E",
+    "price": 89000,
+    "currency": "USD",
+    "credit": true,
+    "exchange": true,
+    "location": "Aşgabat",
+    "phone": "+99361999999",
+    "personalInfo": {
+      "name": "Auto.tm Demo",
+      "location": "Aşgabat",
+      "region": "Ahal"
+    },
+    "description": "2023 Porsche Taycan 4S — dual-motor AWD electric sedan with Performance Battery Plus (93.4 kWh). 402 hp, 0-100 in 4.0 s. Full Porsche warranty. [seed:demo-posts]",
+    "images": [
+      "josh-berquist-_4sWbzH5fp8-unsplash.jpg",
+      "kartik-bhattacharjee-vw0AmpZvHZg-unsplash.jpg",
+      "lance-asper-N9Pf2J656aQ-unsplash.jpg"
+    ]
+  },
+  {
+    "brandSlug": "byd",
+    "modelSlug": "song",
+    "year": 2023,
+    "engineType": "Hybrid",
+    "transmission": "Automatic",
+    "condition": "New",
+    "enginePower": 197,
+    "milleage": 5600,
+    "vin": "SEED-BYD-SONG-2023-F",
+    "price": 22000,
+    "currency": "USD",
+    "credit": true,
+    "exchange": true,
+    "location": "Aşgabat",
+    "phone": "+99361999999",
+    "personalInfo": {
+      "name": "Auto.tm Demo",
+      "location": "Aşgabat",
+      "region": "Ahal"
+    },
+    "description": "2023 BYD Song Plus DM-i — plug-in hybrid compact SUV with Blade Battery. 197 combined hp, 1200 km total range (110 km EV). Chinese-spec, imported with customs clearance. [seed:demo-posts]",
+    "images": [
+      "2023_BYD_Song_Plus_DM-i_(front).jpg",
+      "dhiva-krishna-X16zXcbxU4U-unsplash.jpg",
+      "roberto-nickson-zu95jkyrGtw-unsplash.jpg"
+    ]
+  },
+  {
+    "brandSlug": "mercedes-benz",
+    "modelSlug": "e-class",
+    "year": 2022,
+    "engineType": "Gasoline",
+    "transmission": "Automatic",
+    "condition": "Used",
+    "enginePower": 299,
+    "milleage": 42000,
+    "vin": "SEED-MB-ECLS-2022-G",
+    "price": 48000,
+    "currency": "USD",
+    "credit": false,
+    "exchange": true,
+    "location": "Aşgabat",
+    "phone": "+99361999999",
+    "personalInfo": {
+      "name": "Auto.tm Demo",
+      "location": "Aşgabat",
+      "region": "Ahal"
+    },
+    "description": "2022 Mercedes-Benz E 350 4MATIC — 2.0L turbo-four with EQ Boost (299 hp), AMG Line exterior, Burmester surround sound, panoramic roof. Immaculate interior. [seed:demo-posts]",
+    "images": [
+      "adam-stefanca-hdMSxGizchk-unsplash.jpg",
+      "richard-biros-pXFDctQsUys-unsplash.jpg",
+      "mathieu-buquet-4WBvCqeMaDE-unsplash.jpg"
+    ]
+  },
+  {
+    "brandSlug": "hyundai",
+    "modelSlug": "tucson",
+    "year": 2024,
+    "engineType": "Gasoline",
+    "transmission": "Automatic",
+    "condition": "New",
+    "enginePower": 187,
+    "milleage": 1200,
+    "vin": "SEED-HYU-TUC-2024-H",
+    "price": 34000,
+    "currency": "USD",
+    "credit": true,
+    "exchange": false,
+    "location": "Aşgabat",
+    "phone": "+99361999999",
+    "personalInfo": {
+      "name": "Auto.tm Demo",
+      "location": "Aşgabat",
+      "region": "Ahal"
+    },
+    "description": "2024 Hyundai Tucson 2.5 GDi AWD — redesigned compact SUV with Hyundai SmartSense safety suite, 10.25\" dual screens, heated/ventilated seats. Factory warranty active. [seed:demo-posts]",
+    "images": [
+      "john-matychuk-FgTcokJpm9w-unsplash.jpg",
+      "rishab-lamichhane-iflRMZelx0M-unsplash.jpg",
+      "tyler-clemmensen-d1Jum1vVLew-unsplash.jpg"
+    ]
+  },
+  {
+    "brandSlug": "lexus",
+    "modelSlug": "rx",
+    "year": 2023,
+    "engineType": "Hybrid",
+    "transmission": "Automatic",
+    "condition": "Used",
+    "enginePower": 367,
+    "milleage": 18900,
+    "vin": "SEED-LEX-RX-2023-I",
+    "price": 58000,
+    "currency": "USD",
+    "credit": false,
+    "exchange": true,
+    "location": "Aşgabat",
+    "phone": "+99361999999",
+    "personalInfo": {
+      "name": "Auto.tm Demo",
+      "location": "Aşgabat",
+      "region": "Ahal"
+    },
+    "description": "2023 Lexus RX 500h F SPORT Performance — 2.4L turbo hybrid with 367 hp, Direct4 AWD, adaptive variable suspension, Mark Levinson audio. Exceptional ride comfort. [seed:demo-posts]",
+    "images": [
+      "jonathan-gallegos-5FGqfV6UjzI-unsplash.jpg",
+      "olav-tvedt-6lSBynPRaAQ-unsplash.jpg",
+      "redcharlie-vQVWIsIBafA-unsplash.jpg"
+    ]
+  },
+  {
+    "brandSlug": "toyota",
+    "modelSlug": "corolla",
+    "year": 2024,
+    "engineType": "Gasoline",
+    "transmission": "Automatic",
+    "condition": "New",
+    "enginePower": 169,
+    "milleage": 800,
+    "vin": "SEED-TOY-COR-2024-J",
+    "price": 24500,
+    "currency": "USD",
+    "credit": true,
+    "exchange": true,
+    "location": "Aşgabat",
+    "phone": "+99361999999",
+    "personalInfo": {
+      "name": "Auto.tm Demo",
+      "location": "Aşgabat",
+      "region": "Ahal"
+    },
+    "description": "2024 Toyota Corolla SE — 2.0L Dynamic Force with 169 hp, CVT, Toyota Safety Sense 3.0, wireless Apple CarPlay. Low mileage, dealer serviced. [seed:demo-posts]",
+    "images": [
+      "mateusz-delegacz-1Ah8CAwk3vM-unsplash.jpg",
+      "tabea-schimpf-O7WzqmeYoqc-unsplash.jpg",
+      "eduardo-flores-xpcUYaZtplI-unsplash.jpg"
+    ]
+  }
+]

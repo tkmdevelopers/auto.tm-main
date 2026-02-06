@@ -20,7 +20,7 @@ services:
       timeout: 5s
       retries: 5
   api:
-    image: alpha-motors-backend:1.0.0
+    image: ${API_IMAGE_TAG:-alpha-motors-backend:latest}
     container_name: alpha_backend
     restart: unless-stopped
     depends_on:

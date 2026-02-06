@@ -7,10 +7,12 @@ This guide will help you set up and run the **Alpha Motors** project (Flutter mo
 ## 📋 Table of Contents
 1. [Prerequisites](#prerequisites)
 2. [Backend Setup (NestJS + Docker + PostgreSQL)](#backend-setup)
+   - [Local Development Workflow](#local-development-workflow-recommended)
 3. [Flutter Mobile App Setup](#flutter-app-setup)
 4. [Testing & Verification](#testing--verification)
 5. [Common Issues & Solutions](#common-issues--solutions)
 6. [Production Deployment (Ubuntu Server)](#production-deployment)
+   - [Updating the Backend (Air-Gapped Server)](#updating-the-backend-air-gapped-server)
 
 ---
 
@@ -61,10 +63,10 @@ nano .env  # or use any text editor
 **Backend `.env` configuration:**
 
 ```properties
-# Database Configuration (Docker)
-DATABASE_HOST=db
-# Host port to connect from your computer (also used by `npm run db:init`).
-# If you already have local Postgres using 5432, set this to 5433.
+# Database Configuration
+# Use 'localhost' for local development (Node.js connects to Docker Postgres via exposed port)
+# Use 'db' only inside Docker containers (compose overrides this for the api service)
+DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_USERNAME=auto_tm
 DATABASE_PASSWORD=YourSecurePasswordHere123!
@@ -102,14 +104,14 @@ docker compose -f docker-compose.build.yml build api
 
 #### Option B: Load Pre-built Image (Offline Deployment)
 
-If you already have the `alpha_backend_1.0.0.tar` image:
+If you already have a pre-built image tar (created by `scripts/build-release.sh`):
 
 ```bash
-# Load the image
-docker load -i alpha_backend_1.0.0.tar
+# Load the image (gzipped)
+gunzip -c alpha-motors-backend-0.2.0.tar.gz | docker load
 
-# Or if it's gzipped
-gunzip -c alpha_backend_1.0.0.tar.gz | docker load
+# Or if uncompressed
+docker load -i alpha-motors-backend-0.2.0.tar
 ```
 
 ### Step 4: Start the Services
@@ -215,6 +217,129 @@ npm run db:init
 ```
 
 > **Anti-drift rule**: don’t edit old migrations after they’ve been applied. If schema needs to evolve, add a new migration.
+
+### Local Development Workflow (Recommended)
+
+The recommended dev setup is **Postgres in Docker + NestJS running natively** on your Mac. This gives you instant hot-reload, native debugger support, and no cross-compilation issues with native modules (sharp, bcrypt).
+
+#### Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│  Your Mac                                   │
+│                                             │
+│  ┌─────────────────┐   ┌────────────────┐  │
+│  │  Docker          │   │  Native Node   │  │
+│  │  ┌─────────────┐ │   │                │  │
+│  │  │ PostgreSQL   │◄├───┤  NestJS API    │  │
+│  │  │ port 5432    │ │   │  port 3080     │  │
+│  │  └─────────────┘ │   │                │  │
+│  └─────────────────┘   └────────────────┘  │
+└─────────────────────────────────────────────┘
+```
+
+- Docker runs **only the Postgres database** (`docker compose up db -d`)
+- NestJS runs **natively** via `npm run start:dev` (hot-reload with file watcher)
+- Seed scripts, migrations, and everything else run natively with Node.js
+
+#### 1. Set `DATABASE_HOST=localhost` in `.env`
+
+Your `.env` must point at `localhost` (not `db`) because the NestJS process is outside Docker:
+
+```properties
+# Database — connects to Docker Postgres via exposed port
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_USERNAME=auto_tm
+DATABASE_PASSWORD=Key_bismynick1
+DATABASE=auto_tm
+```
+
+> **Important**: The `docker-compose.yml` `api` service overrides `DATABASE_HOST=db` internally. This `localhost` setting is only used by your native Node process and scripts.
+
+#### 2. Start Postgres only
+
+```bash
+cd backend
+
+# Start only the Postgres container (not the API container)
+docker compose up db -d
+
+# Verify it's running
+docker compose ps
+```
+
+You should see `auto_tm_postgres` running with port `5432` mapped.
+
+#### 3. Install dependencies and run migrations
+
+```bash
+# Install Node.js dependencies (first time / after package.json changes)
+npm install
+
+# Run migrations
+npm run db:migrate
+
+# Seed base data (currencies, brands, models)
+npm run db:seed:all
+```
+
+Or use the all-in-one command that resets everything from scratch:
+
+```bash
+npm run db:seed:fresh
+```
+
+#### 4. Start the NestJS dev server
+
+```bash
+npm run start:dev
+```
+
+This starts the API at `http://localhost:3080` with hot-reload. Any file change in `src/` will trigger an automatic restart.
+
+- **Swagger docs**: http://localhost:3080/api-docs
+- **API prefix**: http://localhost:3080/api/v1/
+
+#### 5. Day-to-day commands
+
+| Task | Command |
+|------|---------|
+| Start Postgres | `docker compose up db -d` |
+| Stop Postgres | `docker compose stop db` |
+| Start API (hot-reload) | `npm run start:dev` |
+| Run migrations | `npm run db:migrate` |
+| Undo last migration | `npm run db:migrate:undo` |
+| Seed base data | `npm run db:seed:all` |
+| Seed demo posts (API must be running) | `npm run db:seed:demo-posts` |
+| Full reset + seed from scratch | `npm run db:seed:fresh` |
+| Check migration status | `npm run db:migrate:status` |
+| Lint | `npm run lint` |
+| Format | `npm run format` |
+| Run tests | `npm run test` |
+
+#### 6. When to use the Docker API container
+
+The `api` service in `docker-compose.yml` is there for convenience but is **not needed for daily development**. Use it only when:
+
+- You want to test the exact production Docker image locally
+- You need to verify the entrypoint/migration flow works in the container
+- You're doing a final smoke test before building a release
+
+To run the full stack (Postgres + API) in Docker:
+
+```bash
+# Build the image first (if not built recently)
+docker compose -f docker-compose.build.yml build api
+
+# Start everything
+docker compose up -d
+
+# Stop everything
+docker compose down
+```
+
+> **Port conflict**: If you run `npm run start:dev` while the Docker API container is also running, port 3080 will conflict. Stop one before starting the other.
 
 ---
 
@@ -501,8 +626,8 @@ REFRESH_TOKEN_SECRET_KEY="new-production-refresh-secret-256-bits"
 ### Start Production Stack
 
 ```bash
-# Load Docker image (if transferred)
-docker load -i alpha_backend_1.0.0.tar
+# Load Docker image (if transferred — see "Updating the Backend" section)
+gunzip -c alpha-motors-backend-0.2.0.tar.gz | docker load
 
 # Start with production compose
 docker compose -f docker-compose.prod.yml up -d
@@ -513,20 +638,43 @@ docker logs alpha_backend --tail 100 -f
 
 ### Seed Initial Data (Required)
 
-After the stack starts and migrations complete, seed the database with initial data:
+After the stack starts and migrations complete, seed the database. All seed scripts are **included inside the Docker image**, so you run them via `docker exec` — no Node.js needed on the server.
+
+#### Option A: Seed during deploy (recommended)
+
+Use the `--seed` or `--seed-posts` flags with the deploy script:
 
 ```bash
-# From the backend directory on server
-cd /opt/alpha-motors/backend
+# Base data only (currencies + brands/models)
+./deploy-update.sh alpha-motors-backend-0.2.0.tar.gz --seed
 
-# Run all seed scripts (currencies + brands/models)
-npm run db:seed:all
+# Base data + ~300 demo posts with images (for testing)
+./deploy-update.sh alpha-motors-backend-0.2.0.tar.gz --seed-posts
+```
+
+#### Option B: Seed manually via docker exec
+
+```bash
+# Seed currencies + brands/models
+docker exec alpha_backend node scripts/seed-all.js
+
+# Seed ~300 demo posts with images (takes a few minutes)
+docker exec alpha_backend node scripts/seed-demo-posts-api.js
+```
+
+#### Option C: Auto-seed on every container start
+
+Add `SEED_ON_START=true` to your `.env` file (or `docker-compose.prod.yml` environment). The entrypoint will run the base seed (currencies + brands) automatically after migrations, every time the container starts. This is safe — the seed scripts use `ON CONFLICT` and are idempotent.
+
+```yaml
+# In docker-compose.prod.yml, under api.environment:
+environment:
+  SEED_ON_START: "true"
 ```
 
 **What gets seeded:**
-- **Currencies**: TMT (base: 1.0), USD (19.5), CNY (2.7)
-- **Car Brands**: All car brands from `cars.brands.json`
-- **Car Models**: All car models associated with brands
+- **Base data** (`--seed`): Currencies (TMT, USD, CNY) + all car brands and models
+- **Demo posts** (`--seed-posts`): ~300 car listings with real images, approved status, created via OTP-authenticated API calls. Useful for testing pagination, image loading, and performance.
 
 **Verify seeded data:**
 ```bash
@@ -538,9 +686,12 @@ docker exec auto_tm_postgres psql -U auto_tm -d auto_tm -c "SELECT COUNT(*) as b
 
 # Check models count
 docker exec auto_tm_postgres psql -U auto_tm -d auto_tm -c "SELECT COUNT(*) as model_count FROM models;"
+
+# Check posts count (if demo posts were seeded)
+docker exec auto_tm_postgres psql -U auto_tm -d auto_tm -c "SELECT COUNT(*) as post_count FROM posts WHERE status = true;"
 ```
 
-> **⚠️ Important**: Run seeding **after** migrations complete but **before** the app goes live. The seed scripts use environment variables from `.env`, so they work automatically with your production configuration.
+> **⚠️ Important**: Run base seeding **after** migrations complete but **before** the app goes live. Demo posts can be seeded at any time while the API is running.
 
 ### Setup NGINX Reverse Proxy (Optional but Recommended)
 
@@ -650,6 +801,110 @@ docker stats
 
 # View system resources
 htop
+```
+
+### Updating the Backend (Air-Gapped Server)
+
+Since the production server has no internet, updates follow a **build-locally, transfer, deploy** workflow. The project includes two scripts that automate this:
+
+- `scripts/build-release.sh` — runs on your **local machine** (Mac/Linux)
+- `scripts/deploy-update.sh` — runs on the **server**
+
+#### Step 1: Bump the version
+
+Edit `package.json` on your development machine:
+
+```json
+{
+  "version": "0.2.0"
+}
+```
+
+Use [semver](https://semver.org/) conventions:
+- **Patch** (0.0.x): bug fixes, minor tweaks
+- **Minor** (0.x.0): new features, non-breaking changes
+- **Major** (x.0.0): breaking changes, large refactors
+
+#### Step 2: Build a release bundle
+
+```bash
+cd backend
+./scripts/build-release.sh
+```
+
+This will:
+1. Read the version from `package.json`
+2. Build the Docker image (`alpha-motors-backend:0.2.0` + `:latest`)
+3. Export it as a compressed tar (`~200-400 MB`)
+4. Assemble a release directory with everything the server needs:
+
+```
+release/alpha-motors-v0.2.0/
+  alpha-motors-backend-0.2.0.tar.gz   # Docker image
+  docker-compose.prod.yml              # Compose config
+  .env.example                         # Env template (reference)
+  deploy-update.sh                     # Server-side updater
+  scripts/pg_backup.sh                 # Backup script
+  VERSION                              # Plain text version marker
+```
+
+#### Step 3: Transfer to the server
+
+Copy the release folder to the server via USB drive, `scp`, or `rsync`:
+
+```bash
+# Via scp
+scp -r release/alpha-motors-v0.2.0 user@server-ip:/opt/alpha-motors/
+
+# Via USB drive (mount, then copy)
+cp -r /mnt/usb/alpha-motors-v0.2.0 /opt/alpha-motors/
+```
+
+#### Step 4: Deploy the update on the server
+
+```bash
+ssh user@server-ip
+cd /opt/alpha-motors/alpha-motors-v0.2.0
+
+# Make the script executable (first time only)
+chmod +x deploy-update.sh
+
+# Run the update
+./deploy-update.sh alpha-motors-backend-0.2.0.tar.gz
+```
+
+The deploy script automatically:
+1. **Backs up** the database before any changes
+2. **Loads** the new Docker image
+3. **Restarts** the API container (migrations run automatically via entrypoint)
+4. **Verifies** the health check endpoint
+5. **Rolls back** to the previous image if the health check fails
+
+#### Rollback
+
+If something goes wrong after a deploy, you can manually roll back:
+
+```bash
+# Re-tag the old image as latest
+docker tag alpha-motors-backend:0.1.0 alpha-motors-backend:latest
+
+# Restart with the old image
+cd /opt/alpha-motors
+docker compose -f docker-compose.prod.yml up -d api
+
+# If a bad migration corrupted data, restore the DB backup
+docker exec -i auto_tm_postgres pg_restore -U auto_tm -d auto_tm --clean \
+  < backups/auto_tm_backup_YYYYMMDD_HHMMSS.dump
+```
+
+> **Tip**: Old image versions remain in Docker's local store until you explicitly prune them. Keep at least the previous version available for rollback: `docker images | grep alpha-motors-backend`.
+
+#### Pinning a specific version
+
+The compose files use `${API_IMAGE_TAG:-alpha-motors-backend:latest}` for the image tag. To pin a specific version instead of `latest`:
+
+```bash
+API_IMAGE_TAG=alpha-motors-backend:0.1.0 docker compose -f docker-compose.prod.yml up -d api
 ```
 
 ---
