@@ -2,7 +2,7 @@
 
 Full-stack automotive marketplace: **Flutter** mobile app (iOS/Android) and **NestJS** backend API with PostgreSQL. Users authenticate via phone OTP, create listings with photos/videos, comment, subscribe to premium features, and receive push notifications.
 
----
+---c
 
 ## Repository Layout
 
