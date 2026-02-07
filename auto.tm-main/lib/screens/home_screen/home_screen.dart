@@ -1,5 +1,5 @@
+import 'package:auto_tm/screens/favorites_screen/controller/favorites_controller.dart';
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
-import 'package:auto_tm/screens/home_screen/controller/banner_controller.dart';
 import 'package:auto_tm/screens/home_screen/controller/home_controller.dart';
 import 'package:auto_tm/screens/home_screen/widgets/post_item.dart';
 import 'package:auto_tm/screens/home_screen/widgets/post_shimmer.dart';
@@ -20,9 +20,8 @@ import 'package:auto_tm/utils/color_extensions.dart';
 class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
 
-  final HomeController controller = Get.put(HomeController());
+  final HomeController controller = Get.find<HomeController>();
   final FilterController filterController = Get.find<FilterController>();
-  final BannerController bannerController = Get.put(BannerController());
 
   @override
   Widget build(BuildContext context) {
@@ -100,14 +99,35 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildSliverContent(ThemeData theme) {
     return Obx(() {
-      if (controller.initialLoad.value) {
+      if (controller.initialLoad.value && controller.posts.isEmpty) {
         return _buildSliverShimmerView(theme);
-      } else if (controller.posts.isEmpty) {
-        return _buildSliverEmptyView(theme);
-      } else {
-        return _buildSliverDataView(theme);
       }
+      if (controller.isError.value && controller.posts.isEmpty) {
+        return _buildSliverErrorView(theme);
+      }
+      if (controller.posts.isEmpty) {
+        return _buildSliverEmptyView(theme);
+      }
+      return _buildSliverDataView(theme);
     });
+  }
+
+  Widget _buildSliverErrorView(ThemeData theme) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+            _FilterBar(theme: theme),
+            const SizedBox(height: 24),
+            _PostsHeader(theme: theme, controller: controller),
+            const SizedBox(height: 24),
+            _ErrorRetry(theme: theme, controller: controller),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildSliverShimmerView(ThemeData theme) {
@@ -156,64 +176,65 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildSliverDataView(ThemeData theme) {
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          // The very first item is the static header content
-          if (index == 0) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  _FilterBar(theme: theme),
-                  const SizedBox(height: 24),
-                  // BannerSlider(),
-                  const SizedBox(height: 24),
-                  _PostsHeader(theme: theme, controller: controller),
-                  const SizedBox(height: 16),
-                ],
+    final favoritesController = Get.put(FavoritesController());
+    return Obx(() {
+      final favoriteIds = favoritesController.favorites.toSet();
+      return SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            if (index == 0) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 20),
+                    _FilterBar(theme: theme),
+                    const SizedBox(height: 24),
+                    _PostsHeader(theme: theme, controller: controller),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              );
+            }
+            final postIndex = index - 1;
+
+            if (postIndex >= controller.posts.length) {
+              return Obx(
+                () => controller.isLoading.value
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16.0),
+                        child: PostItemShimmer(),
+                      )
+                    : const SizedBox.shrink(),
+              );
+            }
+
+            final post = controller.posts[postIndex];
+            return RepaintBoundary(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: PostItem(
+                  uuid: post.uuid,
+                  brand: post.brand,
+                  model: post.model,
+                  price: post.price,
+                  photoPath: post.photoPath,
+                  year: post.year,
+                  milleage: post.milleage,
+                  currency: post.currency,
+                  createdAt: post.createdAt,
+                  subscription: post.subscription,
+                  location: post.location,
+                  region: post.region,
+                  isFav: favoriteIds.contains(post.uuid),
+                ),
               ),
             );
-          }
-          // Adjust index for the posts list
-          final postIndex = index - 1;
-
-          // If the index is out of bounds, it's the pagination loader
-          if (postIndex >= controller.posts.length) {
-            return Obx(
-              () => controller.isLoading.value
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16.0),
-                      child: PostItemShimmer(),
-                    )
-                  : const SizedBox.shrink(),
-            );
-          }
-
-          final post = controller.posts[postIndex];
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: PostItem(
-              uuid: post.uuid,
-              brand: post.brand,
-              model: post.model,
-              price: post.price,
-              photoPath: post.photoPath,
-              year: post.year,
-              milleage: post.milleage,
-              currency: post.currency,
-              createdAt: post.createdAt,
-              subscription: post.subscription,
-              location: post.location,
-              region: post.region,
-            ),
-          );
-        },
-        // Calculate child count: 1 header + all posts + 1 for loader slot
-        childCount: 1 + controller.posts.length + 1,
-      ),
-    );
+          },
+          childCount: 1 + controller.posts.length + 1,
+        ),
+      );
+    });
   }
 }
 
@@ -404,6 +425,63 @@ class _PostsHeader extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorRetry extends StatelessWidget {
+  const _ErrorRetry({
+    required this.theme,
+    required this.controller,
+  });
+  final ThemeData theme;
+  final HomeController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.error.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.cloud_off_outlined,
+            size: 48,
+            color: theme.colorScheme.error,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'home_error_title'.tr,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'home_error_tap_retry'.tr,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: () => controller.retry(),
+            icon: const Icon(Icons.refresh, size: 20),
+            label: Text('post_retry'.tr),
           ),
         ],
       ),

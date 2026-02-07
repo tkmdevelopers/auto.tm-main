@@ -12,6 +12,15 @@ import 'package:get/get.dart';
 class BottomNavController extends GetxController {
   var selectedIndex = 0.obs;
 
+  @override
+  void onInit() {
+    super.onInit();
+    // Register HomeController once so state is preserved with IndexedStack; HomeScreen uses Get.find.
+    if (!Get.isRegistered<HomeController>()) {
+      Get.put(HomeController(), permanent: true);
+    }
+  }
+
   Future<void> changeIndex(int index) async {
     // Prevent reopening or navigating if already on the selected tab
     if (selectedIndex.value == index) {

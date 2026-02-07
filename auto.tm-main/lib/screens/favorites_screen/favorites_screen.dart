@@ -58,6 +58,7 @@ class FavoritesScreenTab extends StatelessWidget {
                   createdAt: post.createdAt,
                   location: post.location,
                   region: post.region,
+                  isFav: true,
                 ),
               ),
             );

@@ -1,9 +1,9 @@
-import 'package:auto_tm/global_controllers/theme_controller.dart';
 import 'package:auto_tm/screens/favorites_screen/controller/favorites_controller.dart';
 import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/images.dart';
 import 'package:auto_tm/utils/key.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
@@ -16,11 +16,13 @@ class PostItem extends StatelessWidget {
   final String photoPath;
   final String? subscription;
   final String location;
-  final String region; // NEW: region (e.g., Local, Dubai, China)
+  final String region;
   final double year;
   final double milleage;
   final String currency;
   final String createdAt;
+  /// Passed from parent so one Obx at list level drives updates (fewer rebuilds).
+  final bool isFav;
 
   PostItem({
     super.key,
@@ -36,12 +38,10 @@ class PostItem extends StatelessWidget {
     required this.createdAt,
     required this.location,
     this.region = 'Local',
+    this.isFav = false,
   });
 
-  final FavoritesController favoritesController = Get.put(
-    FavoritesController(),
-  );
-  final ThemeController themeController = Get.put(ThemeController());
+  FavoritesController get _favoritesController => Get.find<FavoritesController>();
 
   @override
   Widget build(BuildContext context) {
@@ -94,14 +94,29 @@ class PostItem extends StatelessWidget {
             topLeft: Radius.circular(16),
             topRight: Radius.circular(16),
           ),
-          child: Image.network(
-            photoPath.isNotEmpty
+          child: CachedNetworkImage(
+            imageUrl: photoPath.isNotEmpty
                 ? '${ApiKey.ip}$photoPath'
                 : 'https://placehold.co/400x250',
             height: 200,
             width: double.infinity,
             fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => Container(
+            placeholder: (context, url) => Container(
+              height: 200,
+              width: double.infinity,
+              color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
+              child: Center(
+                child: SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
+            errorWidget: (context, url, error) => Container(
               height: 200,
               width: double.infinity,
               color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
@@ -149,55 +164,51 @@ class PostItem extends StatelessWidget {
             ),
           ),
 
-        // Favorite Button with animation
-        // Favorite Button with full-container animation
+        // Favorite button: isFav passed from parent (one Obx at list level).
         Positioned(
           top: 12,
           right: 12,
-          child: Obx(() {
-            final isFav = favoritesController.favorites.contains(uuid);
-            return GestureDetector(
-              onTap: () => favoritesController.toggleFavorite(uuid),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface, // keep container background
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: theme.colorScheme.outline.withOpacity(0.1),
-                    width: 1.2,
-                  ),
-                  boxShadow: isFav
-                      ? [
-                          BoxShadow(
-                            color: theme.colorScheme.primary.withOpacity(0.2),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ]
-                      : [],
+          child: GestureDetector(
+            onTap: () => _favoritesController.toggleFavorite(uuid),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.colorScheme.outline.withOpacity(0.1),
+                  width: 1.2,
                 ),
-                child: Center(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    transitionBuilder: (child, animation) =>
-                        ScaleTransition(scale: animation, child: child),
-                    child: Icon(
-                      isFav ? Icons.favorite : Icons.favorite_border,
-                      key: ValueKey<bool>(isFav),
-                      color: isFav
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface.withOpacity(0.7),
-                      size: 20,
-                    ),
+                boxShadow: isFav
+                    ? [
+                        BoxShadow(
+                          color: theme.colorScheme.primary.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (child, animation) =>
+                      ScaleTransition(scale: animation, child: child),
+                  child: Icon(
+                    isFav ? Icons.favorite : Icons.favorite_border,
+                    key: ValueKey<bool>(isFav),
+                    color: isFav
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface.withOpacity(0.7),
+                    size: 20,
                   ),
                 ),
               ),
-            );
-          }),
+            ),
+          ),
         ),
       ],
     );

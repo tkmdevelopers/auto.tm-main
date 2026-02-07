@@ -16,6 +16,10 @@ class HomeController extends GetxController {
   var hasMore = true.obs;
   var offset = 0;
 
+  /// Error state: when true, show error UI with retry.
+  var isError = false.obs;
+  var errorMessage = ''.obs;
+
   @override
   void onInit() {
     fetchInitialData();
@@ -48,13 +52,29 @@ class HomeController extends GetxController {
   }
 
   Future<void> fetchInitialData() async {
-    // This function is only for the very first load to show the main shimmer
     initialLoad.value = true;
+    isError.value = false;
+    errorMessage.value = '';
     try {
       await fetchPosts();
+      if (isError.value) {
+        Get.snackbar(
+          'home_error_title'.tr,
+          'home_error_tap_retry'.tr,
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 4),
+        );
+      }
     } catch (e) {
-      // Log error or show a message if needed
       debugPrint('Error fetching initial data: $e');
+      isError.value = true;
+      errorMessage.value = e.toString();
+      Get.snackbar(
+        'home_error_title'.tr,
+        'home_error_tap_retry'.tr,
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 4),
+      );
     } finally {
       FlutterNativeSplash.remove();
       initialLoad.value = false;
@@ -62,9 +82,11 @@ class HomeController extends GetxController {
   }
 
   Future<void> fetchPosts() async {
-    if (!hasMore.value || isLoading.value) return;
-
     isLoading.value = true;
+    if (!hasMore.value) {
+      isLoading.value = false;
+      return;
+    }
 
     try {
       final response = await ApiClient.to.dio.get(
@@ -99,22 +121,36 @@ class HomeController extends GetxController {
       }
     } catch (e) {
       debugPrint('Error fetching posts: $e');
+      isError.value = true;
+      errorMessage.value = e.toString();
     } finally {
       isLoading.value = false;
     }
   }
 
+  /// Retry after error: clear error state and fetch from start.
+  Future<void> retry() async {
+    isError.value = false;
+    errorMessage.value = '';
+    hasMore.value = true;
+    offset = 0;
+    posts.clear();
+    await fetchInitialData();
+  }
+
+  /// Pull-to-refresh: reset and reload. Future always completes so RefreshIndicator stops.
   Future<void> refreshData() async {
+    isLoading.value = false;
+    hasMore.value = true;
+    offset = 0;
+    isError.value = false;
+    errorMessage.value = '';
+    posts.clear();
     try {
-      // Reset all state for a pull-to-refresh
-      isLoading.value = false;
-      hasMore.value = true;
-      offset = 0;
-      posts.clear();
       await fetchInitialData();
     } catch (e) {
-      // Ensure the refresh completes even on error
       debugPrint('Error refreshing data: $e');
+      // Future still completes; error state already set in fetchInitialData
     }
   }
 

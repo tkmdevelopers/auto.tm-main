@@ -213,6 +213,8 @@ class AppTranslations extends Translations {
       'home_no_posts_found': 'No Posts Found',
       'home_no_results_tip':
           'Try adjusting your filters or check back later for new posts.',
+      'home_error_title': 'Something went wrong',
+      'home_error_tap_retry': 'Tap to retry or pull to refresh.',
       // Post details
       'post_downloading_progress': 'Downloading... @percent%',
       'post_vin': 'VIN',
@@ -541,6 +543,8 @@ class AppTranslations extends Translations {
       'home_no_posts_found': 'Post tapylmady',
       'home_no_results_tip':
           'Süzgüçleri üýtgedip görüň ýa-da soňrak gaýtadan barlaň.',
+      'home_error_title': 'Bir zat nädogry boldy',
+      'home_error_tap_retry': 'Gaýtadan synanyşmak üçin basyn ýa-da çekiň.',
       'post_downloading_progress': 'Ýüklenýär... @percent%',
       'post_vin': 'VIN',
       'post_year_unit': 'ý.',
@@ -863,6 +867,8 @@ class AppTranslations extends Translations {
       'home_latest_posts': 'Последние объявления',
       'home_no_posts_found': 'Объявления не найдены',
       'home_no_results_tip': 'Попробуйте изменить фильтры или зайдите позже.',
+      'home_error_title': 'Что-то пошло не так',
+      'home_error_tap_retry': 'Нажмите для повтора или потяните для обновления.',
       'post_downloading_progress': 'Загрузка... @percent%',
       'post_vin': 'VIN',
       'post_year_unit': 'г.',
