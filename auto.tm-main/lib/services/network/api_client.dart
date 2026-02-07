@@ -18,27 +18,42 @@ class ApiClient extends GetxService {
   /// Completer used as a mutex so only one refresh runs at a time.
   Completer<bool>? _refreshCompleter;
 
+  // Constructor injection
+  ApiClient({Dio? dio}) {
+    if (dio != null) this.dio = dio;
+  }
+
   static ApiClient get to => Get.find<ApiClient>();
 
   Future<ApiClient> init() async {
-    dio = Dio(
-      BaseOptions(
-        baseUrl: ApiKey.apiKey,
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      ),
-    );
+    bool initialized = false;
+    try {
+      final _ = dio;
+      initialized = true;
+    } catch (_) {}
 
-    dio.interceptors.add(_AuthInterceptor(this));
-
-    if (kDebugMode) {
-      dio.interceptors.add(
-        LogInterceptor(requestBody: true, responseBody: true),
+    if (!initialized) {
+      dio = Dio(
+        BaseOptions(
+          baseUrl: ApiKey.apiKey,
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        ),
       );
+      
+      // Only add interceptors if we initialized the Dio instance
+      // (Mock Dio usually doesn't need them or handles them differently)
+      dio.interceptors.add(_AuthInterceptor(this));
+
+      if (kDebugMode) {
+        dio.interceptors.add(
+          LogInterceptor(requestBody: true, responseBody: true),
+        );
+      }
     }
 
     return this;
