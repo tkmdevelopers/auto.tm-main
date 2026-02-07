@@ -11,6 +11,7 @@ import 'package:auto_tm/screens/home_screen/home_screen.dart';
 import 'package:auto_tm/screens/profile_screen/profile_screen.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
+import 'package:auto_tm/screens/home_screen/controller/home_controller.dart';
 import 'package:auto_tm/screens/search_screen/search_screen.dart';
 import 'package:auto_tm/screens/post_screen/controller/upload_manager.dart';
 import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
@@ -332,6 +333,15 @@ Future<void> initServices() async {
     }
   }
 
+  // Register HomeController before nav so HomeScreen can Get.find when pages list is built.
+  if (!Get.isRegistered<HomeController>()) {
+    try {
+      Get.put(HomeController(), permanent: true);
+    } catch (e, stackTrace) {
+      _logDebug('main.dart:initServices', 'HomeController registration failed', {'error': e.toString(), 'stackTrace': stackTrace.toString()}, hypothesisId: 'F');
+      rethrow;
+    }
+  }
 }
 
 class AlphaMotorsApp extends StatelessWidget {

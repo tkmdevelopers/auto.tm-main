@@ -14,6 +14,8 @@ Full-stack automotive marketplace: **Flutter** mobile app (iOS/Android) and **Ne
 │   ├── ARCHITECTURE_OVERVIEW.md   # Full-stack architecture
 │   ├── ACCESS_MODEL.md           # Public vs token-required access (guest browse)
 │   ├── ACCESS_MODEL_ROADMAP.md   # Roadmap + mobile app alignment audit
+│   ├── HOME_SCREEN_ANALYSIS.md   # Home controller/screen analysis, init fix, phased improvements
+│   ├── HOME_SCREEN_FLOW_AND_ANALYSIS.md   # Home flow, widget tree, dead code, image loading
 │   ├── TESTING.md                 # Manual & smoke testing
 │   └── ROADMAP.md                 # Auth improvements & plans
 ├── CLAUDE.md              # AI/assistant rules for this repo
@@ -57,6 +59,8 @@ Full-stack automotive marketplace: **Flutter** mobile app (iOS/Android) and **Ne
 | Document | Purpose |
 |----------|---------|
 | [auto.tm-main/README.md](auto.tm-main/README.md) | Flutter app: env, run, build, project structure |
+| [docs/HOME_SCREEN_ANALYSIS.md](docs/HOME_SCREEN_ANALYSIS.md) | Home controller/screen analysis, init fix, phased improvements (Phase A–D) |
+| [docs/HOME_SCREEN_FLOW_AND_ANALYSIS.md](docs/HOME_SCREEN_FLOW_AND_ANALYSIS.md) | Home flow, widget tree, dead code, image loading (§10) |
 
 ---
 

@@ -30,7 +30,7 @@ This roadmap covers **implementing the public vs authenticated access model** ([
 | Item | Current state | Target | Aligned? |
 |------|----------------|--------|----------|
 | **Single source of truth** | Tokens stored only in `TokenStore` (flutter_secure_storage). No GetStorage for ACCESS_TOKEN/REFRESH_TOKEN (profile logout fallback fixed). | One place for tokens. | ✅ |
-| **Who reads/writes tokens** | AuthService (OTP success) and ApiClient (refresh, force logout) write to TokenStore. ApiClient interceptor reads for attach/refresh. Controllers still use TokenStore.to.accessToken for manual HTTP in filter_controller, post_controller, blog. | All auth flows via TokenStore; all API calls via ApiClient.dio so refresh/USER_DELETED handled in one place. | ⚠️ Partial — TokenStore is correct; remaining work is migrating manual HTTP to ApiClient.dio (see main ROADMAP). |
+| **Who reads/writes tokens** | AuthService (OTP success) and ApiClient (refresh, force logout) write to TokenStore. ApiClient interceptor reads for attach/refresh. filter_controller, post_controller, blog use ApiClient.dio. | All auth flows via TokenStore; all API calls via ApiClient.dio so refresh/USER_DELETED handled in one place. | ✅ |
 | **TokenService** | Deprecated wrapper around TokenStore. | Remove when no callers. | ✅ Optional cleanup. |
 
 ### 1.4 Public vs protected API calls
@@ -40,12 +40,12 @@ This roadmap covers **implementing the public vs authenticated access model** ([
 | Home (posts list) | ApiClient.dio.get('posts') | Public; no token sent if none. ✅ |
 | Banners, categories | ApiClient.dio | Public. ✅ |
 | Post detail | ApiClient.dio.get('posts/:uuid') | Public. ✅ |
-| Comments (post detail) | ApiClient.dio.get('comments') | Backend GET comments currently has AuthGuard → 401 for guest. ❌ Need backend to make GET comments public or frontend to skip comments when no token. |
+| Comments (post detail) | ApiClient.dio.get('comments') | Public; guests can see comments. Done (Phase A1). ✅ |
 | Favorites (posts/list) | ApiClient.dio.post('posts/list') | Public. ✅ |
 | Search / brands | ApiClient.dio | Public. ✅ |
-| Filter, post_controller, blog | Still TokenStore + manual HTTP in places | Should migrate to ApiClient.dio (see ROADMAP). |
+| Filter, post_controller, blog | ApiClient.dio | Migrated; all use ApiClient.dio. ✅ |
 
-**Summary:** Structure aligns with “guest can browse main app and use public endpoints.” Gaps: (1) Backend GET comments (and optionally GET vlog/:id) should be public. (2) Migrate remaining controllers to ApiClient.dio. (3) Optional: “Add to favorites” / “Comment” on post detail should explicitly prompt login when no token.
+**Summary:** Structure aligns with “guest can browse main app and use public endpoints.” Backend GET comments is public (Phase A1). Key controllers (filter, blog, post) use ApiClient.dio. Optional: “Add to favorites” / “Comment” on post detail prompt login when no token (C1 done).
 
 ---
 

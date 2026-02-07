@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
@@ -7,12 +6,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
 
+/// Page size for home feed; used for limit and offset increment.
+const int kHomePageSize = 20;
+
 class HomeController extends GetxController {
   final ScrollController scrollController = ScrollController();
 
+  /// Threshold in pixels before maxScrollExtent to trigger pagination (load earlier).
+  static const double _paginationThreshold = 200;
+
   var posts = <Post>[].obs;
-  var isLoading = false.obs; // Tracks pagination loading
-  var initialLoad = true.obs; // Tracks the very first page load
+  var isLoading = false.obs;
+  var initialLoad = true.obs;
   var hasMore = true.obs;
   var offset = 0;
 
@@ -23,14 +28,16 @@ class HomeController extends GetxController {
   @override
   void onInit() {
     fetchInitialData();
-    // Add the listener for pagination
-    scrollController.addListener(() {
-      if (scrollController.position.maxScrollExtent ==
-          scrollController.offset) {
-        fetchPosts();
-      }
-    });
+    scrollController.addListener(_onScroll);
     super.onInit();
+  }
+
+  void _onScroll() {
+    if (!scrollController.hasClients) return;
+    final pos = scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - _paginationThreshold) {
+      fetchPosts();
+    }
   }
 
   @override
@@ -57,28 +64,26 @@ class HomeController extends GetxController {
     errorMessage.value = '';
     try {
       await fetchPosts();
-      if (isError.value) {
-        Get.snackbar(
-          'home_error_title'.tr,
-          'home_error_tap_retry'.tr,
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 4),
-        );
-      }
     } catch (e) {
       debugPrint('Error fetching initial data: $e');
       isError.value = true;
       errorMessage.value = e.toString();
-      Get.snackbar(
-        'home_error_title'.tr,
-        'home_error_tap_retry'.tr,
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 4),
-      );
     } finally {
       FlutterNativeSplash.remove();
       initialLoad.value = false;
+      if (isError.value) {
+        _showErrorSnackbar();
+      }
     }
+  }
+
+  void _showErrorSnackbar() {
+    Get.snackbar(
+      'home_error_title'.tr,
+      'home_error_tap_retry'.tr,
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 4),
+    );
   }
 
   Future<void> fetchPosts() async {
@@ -93,7 +98,7 @@ class HomeController extends GetxController {
         'posts',
         queryParameters: {
           'offset': offset,
-          'limit': 20,
+          'limit': kHomePageSize,
           'brand': true,
           'model': true,
           'photo': true,
@@ -103,20 +108,33 @@ class HomeController extends GetxController {
       );
 
       if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        if (data is! List) {
+          isError.value = true;
+          errorMessage.value = 'Invalid response format';
+          return;
+        }
         final newPosts = await Isolate.run(() {
-          final data = response.data;
-          return data is List
-              ? (data as List)
-                  .map((e) => Post.fromJson(e as Map<String, dynamic>))
-                  .toList()
-              : <Post>[];
+          return (data as List)
+              .map((e) => Post.fromJson(e as Map<String, dynamic>))
+              .toList();
         });
 
         if (newPosts.isNotEmpty) {
           posts.addAll(newPosts);
-          offset += 20;
+          offset += kHomePageSize;
         } else {
           hasMore.value = false;
+        }
+      } else {
+        isError.value = true;
+        final body = response.data;
+        if (body is Map && body['message'] != null) {
+          errorMessage.value = body['message'].toString();
+        } else {
+          final code = response.statusCode;
+          errorMessage.value =
+              code != null ? 'Request failed ($code)' : 'Request failed';
         }
       }
     } catch (e) {

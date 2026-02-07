@@ -7,6 +7,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:shimmer/shimmer.dart';
 
 class PostItem extends StatelessWidget {
   final String uuid;
@@ -101,17 +102,19 @@ class PostItem extends StatelessWidget {
             height: 200,
             width: double.infinity,
             fit: BoxFit.cover,
-            placeholder: (context, url) => Container(
-              height: 200,
-              width: double.infinity,
-              color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
-              child: Center(
-                child: SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: theme.colorScheme.primary,
+            fadeInDuration: const Duration(milliseconds: 200),
+            fadeInCurve: Curves.easeOut,
+            placeholder: (context, url) => Shimmer.fromColors(
+              baseColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
+              highlightColor: theme.colorScheme.surface,
+              child: Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.6),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
                   ),
                 ),
               ),

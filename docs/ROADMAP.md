@@ -32,13 +32,12 @@ Verified against the current codebase.
 |------|--------|-------|
 | **GetStorage token cleanup** | Done | `profile_controller.dart` logout fallback now uses TokenStore.clearAll() when AuthService not registered; no longer touches ACCESS_TOKEN/REFRESH_TOKEN in GetStorage. |
 | **OTP_INVALID_PHONE in send** | Done | `backend/src/otp/otp.service.ts` now returns 400 with `{ code: "OTP_INVALID_PHONE", message: "Phone number is required" }` when phone is missing. |
-| **ApiClient migration (partial)** | Done | Home (banner, category, home), search, post_details, comments, favorites, notification_service now use ApiClient.dio for authenticated requests. |
+| **ApiClient migration** | Done | Home (banner, category, home), search, post_details, comments, favorites, notification_service, filter_controller, blog_controller, add_blog_controller, add_blog_screen, post_controller all use ApiClient.dio for authenticated requests. |
 
 ### Not yet done
 
 | Item | Status | Notes |
 |------|--------|-------|
-| **All API calls via ApiClient** | Partial | Remaining: `filter_controller`, `blog_controller`, `add_blog_controller`, `add_blog_screen`, `post_controller` (many call sites) still use TokenStore + manual HTTP. |
 | **Legacy token mirror** | N/A | No legacy mirror in TokenStore; nothing to remove. |
 
 ---
@@ -50,8 +49,8 @@ Verified against the current codebase.
 ### High priority (next)
 
 - Replace remaining GetStorage token usage (profile_controller logout fallback) with TokenStore-only cleanup.
-- Migrate all API calls to go through ApiClient (Dio) so every request gets token refresh and USER_DELETED handling.
-- Optionally add `code: "OTP_INVALID_PHONE"` to `/otp/send` 400 response for consistency with API_REFERENCE.
+- All key API calls now go through ApiClient (Dio); token refresh and USER_DELETED handling are in place.
+- Optionally add `code: "OTP_INVALID_PHONE"` to `/otp/send` 400 response for consistency with API_REFERENCE (already implemented in backend).
 
 ### Medium priority
 
@@ -70,11 +69,11 @@ Verified against the current codebase.
 - [x] No legacy token mirror in TokenStore to remove.
 - [x] Confirm `/auth/me` boot flow works under refresh and deleted-user scenarios.
 - [x] Migrate key controllers to ApiClient.dio (home, search, post_details, comments, favorites, notification_service).
-- [ ] Migrate remaining: filter_controller, blog (controller + add_blog), post_controller.
+- [x] Migrate remaining: filter_controller, blog (controller + add_blog), post_controller.
 
 ### Acceptance criteria
 
-- All authenticated requests use ApiClient (Dio) with token refresh and USER_DELETED handling. (Partially met; post/filter/blog still to migrate.)
+- All authenticated requests use ApiClient (Dio) with token refresh and USER_DELETED handling. (Met; all key controllers use ApiClient.dio.)
 - Single source of truth for token storage (TokenStore / secure storage). (Met.)
 - OTP error responses include stable error codes including OTP_INVALID_PHONE for send. (Met.)
 

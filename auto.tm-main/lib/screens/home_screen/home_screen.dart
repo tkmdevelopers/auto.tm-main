@@ -1,5 +1,4 @@
 import 'package:auto_tm/screens/favorites_screen/controller/favorites_controller.dart';
-import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 import 'package:auto_tm/screens/home_screen/controller/home_controller.dart';
 import 'package:auto_tm/screens/home_screen/widgets/post_item.dart';
 import 'package:auto_tm/screens/home_screen/widgets/post_shimmer.dart';
@@ -21,7 +20,7 @@ class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
 
   final HomeController controller = Get.find<HomeController>();
-  final FilterController filterController = Get.find<FilterController>();
+  final FavoritesController favoritesController = Get.put(FavoritesController());
 
   @override
   Widget build(BuildContext context) {
@@ -118,10 +117,7 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            const SizedBox(height: 20),
-            _FilterBar(theme: theme),
-            const SizedBox(height: 24),
-            _PostsHeader(theme: theme, controller: controller),
+            _HomeHeader(theme: theme, controller: controller),
             const SizedBox(height: 24),
             _ErrorRetry(theme: theme, controller: controller),
           ],
@@ -136,13 +132,10 @@ class HomeScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            const SizedBox(height: 20),
-            IgnorePointer(child: _FilterBar(theme: theme)),
-            const SizedBox(height: 24),
-            // IgnorePointer(child: BannerSlider()),
-            const SizedBox(height: 24),
-            IgnorePointer(
-              child: _PostsHeader(theme: theme, controller: controller),
+            _HomeHeader(
+              theme: theme,
+              controller: controller,
+              ignorePointer: true,
             ),
             const SizedBox(height: 16),
             ...List.generate(5, (_) => const PostItemShimmer()),
@@ -157,17 +150,8 @@ class HomeScreen extends StatelessWidget {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-                _FilterBar(theme: theme),
-                const SizedBox(height: 24),
-                // BannerSlider(),
-                const SizedBox(height: 24),
-                _PostsHeader(theme: theme, controller: controller),
-              ],
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _HomeHeader(theme: theme, controller: controller),
           ),
           _EmptyPosts(theme: theme),
         ],
@@ -176,7 +160,6 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildSliverDataView(ThemeData theme) {
-    final favoritesController = Get.put(FavoritesController());
     return Obx(() {
       final favoriteIds = favoritesController.favorites.toSet();
       return SliverList(
@@ -184,13 +167,10 @@ class HomeScreen extends StatelessWidget {
           (context, index) {
             if (index == 0) {
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    const SizedBox(height: 20),
-                    _FilterBar(theme: theme),
-                    const SizedBox(height: 24),
-                    _PostsHeader(theme: theme, controller: controller),
+                    _HomeHeader(theme: theme, controller: controller),
                     const SizedBox(height: 16),
                   ],
                 ),
@@ -238,7 +218,33 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// --- FIX: Full implementations for local widgets are now included ---
+// --- Single header used in shimmer, error, empty, and data views ---
+
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({
+    required this.theme,
+    required this.controller,
+    this.ignorePointer = false,
+  });
+  final ThemeData theme;
+  final HomeController controller;
+  final bool ignorePointer;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 20),
+        _FilterBar(theme: theme),
+        const SizedBox(height: 24),
+        _PostsHeader(theme: theme, controller: controller),
+      ],
+    );
+    return ignorePointer ? IgnorePointer(child: child) : child;
+  }
+}
 
 class _FilterBar extends StatelessWidget {
   const _FilterBar({required this.theme});

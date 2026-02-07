@@ -4,6 +4,16 @@ This document analyses the home page end-to-end (controller, screen, widgets, an
 
 ---
 
+## 0. HomeController initialization (fix for "not found" error)
+
+**Problem:** `HomeScreen` uses `Get.find<HomeController>()`, but when `BottomNavController` is constructed, its `final List<Widget> pages = [ HomeScreen(), ... ]` is initialized **before** `onInit()` runs. `HomeScreen()` construction triggers `Get.find<HomeController>()` immediately, while `Get.put(HomeController(), permanent: true)` lives in `BottomNavController.onInit()` — which runs only after construction. Result: "HomeController not found".
+
+**Fix applied (Option A):** Register `HomeController` in `main.dart` `initServices()` before the nav is shown. `initServices()` runs before the first frame; when the user navigates to `/navView`, `HomeController` already exists. `HomeScreen` can safely `Get.find<HomeController>()`.
+
+**File changed:** [main.dart](auto.tm-main/lib/main.dart) — added `Get.put(HomeController(), permanent: true)` in `initServices()` if not registered.
+
+---
+
 ## 1. Current Architecture Overview
 
 ### 1.1 Component diagram
@@ -29,7 +39,6 @@ flowchart TB
 
   subgraph Controllers["Controllers"]
     HomeController[HomeController]
-    FilterController[FilterController]
     FavoritesController[FavoritesController]
   end
 
@@ -49,7 +58,6 @@ flowchart TB
   end
 
   HomeScreen --> HomeController
-  HomeScreen --> FilterController
   ObxContent --> posts
   ObxContent --> initialLoad
   ObxContent --> isError
@@ -58,6 +66,10 @@ flowchart TB
   HomeController --> posts
   CustomScrollView --> scrollController
 ```
+
+*Note:* FilterController is no longer used by HomeScreen (removed in refactor).
+
+**See also:** [HOME_SCREEN_FLOW_AND_ANALYSIS.md](HOME_SCREEN_FLOW_AND_ANALYSIS.md) for current flow, dead code, and image loading (§10).
 
 ### 1.2 State and UI flow
 
