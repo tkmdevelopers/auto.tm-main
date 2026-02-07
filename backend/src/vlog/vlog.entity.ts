@@ -19,6 +19,8 @@ export class Vlogs extends Model {
   @ApiProperty()
   @Column({
     primaryKey: true,
+    type: DataType.UUID,
+    defaultValue: DataType.UUIDV4,
   })
   uuid: string;
 
@@ -67,6 +69,7 @@ export class Vlogs extends Model {
   @ApiProperty()
   @ForeignKey(() => User)
   @Column({
+    type: DataType.UUID,
     allowNull: true,
   })
   userId: string;

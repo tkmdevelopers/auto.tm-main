@@ -7,6 +7,7 @@ import {
   findOneCat,
 } from "./categories.dto";
 import { Request, Response } from "express";
+import { AuthenticatedRequest } from "src/utils/types";
 import { stringToBoolean } from "src/utils/functions/stringBool";
 import { Posts } from "src/post/post.entity";
 import { v4 as uuidv4 } from "uuid";
@@ -20,7 +21,7 @@ export class CategoriesService {
     @Inject("POSTS_REPOSITORY") private posts: typeof Posts,
   ) {}
 
-  async findAll(query: findAllCategories, req: Request | any, res: Response) {
+  async findAll(query: findAllCategories, req: AuthenticatedRequest, res: Response) {
     try {
       const { limit, offset, post, search, sort, photo } = query;
       const includePayload: {}[] = [];
@@ -47,7 +48,7 @@ export class CategoriesService {
     }
   }
 
-  async create(body: createCategories, req: Request | any, res: Response) {
+  async create(body: createCategories, req: AuthenticatedRequest, res: Response) {
     try {
       const uuid = uuidv4();
       const creator = await User.findOne({
@@ -85,7 +86,7 @@ export class CategoriesService {
       return res.status(error.status).json(error);
     }
   }
-  async findOne(param: findOneCat, req: Request | any, res: Response) {
+  async findOne(param: findOneCat, req: AuthenticatedRequest, res: Response) {
     try {
       const { uuid } = param;
 
@@ -108,7 +109,7 @@ export class CategoriesService {
   }
   async update(
     param: findOneCat,
-    req: Request | any,
+    req: AuthenticatedRequest,
     res: Response,
     body: createCategories,
   ) {
@@ -133,7 +134,7 @@ export class CategoriesService {
       return res.status(error.status).json(error);
     }
   }
-  async delete(param: findOneCat, req: Request | any, res: Response) {
+  async delete(param: findOneCat, req: AuthenticatedRequest, res: Response) {
     try {
       const { uuid } = param;
       const categoryies = await this.Category.destroy({

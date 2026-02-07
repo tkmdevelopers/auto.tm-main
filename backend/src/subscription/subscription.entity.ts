@@ -15,7 +15,7 @@ import { SubscriptionOrder } from "./subscription_order.entity";
 @Table({ tableName: "subscriptions" })
 export class Subscriptions extends Model {
   @ApiProperty()
-  @Column({ primaryKey: true })
+  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
   uuid: string;
   @ApiProperty()
   @Column({ type: DataType.JSONB, allowNull: false })

@@ -1,56 +1,34 @@
-# Node dependencies
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
+# ----------------------------------------------------------------------
+# BACKEND (NESTJS) IGNORES
+# ----------------------------------------------------------------------
 
-# Build output
+# Dependencies
+node_modules/
+
+# Build Output
 dist/
 build/
 coverage/
-uploads/
-# Environment files
-.env
-.env.*
-!.env.example
-
-# Logs
-*.log
-logs/
-*.pid
-*.seed
-*.pid.lock
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# IDE/editor files
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# TypeScript
 *.tsbuildinfo
 
-# Docker
+# Application Data
+uploads/
+*.seed
+
+# Environment
+.env
+.env.test
+.env.production
+!.env.example
+
+# Docker / Deployment
 docker-compose.override.yml
 .docker/
-images_bundle.tar    
-postgres_16.tar 
-# Misc
-.cache/
-.nyc_output/
-alpha_backend_1.0.0.tar
+*.tar
+images_bundle.tar
+postgres_16.tar
+
+# Lockfiles (Currently ignored based on previous config - Recommended to un-ignore for consistency)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

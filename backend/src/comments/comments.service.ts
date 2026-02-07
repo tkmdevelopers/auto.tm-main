@@ -1,6 +1,7 @@
 import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { createCommets, findAllComments } from "./comments.dto";
 import { Request, Response } from "express";
+import { AuthenticatedRequest } from "src/utils/types";
 import { Posts } from "src/post/post.entity";
 import { User } from "src/auth/auth.entity";
 import { Photo } from "src/photo/photo.entity";
@@ -15,7 +16,7 @@ export class CommentsService {
     @Inject("COMMENTS_REPOSITORY") private comments: typeof Comments,
   ) {}
 
-  async findAll(body: findAllComments, req: Request | any, res: Response) {
+  async findAll(body: findAllComments, req: AuthenticatedRequest, res: Response) {
     try {
       const { postId } = body;
       const comments = await this.comments.findAll({
@@ -68,7 +69,7 @@ export class CommentsService {
     }
   }
 
-  async create(body: createCommets, req: Request | any, res: Response) {
+  async create(body: createCommets, req: AuthenticatedRequest, res: Response) {
     try {
       const { message, postId, replyTo } = body;
 
@@ -134,7 +135,7 @@ export class CommentsService {
     }
   }
 
-  async findOne(id: string, req: Request | any, res: Response) {
+  async findOne(id: string, req: AuthenticatedRequest, res: Response) {
     try {
       const comment = await this.comments.findOne({ where: { uuid: id } });
       if (!comment) throw new HttpException("Not found", HttpStatus.NOT_FOUND);
@@ -151,7 +152,7 @@ export class CommentsService {
     }
   }
 
-  async update(id: string, body: any, req: Request | any, res: Response) {
+  async update(id: string, body: any, req: AuthenticatedRequest, res: Response) {
     try {
       const comment = await this.comments.findOne({ where: { uuid: id } });
       if (!comment) throw new HttpException("Not found", HttpStatus.NOT_FOUND);
@@ -172,7 +173,7 @@ export class CommentsService {
     }
   }
 
-  async remove(id: string, req: Request | any, res: Response) {
+  async remove(id: string, req: AuthenticatedRequest, res: Response) {
     try {
       const comment = await this.comments.findOne({ where: { uuid: id } });
       if (!comment) throw new HttpException("Not found", HttpStatus.NOT_FOUND);

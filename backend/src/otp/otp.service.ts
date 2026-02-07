@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from "uuid";
 import * as bcrypt from "bcryptjs";
 import { Op } from "sequelize";
 import { SmsService } from "src/sms/sms.service";
+import { hashToken } from "src/utils/token.utils";
 
 /**
  * Configuration for OTP generation and validation
@@ -523,7 +524,7 @@ export class OtpService {
     ]);
 
     // Store hash of refresh token (never store plaintext)
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    const refreshTokenHash = await hashToken(refreshToken);
     await this.userRepository.update(
       { refreshTokenHash },
       { where: { uuid: userId } },

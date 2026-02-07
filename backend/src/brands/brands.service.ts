@@ -9,6 +9,7 @@ import {
   UpdateBrands,
 } from "./brands.dto";
 import { Request, Response } from "express";
+import { AuthenticatedRequest } from "src/utils/types";
 import { Brands } from "./brands.entity";
 import { Models } from "src/models/models.entity";
 import { Posts } from "src/post/post.entity";
@@ -63,7 +64,7 @@ export class BrandsService {
       return res.status(error.status).json(error);
     }
   }
-  async subscribe(body: BrandsUUID, req: Request | any, res: Response) {
+  async subscribe(body: BrandsUUID, req: AuthenticatedRequest, res: Response) {
     try {
       const { uuid } = body;
       if (!uuid) {
@@ -91,7 +92,7 @@ export class BrandsService {
     }
   }
 
-  async mySubscribes(req: Request | any, res: Response) {
+  async mySubscribes(req: AuthenticatedRequest, res: Response) {
     try {
       const mySubscribes = await this.brands.findAll({
         include: [
@@ -111,7 +112,7 @@ export class BrandsService {
     }
   }
 
-  async unsubscribe(body: BrandsUUID, req: Request | any, res: Response) {
+  async unsubscribe(body: BrandsUUID, req: AuthenticatedRequest, res: Response) {
     try {
       const { uuid } = body;
       if (!uuid) {
@@ -138,7 +139,7 @@ export class BrandsService {
       return res.status(error.status).json(error);
     }
   }
-  async findAll(query: FindALlBrands, req: Request | any, res: Response) {
+  async findAll(query: FindALlBrands, req: AuthenticatedRequest, res: Response) {
     try {
       const { limit, model, offset, post, search, sortAs, location } = query;
       const includePayload: {}[] = [{ model: this.photo, as: "photo" }];
@@ -187,7 +188,7 @@ export class BrandsService {
     }
   }
 
-  async create(body: CreateBrands, req: Request | any, res: Response) {
+  async create(body: CreateBrands, req: AuthenticatedRequest, res: Response) {
     try {
       const { name, location } = body;
       if (!name) {
@@ -219,7 +220,7 @@ export class BrandsService {
 
   async findOne(
     query: FindOneBrands,
-    req: Request | any,
+    req: AuthenticatedRequest,
     res: Response,
     param: BrandsUUID,
   ) {
@@ -253,7 +254,7 @@ export class BrandsService {
   async update(
     param: BrandsUUID,
     body: UpdateBrands,
-    req: Request | any,
+    req: AuthenticatedRequest,
     res: Response,
   ) {
     try {
@@ -281,7 +282,7 @@ export class BrandsService {
     }
   }
 
-  async delete(param: BrandsUUID, req: Request | any, res: Response) {
+  async delete(param: BrandsUUID, req: AuthenticatedRequest, res: Response) {
     try {
       const { uuid } = param;
       const brand = await this.brands.destroy({ where: { uuid } });
@@ -300,7 +301,7 @@ export class BrandsService {
     }
   }
 
-  async suggest(query: Search, req: Request | any, res: Response) {
+  async suggest(query: Search, req: AuthenticatedRequest, res: Response) {
     function normalize(str: string): string {
       return str.replace(/\s+/g, "");
     }

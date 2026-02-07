@@ -11,7 +11,7 @@ import {
 import { Photo } from "src/photo/photo.entity";
 @Table({ tableName: "banners" })
 export class Banners extends Model {
-  @Column({ primaryKey: true })
+  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
   uuid: string;
 
   @Column({ type: DataType.JSONB, allowNull: false })

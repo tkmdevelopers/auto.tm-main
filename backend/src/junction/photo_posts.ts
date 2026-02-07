@@ -1,4 +1,4 @@
-import { Table, Column, Model, ForeignKey } from "sequelize-typescript";
+import { Table, Column, Model, ForeignKey, DataType } from "sequelize-typescript";
 import { Photo } from "src/photo/photo.entity";
 import { Posts } from "src/post/post.entity";
 
@@ -13,10 +13,10 @@ export class PhotoPosts extends Model {
   id: number;
 
   @ForeignKey(() => Posts)
-  @Column
+  @Column({ type: DataType.UUID })
   postId: string;
 
   @ForeignKey(() => Photo)
-  @Column
+  @Column({ type: DataType.UUID })
   photoUuid: string;
 }

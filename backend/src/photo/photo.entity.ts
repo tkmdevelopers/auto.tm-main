@@ -28,7 +28,7 @@ export class Photo extends Model {
   map(arg0: (photo: any) => void): any {
     throw new Error("Method not implemented.");
   }
-  @Column({ primaryKey: true })
+  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
   uuid: string;
 
   @Column({ type: DataType.JSON, allowNull: true })

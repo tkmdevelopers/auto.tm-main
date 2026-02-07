@@ -26,7 +26,7 @@ enum UserRole {
 @Table({ tableName: "users" })
 export class User extends Model {
   @ApiProperty()
-  @Column({ primaryKey: true })
+  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
   uuid: string;
   @ApiProperty()
   @Column({ allowNull: true })

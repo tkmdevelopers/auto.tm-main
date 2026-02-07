@@ -18,6 +18,7 @@ import { Photo } from "./photo.entity";
 import { PhotoPosts } from "src/junction/photo_posts";
 import { InjectModel } from "@nestjs/sequelize";
 import { Request, Response } from "express";
+import { AuthenticatedRequest } from "src/utils/types";
 import { PhotoVlog } from "src/junction/photo_vlog";
 @Injectable()
 export class PhotoService {
@@ -374,7 +375,7 @@ export class PhotoService {
   async uploadUser(
     file: Express.Multer.File,
     body: UploadUser,
-    req: Request | any,
+    req: AuthenticatedRequest,
     res: Response,
   ) {
     try {

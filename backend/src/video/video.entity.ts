@@ -14,7 +14,7 @@ export class Video extends Model {
   url: string;
 
   @ForeignKey(() => Posts)
-  @Column({ type: DataType.STRING })
+  @Column({ type: DataType.UUID })
   postId: string;
 
   @BelongsTo(() => Posts)

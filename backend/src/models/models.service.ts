@@ -12,6 +12,7 @@ import {
 } from "./models.dto";
 import { stringToBoolean } from "src/utils/functions/stringBool";
 import { Request, Response } from "express";
+import { AuthenticatedRequest } from "src/utils/types";
 import { v4 as uuidv4 } from "uuid";
 import { FindOptions } from "sequelize/types/model";
 import { Op } from "sequelize";
@@ -32,7 +33,7 @@ export class ModelsService {
     @Inject("PHOTO_REPOSITORY") private photo: typeof Photo,
   ) {}
 
-  async findAll(query: FindAllModels, req: Request | any, res: Response) {
+  async findAll(query: FindAllModels, req: AuthenticatedRequest, res: Response) {
     try {
       const { limit, brand, offset, post, search, sortAs, filter } = query;
       const includePayload: {}[] = [];
@@ -83,7 +84,7 @@ export class ModelsService {
     }
   }
 
-  async create(body: CreateModels, req: Request | any, res: Response) {
+  async create(body: CreateModels, req: AuthenticatedRequest, res: Response) {
     try {
       const { name, brandId } = body;
       if (!name) {
@@ -114,7 +115,7 @@ export class ModelsService {
 
   async findOne(
     param: ModelUUID,
-    req: Request | any,
+    req: AuthenticatedRequest,
     res: Response,
     query: findOneModel,
   ) {
@@ -147,7 +148,7 @@ export class ModelsService {
   async update(
     param: ModelUUID,
     body: updateModel,
-    req: Request | any,
+    req: AuthenticatedRequest,
     res: Response,
   ) {
     try {
@@ -174,7 +175,7 @@ export class ModelsService {
       return res.status(error.status).json(error);
     }
   }
-  async delete(param: ModelUUID, req: Request | any, res: Response) {
+  async delete(param: ModelUUID, req: AuthenticatedRequest, res: Response) {
     try {
       const { uuid } = param;
       const model = await this.models.destroy({ where: { uuid } });
@@ -196,7 +197,7 @@ export class ModelsService {
   async uploadPhoto(
     param: ModelUUID,
     file: Express.Multer.File,
-    req: Request | any,
+    req: AuthenticatedRequest,
     res: Response,
   ) {
     try {
@@ -264,7 +265,7 @@ export class ModelsService {
     }
   }
 
-  async deletePhoto(param: ModelUUID, req: Request | any, res: Response) {
+  async deletePhoto(param: ModelUUID, req: AuthenticatedRequest, res: Response) {
     try {
       const { uuid } = param;
 

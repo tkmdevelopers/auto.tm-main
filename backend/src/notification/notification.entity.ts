@@ -106,7 +106,10 @@ export class NotificationHistory extends Model {
   additionalData: object; // Store any additional data (images, actions, etc.)
 
   @ForeignKey(() => User)
-  @Column
+  @Column({
+    type: DataType.UUID,
+    allowNull: true,
+  })
   sentBy: string; // Admin who sent the notification
 
   @BelongsTo(() => User)

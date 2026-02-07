@@ -7,6 +7,7 @@ import {
   UpdateUser,
 } from "./auth.dto";
 import { Request, Response } from "express";
+import { AuthenticatedRequest } from "src/utils/types";
 import { User } from "./auth.entity";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
@@ -17,6 +18,7 @@ import * as fs from "fs";
 import * as bcrypt from "bcryptjs";
 import { promisify } from "util";
 import { v4 as uuidv4 } from "uuid";
+import { hashToken, validateToken } from "src/utils/token.utils";
 
 const unlinkAsync = promisify(fs.unlink);
 
@@ -68,7 +70,8 @@ export class AuthService {
       .trim();
 
     // Compare presented token against stored hash
-    const isValid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
+    const isValid = await validateToken(refreshToken, user.refreshTokenHash);
+
     if (!isValid) {
       // Reuse detected — revoke session entirely (force re-login)
       await this.Users.update(
@@ -100,7 +103,7 @@ export class AuthService {
     ]);
 
     // Store hash of the new refresh token
-    const newHash = await bcrypt.hash(newRefreshToken, 10);
+    const newHash = await hashToken(newRefreshToken);
     await this.Users.update(
       { refreshTokenHash: newHash },
       { where: { uuid: user.uuid } },
@@ -112,7 +115,7 @@ export class AuthService {
   /**
    * Logout (invalidate refresh token)
    */
-  async logout(req: Request | any, res: Response) {
+  async logout(req: AuthenticatedRequest, res: Response) {
     try {
       await this.Users.update(
         { refreshTokenHash: null },
@@ -137,7 +140,7 @@ export class AuthService {
   /**
    * Get current user profile
    */
-  async me(req: Request | any, res: Response) {
+  async me(req: AuthenticatedRequest, res: Response) {
     try {
       const user = await this.Users.findOne({
         where: { uuid: req?.uuid },
@@ -171,7 +174,7 @@ export class AuthService {
   /**
    * Update current user profile
    */
-  async patch(body: UpdateUser, req: Request | any, res: Response) {
+  async patch(body: UpdateUser, req: AuthenticatedRequest, res: Response) {
     try {
       const { location, email, name, phone } = body;
 
@@ -208,7 +211,7 @@ export class AuthService {
    */
   async uploadAvatar(
     file: Express.Multer.File,
-    req: Request | any,
+    req: AuthenticatedRequest,
     res: Response,
   ) {
     try {
@@ -279,7 +282,7 @@ export class AuthService {
   /**
    * Delete user avatar
    */
-  async deleteAvatar(req: Request | any, res: Response) {
+  async deleteAvatar(req: AuthenticatedRequest, res: Response) {
     try {
       const userId = req?.uuid;
 
@@ -333,7 +336,7 @@ export class AuthService {
   /**
    * Set Firebase Cloud Messaging token
    */
-  async setFirebase(body: firebaseDto, req: Request | any, res: Response) {
+  async setFirebase(body: firebaseDto, req: AuthenticatedRequest, res: Response) {
     try {
       const { token } = body;
       await this.Users.update(
@@ -359,7 +362,7 @@ export class AuthService {
   /**
    * List all users (admin only)
    */
-  async findAll(req: Request | any, res: Response) {
+  async findAll(req: AuthenticatedRequest, res: Response) {
     try {
       const users = await this.Users.findAll({
         include: ["avatar"],
@@ -377,7 +380,7 @@ export class AuthService {
   /**
    * Get user by ID (admin only)
    */
-  async findOne(param: FindOne, req: Request | any, res: Response) {
+  async findOne(param: FindOne, req: AuthenticatedRequest, res: Response) {
     try {
       const { uuid } = param;
       const user = await this.Users.findOne({
@@ -406,7 +409,7 @@ export class AuthService {
   async update(
     param: FindOne,
     body: Update,
-    req: Request | any,
+    req: AuthenticatedRequest,
     res: Response,
   ) {
     try {
@@ -440,7 +443,7 @@ export class AuthService {
   /**
    * Delete user (admin only)
    */
-  async deleteOne(param: DeleteOne, req: Request | any, res: Response) {
+  async deleteOne(param: DeleteOne, req: AuthenticatedRequest, res: Response) {
     try {
       const { uuid } = param;
       const user = await this.Users.destroy({ where: { uuid } });

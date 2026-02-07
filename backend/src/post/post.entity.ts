@@ -29,15 +29,15 @@ enum UserRole {
 @Table({ tableName: "posts" })
 export class Posts extends Model {
   @ApiProperty()
-  @Column({ primaryKey: true })
+  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
   uuid: string;
   @ForeignKey(() => Brands)
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.UUID, allowNull: true })
   brandsId: string;
   @BelongsTo(() => Brands)
   brand: Brands;
   @ForeignKey(() => Models)
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.UUID, allowNull: true })
   modelsId: string;
   @BelongsTo(() => Models)
   model: Models;
@@ -75,7 +75,7 @@ export class Posts extends Model {
   @Column({ allowNull: true })
   location: string;
   @ForeignKey(() => User)
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.UUID, allowNull: true })
   userId: string;
   @BelongsTo(() => User)
   user: User;
@@ -86,12 +86,12 @@ export class Posts extends Model {
   @Column({ allowNull: true, defaultValue: "true" })
   exchange: boolean;
   @ForeignKey(() => Categories)
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.UUID, allowNull: true })
   categoryId: string;
   @BelongsTo(() => Categories)
   category: Categories;
   @ForeignKey(() => Subscriptions)
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.UUID, allowNull: true })
   subscriptionId: string;
   @BelongsTo(() => Subscriptions)
   subscription: Subscriptions;

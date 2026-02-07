@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { Request, Response } from "express";
+import { AuthenticatedRequest } from "src/utils/types";
 import { BannerUUID, FindAllBanners } from "./banners.dto";
 import { FindOptions } from "sequelize/types/model";
 import { Banners } from "./banners.entity";
@@ -34,7 +35,7 @@ export class BannersService {
       return res.status(error.status).json(error);
     }
   }
-  async create(req: Request | any, res: Response) {
+  async create(req: AuthenticatedRequest, res: Response) {
     try {
       const uuid = uuidv4();
       const creator = await User.findOne({

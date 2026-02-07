@@ -10,9 +10,13 @@ class TokenStore extends GetxService {
   static const _keyRefresh = 'REFRESH_TOKEN';
   static const _keyPhone = 'USER_PHONE';
 
-  final FlutterSecureStorage _storage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
+  final FlutterSecureStorage _storage;
+
+  TokenStore({FlutterSecureStorage? storage})
+      : _storage = storage ??
+            const FlutterSecureStorage(
+              aOptions: AndroidOptions(encryptedSharedPreferences: true),
+            );
 
   static TokenStore get to => Get.find<TokenStore>();
 

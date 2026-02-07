@@ -13,6 +13,7 @@ import {
   UpdatePost,
 } from "./post.dto";
 import { Request, Response } from "express";
+import { AuthenticatedRequest } from "src/utils/types";
 import { stringToBoolean } from "src/utils/functions/stringBool";
 import { FindOptions } from "sequelize/types/model";
 import { and, Op, where } from "sequelize";
@@ -331,7 +332,7 @@ export class PostService {
     }
   }
 
-  async create(body: CreatePost, req: Request | any, res: Response) {
+  async create(body: CreatePost, req: AuthenticatedRequest, res: Response) {
     try {
       const {
         brandsId,
@@ -469,7 +470,7 @@ export class PostService {
   async update(
     param: FindOneUUID,
     body: UpdatePost,
-    req: Request | any,
+    req: AuthenticatedRequest,
     res: Response,
   ) {
     try {
@@ -533,7 +534,7 @@ export class PostService {
       return res.status(error.status).json(error);
     }
   }
-  async delete(param: FindOneUUID, req: Request | any, res: Response) {
+  async delete(param: FindOneUUID, req: AuthenticatedRequest, res: Response) {
     try {
       const { uuid } = param;
       const post = await this.posts.destroy({ where: { uuid } });
@@ -552,7 +553,7 @@ export class PostService {
     }
   }
 
-  async me(req: Request | any, res: Response) {
+  async me(req: AuthenticatedRequest, res: Response) {
     try {
       const posts = await this.posts.findAll({
         where: { userId: req?.uuid },

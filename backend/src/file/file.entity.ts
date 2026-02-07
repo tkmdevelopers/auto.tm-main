@@ -21,7 +21,7 @@ export class File extends Model {
   path: string | null;
 
   @ForeignKey(() => Posts)
-  @Column({ type: DataType.STRING })
+  @Column({ type: DataType.UUID })
   postId: string;
 
   @BelongsTo(() => Posts)

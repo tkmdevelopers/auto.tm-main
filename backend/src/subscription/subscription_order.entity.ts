@@ -17,7 +17,7 @@ import { Subscriptions } from "./subscription.entity";
 @Table({ tableName: "subscription_order" })
 export class SubscriptionOrder extends Model {
   @ApiProperty()
-  @Column({ primaryKey: true })
+  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
   uuid: string;
   @ApiProperty()
   @Column
@@ -28,7 +28,7 @@ export class SubscriptionOrder extends Model {
   @Column
   status: string;
   @ForeignKey(() => Subscriptions)
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.UUID, allowNull: true })
   subscriptionId: string;
   @BelongsTo(() => Subscriptions)
   subscription: Subscriptions;

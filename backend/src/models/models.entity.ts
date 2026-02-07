@@ -16,13 +16,13 @@ import { Posts } from "src/post/post.entity";
 @Table({ tableName: "models" })
 export class Models extends Model {
   @ApiProperty()
-  @Column({ primaryKey: true })
+  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
   uuid: string;
   @ApiProperty()
   @Column
   name: string;
   @ForeignKey(() => Brands)
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.UUID, allowNull: true })
   brandId: string;
 
   // Optional year range for the model (used by seed data)

@@ -102,13 +102,33 @@ flutter build ios --release # iOS build (macOS only)
 3.  **Refresh:** `POST /api/v1/auth/refresh` -> Rotates tokens.
 4.  **Handling 401:** Client interceptor catches 401. If `USER_DELETED`, forces logout. If expired, attempts refresh.
 
+## Database Strategy
+
+### Native UUIDs
+- **Primary Keys:** All main entities use **Native PostgreSQL UUIDs** (`uuid` column).
+- **Foreign Keys:** All relationships use UUIDs.
+- **Migration:** `20260209000000-convert-string-to-uuid.js` handles the conversion from legacy STRING types to Native UUID.
+
+### Schema Management
+- **Sequelize Migrations:** Source of truth.
+- **Entities:** Must explicitly define `@Column({ type: DataType.UUID, defaultValue: DataType.UUIDV4 })`.
+
+## "Android-as-a-Service" SMS Gateway
+
+**Pattern:** The backend acts as a command center for physical Android devices that perform the actual SMS delivery.
+- **Why?** Cost efficiency for high-volume OTPs in the target region (Turkmenistan).
+- **Component:** `SmsGateway` (Socket.IO port `3091`).
+- **Device Role:** Connects as a client, listens for `sms:send` events, dispatches via GSM, and reports `sms:ack`.
+- **Reliability:** The system depends on the physical device being online.
+- **Security:** Devices authenticate via `SMS_DEVICE_AUTH_TOKEN`.
+
 ## Key Conventions
 
 - **API Responses:** `{ message: string, data: any, status: boolean }`
 - **IDs:** UUIDs used for primary keys.
 - **File Uploads:** `multipart/form-data`.
 - **Environment:**
-    - Backend: `.env` (needs `DATABASE_HOST`, `JWT_SECRETS`, etc.).
+    - Backend: `.env` (needs `DATABASE_HOST`, `JWT_SECRETS`, `SMS_DEVICE_AUTH_TOKEN`, etc.).
     - Flutter: `.env` (needs `API_BASE`).
 
 ## Useful Documentation References

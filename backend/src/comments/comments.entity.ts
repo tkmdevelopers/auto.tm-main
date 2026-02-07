@@ -19,7 +19,7 @@ import { Posts } from "src/post/post.entity";
 @Table({ tableName: "comments" })
 export class Comments extends Model {
   @ApiProperty()
-  @Column({ primaryKey: true })
+  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
   uuid: string;
   @ApiProperty()
   @Column({ allowNull: false })
@@ -27,7 +27,7 @@ export class Comments extends Model {
   @Column({ allowNull: true })
   status: boolean;
   @ForeignKey(() => User)
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.UUID, allowNull: true })
   userId: string;
   @BelongsTo(() => User)
   user: User;
@@ -35,14 +35,14 @@ export class Comments extends Model {
   @Column
   sender: string;
   @ForeignKey(() => Posts)
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.UUID, allowNull: true })
   postId: string;
   @BelongsTo(() => Posts)
   post: Posts;
 
   // Self-referencing reply relationship
   @ForeignKey(() => Comments)
-  @Column({ type: DataType.STRING, allowNull: true })
+  @Column({ type: DataType.UUID, allowNull: true })
   replyTo: string;
   @BelongsTo(() => Comments, { foreignKey: "replyTo", as: "parent" })
   parent?: Comments;

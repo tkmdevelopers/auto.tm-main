@@ -1,5 +1,6 @@
 import { Injectable, Inject, HttpException, HttpStatus } from "@nestjs/common";
 import { Request, Response } from "express";
+import { AuthenticatedRequest } from "src/utils/types";
 import { Vlogs } from "./vlog.entity";
 import { v4 as uuidv4 } from "uuid";
 import { CreateVlogDto, FindAllVlogDto, UpdateVlogDto } from "./vlog.dto";
@@ -10,7 +11,7 @@ import { User } from "src/auth/auth.entity";
 export class VlogService {
   constructor(@Inject("VLOG_REPOSITORY") private vlogRepo: typeof Vlogs) {}
 
-  async create(body: CreateVlogDto, req: Request | any, res: Response) {
+  async create(body: CreateVlogDto, req: AuthenticatedRequest, res: Response) {
     try {
       const vlog = await this.vlogRepo.create({
         uuid: uuidv4(),
@@ -35,7 +36,7 @@ export class VlogService {
     }
   }
 
-  async findAll(query: FindAllVlogDto, req: Request | any, res: Response) {
+  async findAll(query: FindAllVlogDto, req: AuthenticatedRequest, res: Response) {
     try {
       const {
         userId,
@@ -84,7 +85,7 @@ export class VlogService {
     }
   }
 
-  async findOne(id: string, req: Request | any, res: Response) {
+  async findOne(id: string, req: AuthenticatedRequest, res: Response) {
     try {
       const vlog = await this.vlogRepo.findOne({ where: { uuid: id } });
       if (!vlog) throw new HttpException("Not found", HttpStatus.NOT_FOUND);
@@ -105,7 +106,7 @@ export class VlogService {
   async update(
     id: string,
     body: UpdateVlogDto,
-    req: Request | any,
+    req: AuthenticatedRequest,
     res: Response,
   ) {
     try {
@@ -137,7 +138,7 @@ export class VlogService {
     }
   }
 
-  async remove(id: string, req: Request | any, res: Response) {
+  async remove(id: string, req: AuthenticatedRequest, res: Response) {
     try {
       const vlog = await this.vlogRepo.findOne({ where: { uuid: id } });
       if (!vlog) throw new HttpException("Not found", HttpStatus.NOT_FOUND);

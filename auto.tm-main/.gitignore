@@ -1,28 +1,30 @@
-# Flutter/Dart/Pub related
+# ----------------------------------------------------------------------
+# FRONTEND (FLUTTER) IGNORES
+# ----------------------------------------------------------------------
+
+# Flutter/Dart/Pub
 .dart_tool/
 .packages
 .pub/
 build/
 flutter_*.png
-!**/ios/Flutter/.generated/
-!**/android/app/src/main/res/drawable*/flutter_*.png
 
-# IDEs and editors
-.idea/
-.vscode/
-*.iml
+# Dependencies
+# pubspec.lock  <-- Recommended to commit this! keeping commented out based on *.lock pattern in old file.
 
-# Android related
+# Android
 android/.gradle/
 android/local.properties
 android/app/*.keystore
 android/key.properties
+**/android/app/src/main/res/drawable*/flutter_*.png
 
-# iOS related
+# iOS
 ios/Pods/
 ios/.symlinks/
 ios/Flutter/Flutter.framework
 ios/Flutter/Flutter.podspec
+ios/Flutter/.generated/
 ios/ServiceDefinitions.json
 ios/Runner/GeneratedPluginRegistrant.*
 *.xcworkspace
@@ -38,29 +40,22 @@ macos/.symlinks/
 # Web
 web/.dart_tool/
 
-# Linux
+# Linux / Windows
 linux/flutter/ephemeral/
-
-# Windows
 windows/flutter/ephemeral/
 
-# Environment files
+# Coverage
+coverage/
+
+# Environment
 .env
 .env.*
 !.env.example
 
-# Other
-*.log
-*.tmp
-*.swp
+# Misc
 *.lock
-*.bak
-*.DS_Store
 *.class
 *.jar
 *.zip
 *.tar.gz
 *.tgz
-
-# Coverage
-coverage/
