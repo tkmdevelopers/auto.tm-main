@@ -8,7 +8,6 @@ class CommentsController extends GetxController {
   final TextEditingController commentTextController = TextEditingController();
   var comments = <Map<String, dynamic>>[].obs;
   var isLoading = false.obs;
-  var userId = "".obs;
   var isSending = false.obs; // prevents duplicate rapid sends
 
   var replyToComment =
@@ -37,8 +36,14 @@ class CommentsController extends GetxController {
   bool isThreadExpanded(String parentUuid) =>
       threadExpanded[parentUuid] ?? false;
 
-  // Fetch comments for a specific post
+  String? _lastFetchedPostId;
+
+  // Fetch comments for a specific post (skips if same postId already fetched)
   Future<void> fetchComments(String postId) async {
+    if (postId.isEmpty) return;
+    if (postId == _lastFetchedPostId) return;
+    _lastFetchedPostId = postId;
+    isLoading.value = true;
     try {
       final response = await ApiClient.to.dio.get(
         'comments',

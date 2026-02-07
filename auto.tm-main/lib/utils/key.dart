@@ -27,7 +27,6 @@ class ApiKey {
   // POST ${apiKey}video/upload -> upload actual file with postId reference (and optionally videoId)
   static final String videoCreateKey = "${apiKey}video"; // PUT
   static final String videoUploadKey = "${apiKey}video/upload"; // POST
-  static final String getPostDetailsKey = "${apiKey}posts/";
   static final String getBrandsKey = "${apiKey}brands";
   static final String getBrandsHistoryKey = "${apiKey}brands/list";
   static final String getModelsKey = "${apiKey}models";

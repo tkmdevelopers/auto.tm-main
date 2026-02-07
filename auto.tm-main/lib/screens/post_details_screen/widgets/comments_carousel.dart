@@ -5,14 +5,36 @@ import 'package:auto_tm/screens/post_details_screen/controller/comments_controll
 import 'package:auto_tm/screens/post_details_screen/widgets/comments.dart';
 import 'package:auto_tm/utils/key.dart';
 
-class CommentCarousel extends StatelessWidget {
-  CommentCarousel({super.key, required this.postId});
+class CommentCarousel extends StatefulWidget {
+  const CommentCarousel({super.key, required this.postId});
   final String postId;
-  final CommentsController controller = Get.put(CommentsController());
+
+  @override
+  State<CommentCarousel> createState() => _CommentCarouselState();
+}
+
+class _CommentCarouselState extends State<CommentCarousel> {
+  // Shared with CommentsPage when opened via "Show all"; same Get.put returns same instance for this post.
+  late final CommentsController controller = Get.put(CommentsController());
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.postId.isNotEmpty) {
+      controller.fetchComments(widget.postId);
+    }
+  }
+
+  @override
+  void didUpdateWidget(CommentCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.postId != oldWidget.postId && widget.postId.isNotEmpty) {
+      controller.fetchComments(widget.postId);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    controller.fetchComments(postId);
     final theme = Theme.of(context);
     return Obx(() {
       if (controller.isLoading.value) {
@@ -70,7 +92,7 @@ class CommentCarousel extends StatelessWidget {
               onReply: () {
                 // Navigate to full comments page focusing reply to this root
                 Get.to(() => const CommentsPage(), arguments: {
-                  'postId': postId,
+                  'postId': widget.postId,
                   'replyTo': root,
                 });
               },

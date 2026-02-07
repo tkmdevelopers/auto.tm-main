@@ -153,3 +153,4 @@ See [auto.tm-main/README.md](auto.tm-main/README.md) for setup and structure.
 | Auth improvements and roadmap | [docs/ROADMAP.md](ROADMAP.md) |
 | **Public vs authenticated access** (guest browsing, API matrix, diagrams) | [docs/ACCESS_MODEL.md](ACCESS_MODEL.md) |
 | Home screen flow, state, dead code, image loading | [docs/HOME_SCREEN_FLOW_AND_ANALYSIS.md](docs/HOME_SCREEN_FLOW_AND_ANALYSIS.md); improvement plan (Phase A–D): [docs/HOME_SCREEN_ANALYSIS.md](docs/HOME_SCREEN_ANALYSIS.md) |
+| Post details screen flow, data flow, dead code, improvements | [docs/POST_DETAILS_SCREEN_ANALYSIS.md](docs/POST_DETAILS_SCREEN_ANALYSIS.md) |

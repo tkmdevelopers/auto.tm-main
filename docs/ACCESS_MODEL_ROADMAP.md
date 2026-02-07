@@ -20,7 +20,7 @@ This roadmap covers **implementing the public vs authenticated access model** ([
 | Screen / tab | Current state | Target | Aligned? |
 |--------------|----------------|--------|----------|
 | **Home (0)** | No token check; loads posts via ApiClient.dio (public GET posts). | Public. | ✅ |
-| **Favourites (1)** | No token check in navbar; screen uses ApiClient for `posts/list` (public). Favorites UUIDs from GetStorage. | Guest can view; “Add to favorites” should prompt login. | ✅ Structure OK; ensure “add to favorites” on post detail prompts login when no token. |
+| **Favourites (1)** | No token check in navbar; screen uses ApiClient for `posts/list` (public). Favorites UUIDs from GetStorage. | Guest can add/remove favorites (stored locally) and view Favorites tab; no login prompt for favorites. | ✅ |
 | **Post (2)** | `PostCheckPage`: if no token → show “register or login to continue”. Navbar redirects to `/register` when tapping Post tab if no token. | Token required to post. | ✅ |
 | **Blog (3)** | No token check in navbar. Blog list/detail may call APIs; some backend vlog endpoints public (GET list), GET by id protected. | Public read; create post = token. | ⚠️ If blog detail uses GET vlog/:id, guest will get 401 until backend makes it public. |
 | **Profile (4)** | `ProfileCheckPage`: if no token → show “register or login”. Navbar redirects to `/register` when tapping Profile if no token. | Token required. | ✅ |
@@ -45,7 +45,7 @@ This roadmap covers **implementing the public vs authenticated access model** ([
 | Search / brands | ApiClient.dio | Public. ✅ |
 | Filter, post_controller, blog | ApiClient.dio | Migrated; all use ApiClient.dio. ✅ |
 
-**Summary:** Structure aligns with “guest can browse main app and use public endpoints.” Backend GET comments is public (Phase A1). Key controllers (filter, blog, post) use ApiClient.dio. Optional: “Add to favorites” / “Comment” on post detail prompt login when no token (C1 done).
+**Summary:** Structure aligns with “guest can browse main app and use public endpoints.” Backend GET comments is public (Phase A1). Key controllers (filter, blog, post) use ApiClient.dio. Favorites are local; no login required. “Comment” on post detail prompts login when no token (C1); “Add to favorites” does not (local storage).
 
 ---
 
@@ -65,7 +65,7 @@ This roadmap covers **implementing the public vs authenticated access model** ([
 
 ### Phase C: Flutter — Guest UX and protected actions
 
-- [x] **C1.** Post detail: when user has no token and taps “Comment” or “Add to favorites”, show a clear “Log in to comment” / “Log in to save favorites” and navigate to `/register` (or bottom sheet with login CTA). Optionally hide or disable comment input and favorite button when guest.
+- [x] **C1.** Post detail: when user has no token and taps “Comment”, show “Log in to comment” and navigate to `/register` (or bottom sheet with login CTA). “Add to favorites” does not require login (favorites are stored locally).
 - [x] **C2.** If comments are loaded on post detail: once backend makes GET comments public (A1), guests will see comments; else keep current behavior or skip loading comments when no token and show “Log in to see comments”.
 - [ ] **C3.** (Optional) If you want an explicit “auth vs guest” choice at startup: set `initialRoute: '/'`, and in AuthCheckPage add “Browse as guest” → `/navView` and “Log in” → `/register`. Otherwise keep `initialRoute: '/navView'`.
 
@@ -73,7 +73,7 @@ This roadmap covers **implementing the public vs authenticated access model** ([
 
 - [x] **D1.** After A1–A2, update [ACCESS_MODEL.md](ACCESS_MODEL.md) backend checklist and §4 (Comments/Vlog rows).
 - [x] **D2.** After C1–C2, update [ACCESS_MODEL.md](ACCESS_MODEL.md) frontend checklist.
-- [ ] **D3.** Manual test: cold start → browse home, filter, open post, (after A1) see comments; tap Post tab → register prompt; tap Profile tab → register prompt; log in → post, comment, favorites work.
+- [ ] **D3.** Manual test: cold start → browse home, filter, open post, (after A1) see comments; add/remove favorites (no login); tap Post tab → register prompt; tap Profile tab → register prompt; log in → post, comment work; favorites (local) work for guest and logged-in.
 
 ---
 

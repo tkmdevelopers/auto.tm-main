@@ -9,9 +9,10 @@ This document defines the **access model**: what users can do **without register
 | Access | Who | Purpose |
 |--------|-----|--------|
 | **Public (no token)** | Anyone, including guests | **Browse and discover**: view listings, filter, search, view post details, view categories/brands/banners. No account required. |
-| **Authenticated (token required)** | Logged-in users only | **Create and interact**: post a listing, comment, add to favorites, subscribe to brands, edit profile, receive push notifications. |
+| **Favorites (local)** | Anyone | Add/remove favorites stored on device; list loaded via public `posts/list`. No login required. |
+| **Authenticated (token required)** | Logged-in users only | **Create and interact**: post a listing, comment, subscribe to brands, edit profile, receive push notifications. |
 
-**Rule of thumb:** If the action only **reads** catalog/content and does not create or modify user-specific data, it is public. If the action **creates** or **modifies** data tied to a user (post, comment, favorite, profile), it requires a token.
+**Rule of thumb:** If the action only **reads** catalog/content and does not create or modify user-specific data, it is public. **Favorites** are stored locally (GetStorage) and do not require a token. If the action **creates** or **modifies** server-side data tied to a user (post, comment, profile), it requires a token.
 
 ---
 
@@ -26,12 +27,12 @@ flowchart TB
         D[View categories, brands, banners]
         E[View subscription plans]
         F[Brands search / list]
+        I[Add/remove favorites local]
     end
 
     subgraph Authenticated["Authenticated (token required)"]
         G[Create / edit / delete post]
         H[Comment on post]
-        I[Add/remove favorites]
         J[Subscribe to brands]
         K[Profile: view / edit / avatar]
         L[Push notification registration]
@@ -54,7 +55,7 @@ stateDiagram-v2
     AppEntry --> LoggedIn: Has valid token
     GuestBrowse --> ViewPosts: List, filter, search
     GuestBrowse --> ViewPostDetail: Open a post
-    GuestBrowse --> LoginPrompt: Try to post / favorite / comment
+    GuestBrowse --> LoginPrompt: Try to post / comment
     LoginPrompt --> Register: Go to register
     Register --> LoggedIn: OTP success
     LoggedIn --> ViewPosts
@@ -67,8 +68,8 @@ stateDiagram-v2
 
 **Target behavior:**
 
-- **Guest:** Can open the app, see home (post list), use filters/search, open any post and see details. No login required. When they tap “Post”, “Add to favorites”, or “Comment”, the app shows a login/register prompt.
-- **Logged-in user:** Same as guest, plus can post, comment, manage favorites, subscribe to brands, and use profile. All authenticated requests send the JWT.
+- **Guest:** Can open the app, see home (post list), use filters/search, open any post and see details, and add/remove favorites (stored locally). No login required for browsing or favorites. When they tap “Post” or “Comment”, the app shows a login/register prompt.
+- **Logged-in user:** Same as guest, plus can post, comment, subscribe to brands, and use profile. All authenticated requests send the JWT.
 
 ---
 
@@ -100,6 +101,8 @@ Below reflects the **intended** model. Backend controllers are annotated where t
 | OTP | POST | `otp/send` | Request OTP | ✅ Public (rate-limited) |
 | OTP | POST | `otp/verify` | Verify OTP, get tokens | ✅ Public |
 
+**Favorites (local):** Favorite post UUIDs are stored on the client (GetStorage). Listing favorite posts uses public `POST posts/list` with those UUIDs. No auth required.
+
 **Public (implemented):**
 
 | Resource | Method | Path | Note |
@@ -127,7 +130,6 @@ Below reflects the **intended** model. Backend controllers are annotated where t
 | Comments | PATCH / DELETE | `comments/:id` | Update / delete comment |
 | Brands | POST | `brands/subscribe` | Subscribe to brand |
 | Brands | POST | `brands/unsubscribe` | Unsubscribe |
-| Favorites | — | Use `posts/list` with stored UUIDs | Client stores favorite IDs; fetch details via public `posts/list` |
 | Subscription | POST | `subscription/order` | Create order (if applicable) |
 | Vlog | POST | `vlog` | Create vlog |
 | Vlog | PATCH/DELETE | `vlog/:id` | Update / delete vlog (GET is public) |
@@ -203,7 +205,7 @@ flowchart LR
 **Current state vs target:**
 
 - **Current:** App **initial route is `/navView`** (main app). Guests already land on the main app and can browse Home, Favourites, Blog. Post and Profile tabs (and PostCheckPage / ProfileCheckPage) gate on `TokenStore.hasTokens` and redirect to `/register` when no token. The route `/` (AuthCheckPage) exists but is not used as initial route; if it were, it would require token or send to register.
-- **Target:** Keep guest-friendly entry (main app without token). Screens that only use public APIs work without login. When the user taps “Post”, “Add to favorites”, or “Comment”, the app shows a login/register prompt. Backend: make GET comments (and optionally GET vlog/:id) public so guests can read them. See [ACCESS_MODEL_ROADMAP.md](ACCESS_MODEL_ROADMAP.md) for the full alignment audit and implementation roadmap.
+- **Target:** Keep guest-friendly entry (main app without token). Screens that only use public APIs work without login. Favorites are stored locally; no login required. When the user taps “Post” or “Comment”, the app shows a login/register prompt. Backend: make GET comments (and optionally GET vlog/:id) public so guests can read them. See [ACCESS_MODEL_ROADMAP.md](ACCESS_MODEL_ROADMAP.md) for the full alignment audit and implementation roadmap.
 
 ---
 
@@ -217,6 +219,7 @@ flowchart LR
 | **Banners** | List, get one | Admin CRUD |
 | **Comments** | Read by postId, get one | Create, update, delete |
 | **Vlog** | List, get one | Create, update, delete |
+| **Favorites** | Add/remove (local), list via `posts/list` | — (local only) |
 | **Subscription** | List plans | Create order |
 | **Auth** | OTP send/verify | me, refresh, logout, profile, avatar, setFirebase |
 
@@ -234,8 +237,8 @@ flowchart LR
 
 - [x] **Entry flow:** Allow navigating to main app (e.g. `/navView`) without a token for guest mode; show login only when a protected action is triggered.
 - [x] **Public requests:** Use a client that does not attach `Authorization` for public endpoints when the user has no token (or use the same client and let backend ignore the header for public routes).
-- [x] **Protected actions:** On “Post”, “Add to favorites”, “Comment”, etc., if no token → show login/register prompt instead of calling the API.
-- [x] **UI:** Clearly distinguish guest vs logged-in (e.g. “Log in to post”, “Log in to save favorites”, “Log in to comment”). Guest prompt for favorite and comment on post detail implemented; comments load for guests after backend A1.
+- [x] **Protected actions:** On “Post”, “Comment”, etc., if no token → show login/register prompt. Favorites are local; no login required.
+- [x] **UI:** Guest prompt for Comment (and Post/Profile); favorites work for guests (local storage). Comments load for guests after backend A1.
 
 ---
 

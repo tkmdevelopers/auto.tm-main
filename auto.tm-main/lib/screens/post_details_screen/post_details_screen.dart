@@ -10,9 +10,12 @@ import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/images.dart';
 import 'package:auto_tm/ui_components/styles.dart';
+import 'package:auto_tm/utils/image_url_helper.dart';
 import 'package:auto_tm/utils/key.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
@@ -22,7 +25,7 @@ class PostDetailsScreen extends StatelessWidget {
 
   final String uuid = Get.arguments;
   final PostDetailsController detailsController = Get.put(
-    PostDetailsController(),
+    PostDetailsController(uuid: Get.arguments),
   );
   final FavoritesController favoritesController = Get.put(
     FavoritesController(),
@@ -31,28 +34,51 @@ class PostDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    detailsController.fetchProductDetails(uuid);
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Obx(() {
         if (detailsController.isLoading.value) {
-          // return const Center(
-          //   child: CircularProgressIndicator.adaptive(
-          //     backgroundColor: AppColors.primaryColor,
-          //     valueColor: AlwaysStoppedAnimation(AppColors.scaffoldColor),
-          //   ),
-          // );
           return PostDetailsShimmer();
         }
-        final post = detailsController.post;
-        // final photos = post.photoPaths;
-        // final photos = product.photoPaths;
-        return SafeArea(
-          child: SingleChildScrollView(
-            child: Container(
-              color: theme.scaffoldBackgroundColor,
+        if (detailsController.isError.value) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+                  const SizedBox(height: 16),
+                  Text(
+                    detailsController.errorMessage.value,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: theme.colorScheme.onSurface),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: detailsController.retry,
+                    icon: const Icon(Icons.refresh),
+                    label: Text('Retry'.tr),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        final post = detailsController.post;
+        return SafeArea(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              if (detailsController.uuid != null) {
+                await detailsController.fetchProductDetails(detailsController.uuid!);
+              }
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Container(
+                color: theme.scaffoldBackgroundColor,
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Photo Slider
@@ -71,8 +97,10 @@ class PostDetailsScreen extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.surface,
                               ),
-                              child: CarouselSlider(
-                                items: post.value?.photoPaths.map((photo) {
+                              child: CarouselSlider.builder(
+                                itemCount: post.value?.photoPaths.length ?? 0,
+                                itemBuilder: (context, index, realIndex) {
+                                  final photo = post.value!.photoPaths[realIndex];
                                   return GestureDetector(
                                     onTap: () {
                                       final photos = post.value?.photoPaths;
@@ -95,31 +123,40 @@ class PostDetailsScreen extends StatelessWidget {
                                         10,
                                       ), // Optional: round corners
                                       child: photo.isNotEmpty
-                                          ? Image.network(
-                                              '${ApiKey.ip}$photo',
-                                              // fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (
-                                                    context,
-                                                    error,
-                                                    stackTrace,
-                                                  ) => Image.asset(
-                                                    AppImages.defaultImagePng,
-                                                    height: 180,
-                                                    width: double.infinity,
-                                                    fit: BoxFit.fitWidth,
-                                                  ),
+                                          ? CachedNetworkImage(
+                                              imageUrl: fullImageUrl(ApiKey.ip, photo),
+                                              height: 300,
+                                              width: double.infinity,
+                                              fit: BoxFit.cover,
+                                              memCacheWidth: 600,
+                                              memCacheHeight: 338,
+                                              fadeInDuration: const Duration(milliseconds: 200),
+                                              fadeInCurve: Curves.easeOut,
+                                              placeholder: (context, url) => Shimmer.fromColors(
+                                                baseColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                                                highlightColor: theme.colorScheme.surface,
+                                                child: Container(
+                                                  height: 300,
+                                                  width: double.infinity,
+                                                  color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
+                                                ),
+                                              ),
+                                              errorWidget: (context, url, error) => Image.asset(
+                                                AppImages.defaultImagePng,
+                                                height: 300,
+                                                width: double.infinity,
+                                                fit: BoxFit.cover,
+                                              ),
                                             )
                                           : Image.asset(
                                               AppImages.defaultImagePng,
-                                              height: 180,
+                                              height: 300,
                                               width: double.infinity,
-                                              // color: ,
-                                              fit: BoxFit.fitWidth,
+                                              fit: BoxFit.cover,
                                             ),
                                     ),
                                   );
-                                }).toList(),
+                                },
                                 options: CarouselOptions(
                                   height: 300,
                                   enlargeCenterPage: false,
@@ -229,6 +266,7 @@ class PostDetailsScreen extends StatelessWidget {
                                           .post
                                           .value
                                           ?.photoPaths;
+                                      final currentPage = detailsController.currentPage.value;
 
                                       if (photos == null || photos.isEmpty) {
                                         return const SizedBox(); // or placeholder
@@ -238,31 +276,23 @@ class PostDetailsScreen extends StatelessWidget {
                                         mainAxisSize: MainAxisSize.min,
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
-                                        children: List.generate(photos.length, (
-                                          index,
-                                        ) {
-                                          return Obx(
-                                            () => AnimatedContainer(
-                                              duration: const Duration(
-                                                milliseconds: 300,
-                                              ),
-                                              margin:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 4,
-                                                  ),
-                                              width: 8,
-                                              height: 8,
-                                              decoration: BoxDecoration(
-                                                color:
-                                                    detailsController
-                                                            .currentPage
-                                                            .value ==
-                                                        index
-                                                    ? AppColors.primaryColor
-                                                    : AppColors.whiteColor,
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                              ),
+                                        children: List.generate(photos.length, (index) {
+                                          return AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 300,
+                                            ),
+                                            margin:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 4,
+                                                ),
+                                            width: 8,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              color: currentPage == index
+                                                  ? AppColors.primaryColor
+                                                  : AppColors.whiteColor,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
                                             ),
                                           );
                                         }),
@@ -347,98 +377,6 @@ class PostDetailsScreen extends StatelessWidget {
                                     : const SizedBox.shrink(),
                               );
                             }),
-                            // Obx(() {
-                            //   // Check if post and video exist and are not empty
-                            //   final bool hasVideo =
-                            //       detailsController.post.value != null &&
-                            //       detailsController.post.value!.video != null &&
-                            //       detailsController
-                            //           .post
-                            //           .value!
-                            //           .video!
-                            //           .isNotEmpty;
-
-                            //   return Positioned(
-                            //     bottom:
-                            //         -23.0, // Example: Position at the bottom
-                            //     right: 16.0, // Example: Position to the right
-                            //     child:
-                            //         hasVideo
-                            //             ? ElevatedButton(
-                            //               onPressed: () {
-                            //                 print('pressed');
-                            //                 Get.to(
-                            //                   () => VideoPlayerPage(),
-                            //                   arguments:
-                            //                       detailsController
-                            //                           .post
-                            //                           .value!
-                            //                           .video,
-                            //                 );
-                            //               },
-                            //               style: ElevatedButton.styleFrom(
-                            //                 backgroundColor: Colors.transparent,
-                            //                 padding:
-                            //                     EdgeInsets
-                            //                         .zero, // Remove default padding to control Ink padding
-                            //                 // shape: RoundedRectangleBorder(
-                            //                 //   borderRadius:
-                            //                 //       BorderRadius.circular(
-                            //                 //           12.0),
-                            //                 // ),
-                            //                 elevation:
-                            //                     0, // Remove default elevation if desired
-                            //                 tapTargetSize:
-                            //                     MaterialTapTargetSize
-                            //                         .shrinkWrap, // Shrink tap area to content
-                            //               ),
-                            //               child: Ink(
-                            //                 decoration: BoxDecoration(
-                            //                   gradient: const LinearGradient(
-                            //                     begin: Alignment.centerLeft,
-                            //                     end: Alignment.centerRight,
-                            //                     colors: [
-                            //                       Color(0xFF1E4EED),
-                            //                       Color(0xFF7FA7F6),
-                            //                     ],
-                            //                   ),
-                            //                   borderRadius:
-                            //                       BorderRadius.circular(12.0),
-                            //                 ),
-                            //                 child: Container(
-                            //                   padding: EdgeInsets.symmetric(
-                            //                     horizontal: 10,
-                            //                     vertical: 10,
-                            //                   ), // Adjust padding for button size
-                            //                   // Removed minWidth/minHeight as padding and text size usually define it
-                            //                   alignment: Alignment.center,
-                            //                   child: Row(
-                            //                     children: [
-                            //                       Icon(
-                            //                         Icons.play_circle_outline,
-                            //                         color: AppColors.whiteColor,
-                            //                         size: 12,
-                            //                       ),
-                            //                       SizedBox(width: 10),
-                            //                       Text(
-                            //                         'Watch the video'.tr,
-                            //                         style: TextStyle(
-                            //                           color: Colors.white,
-                            //                           fontWeight:
-                            //                               FontWeight
-                            //                                   .w600, // Make text bold for better visibility
-                            //                           fontSize:
-                            //                               12, // Adjust font size as needed
-                            //                         ),
-                            //                       ),
-                            //                     ],
-                            //                   ),
-                            //                 ),
-                            //               ),
-                            //             )
-                            //             : const SizedBox.shrink(), // If no video, show nothing
-                            //   );
-                            // }),
                           ],
                         ),
                         SizedBox(height: 6),
@@ -480,34 +418,6 @@ class PostDetailsScreen extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            // if (downloadController.isDownloading.value &&
-                            //     downloadController.taskId.isNotEmpty) {
-                            //   return Column(
-                            //     children: [
-                            //       LinearProgressIndicator(
-                            //         value:
-                            //             downloadController.progress.value /
-                            //             100,
-                            //       ),
-                            //       SizedBox(height: 8),
-                            //       Text(
-                            //         "Downloading... ${downloadController.progress.value}%",
-                            //       ),
-                            //     ],
-                            //   );
-                            // }
-                            // return ElevatedButton.icon(
-                            //   icon: Icon(Icons.download),
-                            //   label: Text("Download PDF"),
-                            //   onPressed: () {
-                            //     final fileName =
-                            //         "${post.value?.brand}_${post.value?.model}_${post.value?.year}.pdf";
-                            //     downloadController.startDownload(
-                            //       post.value!.file!,
-                            //       fileName,
-                            //     );
-                            //   },
-                            // );
                             SizedBox(width: 20),
                             if (post.value?.file != null &&
                                 post.value!.file!.path.isNotEmpty)
@@ -522,7 +432,7 @@ class PostDetailsScreen extends StatelessWidget {
                                       ),
                                       SizedBox(height: 8),
                                       Text(
-                                        "Downloading... ${c.progress.value}%", // consider i18n
+                                        'download_progress'.trParams({'percent': c.progress.value.toString()}),
                                         style: TextStyle(
                                           color: theme
                                               .colorScheme
@@ -540,7 +450,7 @@ class PostDetailsScreen extends StatelessWidget {
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
                                     label: Text(
-                                      "Download car diagnostics".tr,
+                                      'download_car_diagnostics'.tr,
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
@@ -557,8 +467,8 @@ class PostDetailsScreen extends StatelessWidget {
                                         await c.startDownload(fullUrl, fileName);
                                       } catch (e) {
                                         Get.snackbar(
-                                          'Download Error',
-                                          'Download feature is not available. ${e.toString()}',
+                                          'download_error_title'.tr,
+                                          '${'download_error_message'.tr} ${e.toString()}',
                                           snackPosition: SnackPosition.BOTTOM,
                                         );
                                       }
@@ -573,13 +483,8 @@ class PostDetailsScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // Product Info
                   const SizedBox(height: 20),
                   _DynamicCharacteristics(post: post.value, theme: theme),
-                  // const SizedBox(
-                  //   height: 6,
-                  // ),
-                  // if(post.value?.description != '')
                   Container(
                     padding: EdgeInsets.all(16),
                     width: double.infinity,
@@ -645,22 +550,6 @@ class PostDetailsScreen extends StatelessWidget {
                           height: 0.5,
                         ),
                         SizedBox(height: 16),
-                        // Row(
-                        //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        //   children: [
-                        //     Text("Comments"),
-                        //     IconButton(
-                        //       icon: Icon(Icons.chevron_right_rounded),
-                        //       onPressed: () {
-                        //         final uuid = post.value?.uuid;
-                        //         if (uuid != null) {
-                        //           Get.to(() => CommentsPage(),
-                        //               arguments: uuid);
-                        //         }
-                        //       },
-                        //     ),
-                        //   ],
-                        // ),
                         if (post.value != null)
                           Row(
                             children: [
@@ -672,17 +561,8 @@ class PostDetailsScreen extends StatelessWidget {
                                 ),
                               ),
                             ],
-                          ), // Replace 'YOUR_POST_ID'
+                          ),
                         const SizedBox(height: 20.0),
-
-                        // ElevatedButton(
-                        //     onPressed: () {
-                        //       final uuid = post.value?.uuid;
-                        //       if (uuid != null) {
-                        //         Get.to(() => CommentsPage(), arguments: uuid);
-                        //       }
-                        //     },
-                        //     child: Text('Show all'.tr)),
                         ElevatedButton(
                           onPressed: () {
                             final uuid = post.value?.uuid;
@@ -697,10 +577,6 @@ class PostDetailsScreen extends StatelessWidget {
                             ),
                             minimumSize: const Size(double.infinity, 30),
                           ),
-                          // icon: const Icon(
-                          //   Icons.add,
-                          //   color: AppColors.scaffoldColor,
-                          // ),
                           child: Text(
                             'Show all'.tr,
                             style: TextStyle(
@@ -708,8 +584,6 @@ class PostDetailsScreen extends StatelessWidget {
                               fontWeight: FontWeight.w500,
                               color: AppColors.textSecondaryColor,
                             ),
-                            // style: AppStyles.f16w5
-                            //     .copyWith(color: AppColors.scaffoldColor),
                           ),
                         ),
                       ],
@@ -719,6 +593,7 @@ class PostDetailsScreen extends StatelessWidget {
                 ],
               ),
             ),
+          ),
           ),
         );
       }),

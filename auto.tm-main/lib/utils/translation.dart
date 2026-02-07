@@ -67,6 +67,10 @@ class AppTranslations extends Translations {
       'Show all': 'Show all',
       'Call': 'Call',
       'Posts': 'Posts',
+      'download_progress': 'Downloading... {percent}%',
+      'download_car_diagnostics': 'Download car diagnostics',
+      'download_error_title': 'Download Error',
+      'download_error_message': 'Download feature is not available.',
       //favorites
       'My favourites': 'My favourites',
       //blog
@@ -409,6 +413,10 @@ class AppTranslations extends Translations {
       'Comments': 'Teswirler',
       'Show all': 'Hemmesini görkez',
       'Call': 'Jaň et',
+      'download_progress': 'Ýüklenýär... {percent}%',
+      'download_car_diagnostics': 'Awtomobil diagnostikasyny göçür',
+      'download_error_title': 'Ýüklemek säwsi',
+      'download_error_message': 'Ýüklemek elýeterli däl.',
       'My favourites': 'Halanlarym',
       'Car blog': 'Ulag blogy',
       'blog_list_title': 'Ulag blogy',
@@ -732,6 +740,10 @@ class AppTranslations extends Translations {
       'Comments': 'Комментарии',
       'Show all': 'Показать все',
       'Call': 'Позвонить',
+      'download_progress': 'Загрузка... {percent}%',
+      'download_car_diagnostics': 'Скачать диагностику автомобиля',
+      'download_error_title': 'Ошибка загрузки',
+      'download_error_message': 'Загрузка недоступна.',
       //favorites
       'My favourites': 'Мои избранные',
       //blog
