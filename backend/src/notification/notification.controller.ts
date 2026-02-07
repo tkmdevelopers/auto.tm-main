@@ -32,7 +32,7 @@ import {
   NotificationHistoryResponse,
   NotificationStatsDto,
 } from "./notification.dto";
-import { AuthGuard } from "src/guards/auth.gurad";
+import { AuthGuard } from "src/guards/auth.guard";
 import { AdminGuard } from "src/guards/admin.guard";
 import { Request } from "express";
 

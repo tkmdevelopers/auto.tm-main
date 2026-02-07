@@ -32,7 +32,7 @@ import {
   multerOptionsForProducts,
   multerOptionsForSubscription,
 } from "./config/multer.config";
-import { AuthGuard } from "src/guards/auth.gurad";
+import { AuthGuard } from "src/guards/auth.guard";
 import { AdminGuard } from "src/guards/admin.guard";
 import { Request, Response } from "express";
 

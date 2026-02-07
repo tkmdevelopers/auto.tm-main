@@ -22,7 +22,7 @@ import {
   UpdatePost,
 } from "./post.dto";
 import { Response, Request } from "express";
-import { AuthGuard } from "src/guards/auth.gurad";
+import { AuthGuard } from "src/guards/auth.guard";
 
 @Controller({
   path: "posts",

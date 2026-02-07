@@ -11,7 +11,7 @@ import {
 } from "@nestjs/common";
 import { ApiSecurity, ApiTags } from "@nestjs/swagger";
 import { AdminsService } from "./admins.service";
-import { AuthGuard } from "src/guards/auth.gurad";
+import { AuthGuard } from "src/guards/auth.guard";
 import { AdminGuard } from "src/guards/admin.guard";
 import { Request, Response } from "express";
 import { FindOne, updateAdmin } from "./admins.dto";

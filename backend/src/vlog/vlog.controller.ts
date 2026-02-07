@@ -14,7 +14,7 @@ import {
 import { ApiTags, ApiSecurity } from "@nestjs/swagger";
 import { VlogService } from "./vlog.service";
 import { Request, Response } from "express";
-import { AuthGuard } from "src/guards/auth.gurad";
+import { AuthGuard } from "src/guards/auth.guard";
 import { CreateVlogDto, FindAllVlogDto, UpdateVlogDto } from "./vlog.dto";
 
 @Controller({

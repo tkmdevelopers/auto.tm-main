@@ -29,7 +29,7 @@ import {
   updateModel,
 } from "./models.dto";
 import { Request, Response } from "express";
-import { AuthGuard } from "src/guards/auth.gurad";
+import { AuthGuard } from "src/guards/auth.guard";
 import { AdminGuard } from "src/guards/admin.guard";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { multerOptionsForModel } from "src/photo/config/multer.config";

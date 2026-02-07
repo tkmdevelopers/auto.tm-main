@@ -19,7 +19,7 @@ import {
   findOneCat,
 } from "./categories.dto";
 import { Request, Response } from "express";
-import { AuthGuard } from "src/guards/auth.gurad";
+import { AuthGuard } from "src/guards/auth.guard";
 import { AdminGuard } from "src/guards/admin.guard";
 
 @Controller({

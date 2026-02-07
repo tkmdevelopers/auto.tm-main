@@ -31,7 +31,7 @@ import {
   UpdateUser,
 } from "./auth.dto";
 import { Request, Response } from "express";
-import { AuthGuard } from "src/guards/auth.gurad";
+import { AuthGuard } from "src/guards/auth.guard";
 import { RefreshGuard } from "src/guards/refresh.guard";
 import { AdminGuard } from "src/guards/admin.guard";
 import { FileInterceptor } from "@nestjs/platform-express";

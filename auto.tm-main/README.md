@@ -76,6 +76,6 @@ lib/
 
 ## Related docs
 
-- Full-stack architecture: [docs/ARCHITECTURE_OVERVIEW.md](../docs/ARCHITECTURE_OVERVIEW.md)
+- Full-stack architecture: [docs/ARCHITECTURE.md](../backend/docs/ARCHITECTURE.md)
 - Backend API contract: [backend/docs/API_REFERENCE.md](../backend/docs/API_REFERENCE.md)
 - Root documentation index: [README.md](../README.md)

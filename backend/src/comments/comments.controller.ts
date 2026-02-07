@@ -15,7 +15,7 @@ import { ApiSecurity, ApiTags } from "@nestjs/swagger";
 import { CommentsService } from "./comments.service";
 import { createCommets, findAllComments } from "./comments.dto";
 import { Request, Response } from "express";
-import { AuthGuard } from "src/guards/auth.gurad";
+import { AuthGuard } from "src/guards/auth.guard";
 
 @Controller({
   path: "comments",

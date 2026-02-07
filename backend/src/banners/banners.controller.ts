@@ -14,7 +14,7 @@ import { ApiSecurity, ApiTags } from "@nestjs/swagger";
 import { BannersService } from "./banners.service";
 import { Request, Response } from "express";
 import { BannerUUID, FindAllBanners } from "./banners.dto";
-import { AuthGuard } from "src/guards/auth.gurad";
+import { AuthGuard } from "src/guards/auth.guard";
 import { AdminGuard } from "src/guards/admin.guard";
 
 @Controller({
