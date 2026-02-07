@@ -45,8 +45,7 @@ export class VlogController {
     return this.vlogService.findAll(query, req, res);
   }
 
-  @ApiSecurity("token")
-  @UseGuards(AuthGuard)
+  // Public: guests can read a single vlog entry
   @Get(":id")
   async findOne(
     @Param("id") id: string,

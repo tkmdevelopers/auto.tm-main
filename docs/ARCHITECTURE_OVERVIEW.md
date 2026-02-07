@@ -89,6 +89,19 @@ Guards: `AuthGuard` (JWT + user existence, emits `USER_DELETED`), `AdminGuard`, 
 
 ---
 
+## 4.1 Public vs authenticated access
+
+**Design principle:** Users can **browse and discover without registering** (view posts, filter, search, view details, categories, brands, banners). A **token is required only for actions that create or change user-specific data**: posting a listing, commenting, adding to favorites, subscribing to brands, profile, push registration.
+
+| Access | Examples |
+|--------|----------|
+| **Public (no token)** | List/filter posts, get post by ID, brands/categories/banners, brands/search, posts/list by UUIDs, OTP send/verify |
+| **Token required** | Create/update/delete post, comment, favorites (client stores IDs; fetch via public `posts/list`), brand subscribe, profile, auth/me, refresh, logout |
+
+Backend already exposes most read-only endpoints without `AuthGuard`; comments GET and vlog GET by ID are currently protected — making them public is recommended for a full guest experience. See **[docs/ACCESS_MODEL.md](ACCESS_MODEL.md)** for the full matrix, Mermaid diagrams (access model, user journey, request flow, app structure), and alignment checklists for backend and Flutter.
+
+---
+
 ## 5. Authentication Flow
 
 - **No email/password.** Phone OTP only.
@@ -138,3 +151,4 @@ See [auto.tm-main/README.md](auto.tm-main/README.md) for setup and structure.
 | Database schema and migrations | [backend/docs/DATABASE.md](backend/docs/DATABASE.md) |
 | Manual and smoke testing | [docs/TESTING.md](TESTING.md) |
 | Auth improvements and roadmap | [docs/ROADMAP.md](ROADMAP.md) |
+| **Public vs authenticated access** (guest browsing, API matrix, diagrams) | [docs/ACCESS_MODEL.md](ACCESS_MODEL.md) |

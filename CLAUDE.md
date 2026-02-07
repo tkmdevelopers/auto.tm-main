@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Alpha Motors (auto.tm) — a full-stack automotive marketplace. **Flutter mobile app** (iOS/Android) + **NestJS backend** API with PostgreSQL. Users buy/sell cars via phone OTP authentication, create listings with photos/videos, comment, subscribe to premium features, and receive push notifications.
 
+**Access model:** Browsing (view/filter posts, categories, brands) is **public** (no token). Posting, commenting, favorites, profile require **token**. See [docs/ACCESS_MODEL.md](docs/ACCESS_MODEL.md).
+
 ## Repository Layout
 
 ```

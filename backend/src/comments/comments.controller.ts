@@ -36,8 +36,7 @@ export class CommentsController {
     return this.commentsService.create(body, req, res);
   }
 
-  @ApiSecurity("token")
-  @UseGuards(AuthGuard)
+  // Public: guests can read comments by postId
   @Get()
   async findAll(
     @Query() body: findAllComments,
@@ -47,8 +46,7 @@ export class CommentsController {
     return this.commentsService.findAll(body, req, res);
   }
 
-  @ApiSecurity("token")
-  @UseGuards(AuthGuard)
+  // Public: guests can read a single comment
   @Get(":id")
   async findOne(
     @Param("id") id: string,

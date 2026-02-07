@@ -1,10 +1,6 @@
-import 'dart:convert';
-
 import 'package:auto_tm/screens/blog_screen/model/blog_model.dart';
-import 'package:auto_tm/services/token_service/token_store.dart';
-import 'package:auto_tm/utils/key.dart';
+import 'package:auto_tm/services/network/api_client.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 class BlogController extends GetxController {
@@ -17,46 +13,35 @@ class BlogController extends GetxController {
     fetchBlogs();
   }
 
-  void fetchBlogs() async {
-    if (isLoading.value) return; // prevent concurrent fetches
+  Future<void> fetchBlogs() async {
+    if (isLoading.value) return;
     isLoading.value = true;
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http.get(
-        Uri.parse(ApiKey.getBlogsKey),
-        headers: {
-          "Content-Type": "application/json",
-          if (accessToken != null && accessToken.isNotEmpty)
-            'Authorization': 'Bearer $accessToken',
-        },
-      );
-      final jsonResponse = json.decode(response.body);
+      final response = await ApiClient.to.dio.get('vlog');
+      final jsonResponse = response.data;
 
-      if (response.statusCode == 200) {
-        final List data = jsonResponse['data'];
-        // Dedupe by uuid in case backend returns duplicates (e.g., join or pagination overlap)
+      if (response.statusCode == 200 && jsonResponse != null) {
+        final data = jsonResponse is Map && jsonResponse['data'] != null
+            ? jsonResponse['data'] as List
+            : (jsonResponse is List ? jsonResponse : <dynamic>[]);
         final map = <String, Blog>{};
         for (final item in data) {
           try {
-            final blog = Blog.fromJson(item);
-            map[blog.uuid] = blog; // last wins (or only) ensures uniqueness
-          } catch (_) {
-            // skip malformed item silently
-          }
+            final blog = Blog.fromJson(item is Map<String, dynamic> ? item : Map<String, dynamic>.from(item as Map));
+            map[blog.uuid] = blog;
+          } catch (_) {}
         }
         blogs.value = map.values.toList()
-          ..sort((a, b) => b.date.compareTo(a.date)); // keep newest first
-      }
-      // Auth errors (401) are now handled by ApiClient interceptor for Dio calls.
-      else {
-        (
+          ..sort((a, b) => b.date.compareTo(a.date));
+      } else {
+        Get.snackbar(
           'Error',
           'Failed to load blogs. Please try again later.'.tr,
           snackPosition: SnackPosition.BOTTOM,
         );
       }
     } catch (e) {
-      (
+      Get.snackbar(
         'Error',
         'Error fetching blogs. Please check your internet connection.'.tr,
         snackPosition: SnackPosition.BOTTOM,
@@ -71,24 +56,14 @@ class BlogController extends GetxController {
 
   Future<String> fetchBlogDetails(String blogId) async {
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http.get(
-        Uri.parse("${ApiKey.getOneBlogKey}$blogId"),
-        headers: {
-          "Content-Type": "application/json",
-          if (accessToken != null && accessToken.isNotEmpty)
-            'Authorization': 'Bearer $accessToken',
-        },
-      );
-
-      final data = json.decode(response.body);
-      if (response.statusCode == 200) {
-        return data['description']; // The content contains text + image links
-      } else {
-        return "";
+      final response = await ApiClient.to.dio.get('vlog/$blogId');
+      final data = response.data;
+      if (response.statusCode == 200 && data is Map) {
+        return (data['description'] as String?) ?? '';
       }
+      return '';
     } catch (e) {
-      return ""; // could localize but empty indicates failure
+      return '';
     }
   }
 

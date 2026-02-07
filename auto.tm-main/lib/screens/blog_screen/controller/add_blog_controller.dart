@@ -1,11 +1,9 @@
 // blog_editor_controller.dart
-import 'dart:convert';
 import 'dart:io';
-import 'package:auto_tm/services/token_service/token_store.dart';
-import 'package:auto_tm/utils/key.dart';
+import 'package:auto_tm/services/network/api_client.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
+import 'package:get/get.dart' hide FormData, MultipartFile;
+import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 
 class BlogEditorController extends GetxController {
@@ -35,19 +33,17 @@ class BlogEditorController extends GetxController {
 
   Future<String?> uploadImage(File file) async {
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      if (accessToken == null || accessToken.isEmpty) return null;
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse(ApiKey.postBlogPhotoKey),
-      );
-      request.headers['Authorization'] = 'Bearer $accessToken';
-      request.files.add(await http.MultipartFile.fromPath('file', file.path));
-      final response = await request.send();
-      if (response.statusCode == 200) {
-        final body = await response.stream.bytesToString();
-        final data = jsonDecode(body);
-        return data['uuid']['path']['medium'];
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(file.path, filename: file.path.split(RegExp(r'[/\\]')).last),
+      });
+      final response = await ApiClient.to.dio.post('photo/vlog', data: formData);
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data as Map;
+        final uuid = data['uuid'];
+        if (uuid is Map) {
+          final path = uuid['path'];
+          if (path is Map && path['medium'] != null) return path['medium'] as String;
+        }
       }
     } catch (e) {
       return null;
@@ -60,22 +56,16 @@ class BlogEditorController extends GetxController {
     if (content.isEmpty) return;
 
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      if (accessToken == null || accessToken.isEmpty) return;
-      final response = await http.post(
-        Uri.parse(ApiKey.postBlogsKey),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode({"description": content}),
+      final response = await ApiClient.to.dio.post(
+        'vlog',
+        data: {'description': content},
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         Get.back();
-        ('Success', 'Blog posted');
-      } else {}
+        Get.snackbar('Success', 'Blog posted');
+      }
     } catch (e) {
-      return;
+      // Handled by ApiClient interceptor
     }
   }
 }

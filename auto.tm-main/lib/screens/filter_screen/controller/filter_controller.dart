@@ -1,15 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:isolate';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:http/http.dart' as http;
 
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/services/token_service/token_store.dart';
-import 'package:auto_tm/utils/key.dart';
+import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
 
 class FilterController extends GetxController {
@@ -346,26 +343,40 @@ class FilterController extends GetxController {
     final parsedOptions = _parseSortOption(selectedSortOption.value);
     final String sortBy = parsedOptions['sortBy']!;
     final String sortAs = parsedOptions['sortAs']!;
-    final String searchApiUrl =
-        '${ApiKey.searchPostsKey}?&brand=true&model=true&photo=true&subscription=true&$queryString&status=true&sortAs=$sortAs&sortBy=$sortBy&$queryStringPremium&offset=$offset&limit=$limit';
+
+    final queryParams = <String, dynamic>{
+      'brand': true,
+      'model': true,
+      'photo': true,
+      'subscription': true,
+      'status': true,
+      'sortAs': sortAs,
+      'sortBy': sortBy,
+      'offset': offset,
+      'limit': limit,
+    };
+    if (queryString.isNotEmpty) {
+      for (final pair in queryString.split('&')) {
+        final kv = pair.split('=');
+        if (kv.length == 2) {
+          queryParams[Uri.decodeComponent(kv[0])] = Uri.decodeComponent(kv[1]);
+        }
+      }
+    }
+    if (premium.isNotEmpty) {
+      queryParams['subFilter'] = premium;
+    }
 
     isSearchLoading.value = true;
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http.get(
-        Uri.parse(searchApiUrl),
-        headers: {
-          "Content-Type": "application/json",
-          if (accessToken != null && accessToken.isNotEmpty)
-            'Authorization': 'Bearer $accessToken',
-        },
-      );
+      final response = await ApiClient.to.dio.get('posts', queryParameters: queryParams);
 
-      if (response.statusCode == 200) {
-        final List<Post> newResults = await Isolate.run(() {
-          final List<dynamic> data = json.decode(response.body);
-          return data.map((item) => Post.fromJson(item)).toList();
-        });
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        final rawList = data is List ? data : (json.decode(data is String ? data as String : '[]') as List);
+        final List<Post> newResults = rawList
+            .map((item) => Post.fromJson(item is Map<String, dynamic> ? item : Map<String, dynamic>.from(item as Map)))
+            .toList();
 
         if (newResults.isNotEmpty) {
           searchResults.addAll(newResults);
@@ -448,57 +459,35 @@ class FilterController extends GetxController {
     saveSubscribes();
   }
 
-  void subscribeToBrand() async {
+  Future<void> subscribeToBrand() async {
     try {
-      final Map<String, dynamic> requestdata = {
-        'uuid': selectedBrandUuid.value,
-      };
-
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http.post(
-        Uri.parse(ApiKey.subscribeToBrandKey),
-        headers: {
-          "Content-Type": "application/json",
-          if (accessToken != null && accessToken.isNotEmpty)
-            'Authorization': 'Bearer $accessToken',
-        },
-        body: json.encode(requestdata),
+      final response = await ApiClient.to.dio.post(
+        'brands/subscribe',
+        data: {'uuid': selectedBrandUuid.value},
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         addToSubscribes(selectedBrandUuid.value);
       }
-      // Auth errors are handled by ApiClient interceptor for Dio calls.
     } catch (e) {
-      // Handle error silently
+      // Auth/errors handled by ApiClient interceptor
     } finally {
       isSearchLoading.value = false;
     }
   }
 
-  void unSubscribeFromBrand() async {
+  Future<void> unSubscribeFromBrand() async {
     try {
-      final Map<String, dynamic> requestdata = {
-        'uuid': selectedBrandUuid.value,
-      };
-
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http.post(
-        Uri.parse(ApiKey.unsubscribeToBrandKey),
-        headers: {
-          "Content-Type": "application/json",
-          if (accessToken != null && accessToken.isNotEmpty)
-            'Authorization': 'Bearer $accessToken',
-        },
-        body: json.encode(requestdata),
+      final response = await ApiClient.to.dio.post(
+        'brands/unsubscribe',
+        data: {'uuid': selectedBrandUuid.value},
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         removeFromSubscribes(selectedBrandUuid.value);
       }
-      // Auth errors are handled by ApiClient interceptor for Dio calls.
     } catch (e) {
-      // Handle error silently
+      // Auth/errors handled by ApiClient interceptor
     } finally {
       isSearchLoading.value = false;
     }
@@ -514,26 +503,22 @@ class FilterController extends GetxController {
     debouncedSearch();
   }
 
-  void fetchBrands() async {
+  Future<void> fetchBrands() async {
     isLoadingBrands.value = true;
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http
-          .get(
-            Uri.parse(ApiKey.getBrandsKey),
-            headers: {
-              "Content-Type": "application/json",
-              if (accessToken != null && accessToken.isNotEmpty)
-                'Authorization': 'Bearer $accessToken',
-            },
-          )
-          .timeout(Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        final decodedData = json.decode(response.body);
-        brands.value = List<Map<String, dynamic>>.from(decodedData);
-        filteredBrands.value = List<Map<String, dynamic>>.from(decodedData);
+      final response = await ApiClient.to.dio
+          .get('brands')
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200 && response.data != null) {
+        final decodedData = response.data is List
+            ? response.data as List
+            : json.decode(response.data is String ? response.data as String : '[]');
+        final list = (decodedData as List)
+            .map((e) => e is Map<String, dynamic> ? e : Map<String, dynamic>.from(e as Map))
+            .toList();
+        brands.value = list;
+        filteredBrands.value = list;
       }
-      // Auth errors are handled by ApiClient interceptor for Dio calls.
     } catch (e) {
       // Handle error silently
     } finally {
@@ -541,26 +526,22 @@ class FilterController extends GetxController {
     }
   }
 
-  void fetchModels(String brand) async {
+  Future<void> fetchModels(String brand) async {
     isLoadingModels.value = true;
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      final response = await http
-          .get(
-            Uri.parse("${ApiKey.getModelsKey}?filter=$brand"),
-            headers: {
-              "Content-Type": "application/json",
-              if (accessToken != null && accessToken.isNotEmpty)
-                'Authorization': 'Bearer $accessToken',
-            },
-          )
-          .timeout(Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        final decodedData = json.decode(response.body);
-        models.value = List<Map<String, dynamic>>.from(decodedData);
-        filteredModels.value = List<Map<String, dynamic>>.from(decodedData);
+      final response = await ApiClient.to.dio
+          .get('models', queryParameters: {'filter': brand})
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200 && response.data != null) {
+        final decodedData = response.data is List
+            ? response.data as List
+            : json.decode(response.data is String ? response.data as String : '[]');
+        final list = (decodedData as List)
+            .map((e) => e is Map<String, dynamic> ? e : Map<String, dynamic>.from(e as Map))
+            .toList();
+        models.value = list;
+        filteredModels.value = list;
       }
-      // Auth errors are handled by ApiClient interceptor for Dio calls.
     } catch (e) {
       // Handle error silently
     } finally {

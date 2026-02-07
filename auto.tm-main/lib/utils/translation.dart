@@ -117,6 +117,8 @@ class AppTranslations extends Translations {
       'Filter Results': 'Filter Results',
       'Reply': 'Reply',
       'register or login to continue': 'register or login to continue',
+      'Log in to save favorites': 'Log in to save favorites',
+      'Log in to comment': 'Log in to comment',
       'OK': 'OK',
       "Select brand": "Select brand",
       "Select model": "Select model",
@@ -452,6 +454,8 @@ class AppTranslations extends Translations {
       'Reply': 'Jogap ber',
       'register or login to continue':
           'Dowam etmek üçin hasaba alynyň ýa-da ulgama giriň',
+      'Log in to save favorites': 'Saýlananlara goşmak üçin ulgama giriň',
+      'Log in to comment': 'Teswir ýazmak üçin ulgama giriň',
       'OK': 'Bolýar',
       "Select brand": "Marka saýla",
       "Select model": "Model saýla",
@@ -775,6 +779,8 @@ class AppTranslations extends Translations {
       'Reply': 'Ответить',
       'register or login to continue':
           'зарегистрируйтесь или войдите, чтобы продолжить',
+      'Log in to save favorites': 'Войдите, чтобы сохранять в избранное',
+      'Log in to comment': 'Войдите, чтобы комментировать',
       'OK': 'OK',
       "Select brand": "Выбрать бренд",
       "Select model": "Выбрать модель",

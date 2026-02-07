@@ -12,6 +12,8 @@ Full-stack automotive marketplace: **Flutter** mobile app (iOS/Android) and **Ne
 ├── backend/               # NestJS API (TypeScript, Sequelize, PostgreSQL)
 ├── docs/                  # Cross-cutting documentation
 │   ├── ARCHITECTURE_OVERVIEW.md   # Full-stack architecture
+│   ├── ACCESS_MODEL.md           # Public vs token-required access (guest browse)
+│   ├── ACCESS_MODEL_ROADMAP.md   # Roadmap + mobile app alignment audit
 │   ├── TESTING.md                 # Manual & smoke testing
 │   └── ROADMAP.md                 # Auth improvements & plans
 ├── CLAUDE.md              # AI/assistant rules for this repo
@@ -45,6 +47,8 @@ Full-stack automotive marketplace: **Flutter** mobile app (iOS/Android) and **Ne
 
 | Document | Purpose |
 |----------|---------|
+| [docs/ACCESS_MODEL.md](docs/ACCESS_MODEL.md) | **Public vs authenticated access:** guest browsing (no token), token required for post/comment/favorites; API matrix and diagrams |
+| [docs/ACCESS_MODEL_ROADMAP.md](docs/ACCESS_MODEL_ROADMAP.md) | **Access model + TokenStore roadmap:** implementation phases, alignment audit of current mobile app, TokenStore verification checklist |
 | [docs/TESTING.md](docs/TESTING.md) | Manual testing, deleted-user scenarios, smoke tests |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Auth improvements plan, migration checklist, future work |
 

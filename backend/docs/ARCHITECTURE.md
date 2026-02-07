@@ -4,6 +4,8 @@ This document describes the **current** NestJS backend architecture for Alpha Mo
 
 For Auth/OTP endpoint contracts (payloads and responses), see [API_REFERENCE.md](API_REFERENCE.md).
 
+**Public vs authenticated access:** Browsing (list/filter posts, categories, brands, banners) is intended to work without a token; only actions that create or modify user data (post, comment, favorites, profile) require `AuthGuard`. See [../../docs/ACCESS_MODEL.md](../../docs/ACCESS_MODEL.md) for the full matrix and diagrams.
+
 ## System Context
 
 - **Mobile app**: Flutter (iOS/Android)

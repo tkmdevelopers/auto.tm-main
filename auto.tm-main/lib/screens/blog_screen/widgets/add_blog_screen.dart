@@ -1,14 +1,12 @@
 import 'dart:io';
-import 'package:auto_tm/services/token_service/token_store.dart';
+import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:http_parser/http_parser.dart';
+import 'package:get/get.dart' hide FormData, MultipartFile;
+import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:path/path.dart' as path; // Import path
+import 'package:path/path.dart' as path;
 
 // Controller
 class CreateBlogController extends GetxController {
@@ -32,62 +30,40 @@ class CreateBlogController extends GetxController {
     }
   }
 
-  // Upload image to backend (mock implementation)
+  // Upload image to backend
   Future<void> uploadImage(File imageFile) async {
     isUploading.value = true;
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      if (accessToken == null || accessToken.isEmpty) {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          imageFile.path,
+          filename: path.basename(imageFile.path),
+        ),
+      });
+      final response = await ApiClient.to.dio.post('photo/vlog', data: formData);
+
+      if (response.statusCode == 200 && response.data != null) {
+        final responseJson = response.data as Map;
+        final uuid = responseJson['uuid'];
+        if (uuid is Map && uuid['path'] is Map) {
+          final medium = (uuid['path'] as Map)['medium'];
+          if (medium != null) {
+            imageLink.value = ApiKey.ip + medium.toString();
+            Get.snackbar('Uploaded', 'Image uploaded successfully!');
+            return;
+          }
+        }
         imageLink.value = null;
-        return;
-      }
-      // 1. Prepare the image for upload
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse(ApiKey.postBlogPhotoKey),
-      ); // Replace with your upload URL
-      var stream = http.ByteStream(imageFile.openRead());
-      var length = await imageFile.length();
-
-      // 2. Create a MultipartFile
-      var multipartFile = http.MultipartFile(
-        'file', // This should match your server's expected field name
-        stream,
-        length,
-        filename: path.basename(imageFile.path), // Use path package
-        contentType: MediaType('image', 'jpeg'),
-      );
-
-      request.headers['Authorization'] = 'Bearer $accessToken';
-
-      // 3. Add the file to the request
-      request.files.add(multipartFile);
-
-      // 4. Send the request
-      var response = await request.send();
-
-      // 5. Get the response
-      var responseBody = await response.stream.bytesToString();
-
-      await Future.delayed(
-        const Duration(seconds: 2),
-      ); // Simulate network delay
-
-      if (response.statusCode == 200) {
-        var responseJson = jsonDecode(responseBody);
-        // Ensure your backend returns a JSON object with the imageUrl
-        imageLink.value = ApiKey.ip + responseJson['uuid']['path']['medium'];
-        ('Uploaded', 'Image uploaded successfully!');
       } else {
-        (
+        Get.snackbar(
           'Upload Failed',
-          'Failed to upload image. Status code: ${response.statusCode}, Response: $responseBody',
+          'Failed to upload image. Status code: ${response.statusCode}',
         );
-        imageLink.value = null; //important
+        imageLink.value = null;
       }
     } catch (error) {
-      ('Error', 'Error uploading image: $error');
-      imageLink.value = null; //important
+      Get.snackbar('Error', 'Error uploading image: $error');
+      imageLink.value = null;
     } finally {
       isUploading.value = false;
     }
@@ -111,36 +87,26 @@ class CreateBlogController extends GetxController {
           descriptionController.text; // Изменено на  descriptionController.text
     }
 
-    // Simulate posting the blog.  Replace with your actual API call.
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      if (accessToken == null || accessToken.isEmpty) return;
-      var response = await http.post(
-        Uri.parse(ApiKey.postBlogsKey), // Replace
-        headers: {
-          // "Accept": "application/json",
-          // "Content-Type": "application/json",
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: {'title': titleController.text, 'description': description},
+      final response = await ApiClient.to.dio.post(
+        'vlog',
+        data: {'title': titleController.text, 'description': description},
       );
-      await Future.delayed(const Duration(seconds: 1));
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        ('Success', 'Blog posted!');
-        // Clear the form
+        Get.snackbar('Success', 'Blog posted!');
         titleController.clear();
         descriptionController.clear();
         imageLink.value = null;
-        Get.back(); // Go back to previous screen
+        Get.back();
       } else {
-        (
+        Get.snackbar(
           'Error',
-          'Failed to post blog. Status code: ${response.statusCode}, Response: ${response.body}',
+          'Failed to post blog. Status code: ${response.statusCode}',
         );
       }
     } catch (error) {
-      ('Error', 'Error posting blog: $error');
+      Get.snackbar('Error', 'Error posting blog: $error');
     }
   }
 

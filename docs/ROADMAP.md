@@ -4,6 +4,8 @@ High-level plans and follow-ups. Implementation details live in the codebase and
 
 **Implementation status** (last verified against codebase): See [Implementation status](#implementation-status) below.
 
+**Access model & TokenStore:** For the roadmap that implements [public vs authenticated access](ACCESS_MODEL.md) (guest browsing, backend public endpoints, TokenStore alignment) and the **alignment audit of the current mobile app**, see [docs/ACCESS_MODEL_ROADMAP.md](ACCESS_MODEL_ROADMAP.md).
+
 ---
 
 ## Implementation status

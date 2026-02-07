@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:auto_tm/services/network/api_client.dart';
+import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 
@@ -108,11 +109,12 @@ class CommentsController extends GetxController {
 
   // Send a comment or reply
   Future<void> sendComment(String postId, String message) async {
-    // if (userId.value.isEmpty || userId.value == '') {
-    //   Get.toNamed('/profile'); // Navigate to Profile Screen if user is not logged in
-    //   return;
-    // }
     if (message.isEmpty || isSending.value) return;
+    if (!(await TokenStore.to.hasTokens)) {
+      Get.snackbar('', 'Log in to comment'.tr);
+      Get.toNamed('/register');
+      return;
+    }
     isSending.value = true;
 
     final commentData = {"postId": postId, "message": message};

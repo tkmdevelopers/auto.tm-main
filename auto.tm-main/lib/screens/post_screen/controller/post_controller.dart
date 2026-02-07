@@ -12,9 +12,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
-import 'package:auto_tm/services/token_service/token_store.dart';
+import 'package:auto_tm/services/network/api_client.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:http/http.dart' as http;
 import 'package:auto_tm/services/auth/auth_service.dart';
 
 import 'package:image_picker/image_picker.dart';
@@ -691,17 +690,10 @@ class PostController extends GetxController {
     }
 
     try {
-      final token = await TokenStore.to.accessToken;
       final fullPhone = '+' + _buildFullPhoneDigits();
-      final response = await http.post(
-        Uri.parse(ApiKey.postPostsKey),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null && token.isNotEmpty)
-            'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          // Backend expects brand/model UUID fields named brandsId / modelsId
+      final response = await ApiClient.to.dio.post(
+        'posts',
+        data: {
           'brandsId': selectedBrandUuid.value.isNotEmpty
               ? selectedBrandUuid.value
               : null,
@@ -723,34 +715,32 @@ class PostController extends GetxController {
           'exchange': exchange.value,
           'milleage': double.tryParse(milleage.text) ?? 0,
           'vin': vinCode.text,
-          'price': priceValue, // Use validated price
+          'price': priceValue,
           'currency': selectedCurrency.value.isNotEmpty
               ? selectedCurrency.value
               : 'TMT',
           'location': selectedLocation.value,
           'phone': fullPhone,
           'description': description.text,
-          // Inject a personalInfo block carrying region semantics. For now region is forced 'Local'.
           'personalInfo': {
             'name': Get.isRegistered<ProfileController>()
                 ? Get.find<ProfileController>().name.value
                 : '',
-            'location': selectedLocation.value, // city
+            'location': selectedLocation.value,
             'phone': fullPhone,
             'region': 'Local',
           },
-          // 'subscriptionId': selectedSubscriptionId, // add when implemented
-        }),
+        },
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        return data['uuid']?.toString();
+        final data = response.data;
+        if (data is Map) return data['uuid']?.toString();
+        return null;
       } else {
-        // Log the error response for debugging
-        final errorData = jsonDecode(response.body);
+        final errorData = response.data is Map ? response.data as Map : <String, dynamic>{};
         final errorMsg =
-            errorData['error'] ?? errorData['message'] ?? 'Unknown error';
+            (errorData['error'] ?? errorData['message'] ?? 'Unknown error').toString();
         debugPrint('Post creation failed (${response.statusCode}): $errorMsg');
         uploadError.value = errorMsg;
         Get.snackbar(
@@ -782,20 +772,12 @@ class PostController extends GetxController {
     });
 
     try {
-      final token = await TokenStore.to.accessToken;
-      final response = await http
-          .get(
-            Uri.parse(ApiKey.getMyPostsKey),
-            headers: {
-              'Content-Type': 'application/json',
-              if (token != null && token.isNotEmpty)
-                'Authorization': 'Bearer $token',
-            },
-          )
+      final response = await ApiClient.to.dio
+          .get('posts/me')
           .timeout(const Duration(seconds: 15));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
         List<dynamic> rawPosts;
         if (data is List) {
           rawPosts = data;
@@ -833,15 +815,7 @@ class PostController extends GetxController {
   /// Delete a specific post
   Future<void> deleteMyPost(String uuid) async {
     try {
-      final token = await TokenStore.to.accessToken;
-      final response = await http.delete(
-        Uri.parse('${ApiKey.getPostsKey}/$uuid'),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null && token.isNotEmpty)
-            'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await ApiClient.to.dio.delete('posts/$uuid');
 
       if (response.statusCode == 200) {
         posts.removeWhere((post) => post.uuid == uuid);
@@ -922,18 +896,6 @@ class PostController extends GetxController {
         return true;
       }
 
-      final token = await TokenStore.to.accessToken;
-      final client = dio.Dio(
-        dio.BaseOptions(
-          headers: {
-            if (token != null && token.isNotEmpty)
-              'Authorization': 'Bearer $token',
-          },
-          connectTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(minutes: 2),
-        ),
-      );
-
       _activeCancelToken = dio.CancelToken();
       int lastSent = 0;
 
@@ -946,10 +908,14 @@ class PostController extends GetxController {
         ),
       });
 
-      final resp = await client.post(
-        ApiKey.videoUploadKey,
+      final resp = await ApiClient.to.dio.post(
+        'video/upload',
         data: form,
         cancelToken: _activeCancelToken,
+        options: dio.Options(
+          sendTimeout: const Duration(seconds: 300),
+          receiveTimeout: const Duration(minutes: 2),
+        ),
         onSendProgress: (sent, total) {
           final delta = sent - lastSent;
           lastSent = sent;
@@ -994,24 +960,12 @@ class PostController extends GetxController {
     try {
       final b64 = snap.photoBase64[index];
       final bytes = base64Decode(b64);
-      final token = await TokenStore.to.accessToken;
-
-      final client = dio.Dio(
-        dio.BaseOptions(
-          headers: {
-            if (token != null && token.isNotEmpty)
-              'Authorization': 'Bearer $token',
-          },
-          connectTimeout: const Duration(seconds: 25),
-          receiveTimeout: const Duration(seconds: 60),
-        ),
-      );
 
       _activeCancelToken = dio.CancelToken();
       int lastSent = 0;
 
-      await client.post(
-        ApiKey.postPhotosKey,
+      await ApiClient.to.dio.post(
+        'photo/posts',
         data: dio.FormData.fromMap({
           'uuid': postUuid,
           'file': dio.MultipartFile.fromBytes(
@@ -1021,6 +975,10 @@ class PostController extends GetxController {
           ),
         }),
         cancelToken: _activeCancelToken,
+        options: dio.Options(
+          sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
         onSendProgress: (sent, total) {
           final delta = sent - lastSent;
           lastSent = sent;
@@ -1070,24 +1028,14 @@ class PostController extends GetxController {
   }
 
   Future<void> _deleteCreatedPostCascade(String postUuid) async {
-    final token = await TokenStore.to.accessToken;
-    if (token == null || token.isEmpty) return;
-
     try {
-      final uri = Uri.parse('${ApiKey.getPostsKey}/$postUuid');
-      final resp = await http
-          .delete(
-            uri,
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-          )
+      final resp = await ApiClient.to.dio
+          .delete('posts/$postUuid')
           .timeout(const Duration(seconds: 15));
 
-      if (resp.statusCode >= 300) {
+      if (resp.statusCode != null && resp.statusCode! >= 300) {
         debugPrint(
-          'Cancel cleanup delete failed: ${resp.statusCode} ${resp.body}',
+          'Cancel cleanup delete failed: ${resp.statusCode} ${resp.data}',
         );
       }
     } catch (e) {
@@ -1222,8 +1170,6 @@ class PostController extends GetxController {
 
     isLoadingB.value = true;
     try {
-      final token = await TokenStore.to.accessToken;
-
       if (!forceRefresh && brands.isNotEmpty && brandsFromCache.value) {
         final fresh = _isBrandCacheFresh();
         if (fresh) {
@@ -1232,19 +1178,12 @@ class PostController extends GetxController {
         }
       }
 
-      final resp = await http
-          .get(
-            Uri.parse(ApiKey.getBrandsKey),
-            headers: {
-              'Content-Type': 'application/json',
-              if (token != null && token.isNotEmpty)
-                'Authorization': 'Bearer $token',
-            },
-          )
+      final resp = await ApiClient.to.dio
+          .get('brands')
           .timeout(const Duration(seconds: 10));
 
-      if (resp.statusCode == 200) {
-        final decoded = jsonDecode(resp.body);
+      if (resp.statusCode == 200 && resp.data != null) {
+        final decoded = resp.data;
         final List<BrandDto> parsed = _parseBrandList(decoded);
         brands.assignAll(parsed);
         brandsFromCache.value = false;
@@ -1286,9 +1225,6 @@ class PostController extends GetxController {
     if (showLoading) isLoadingM.value = true;
 
     try {
-      final token = await TokenStore.to.accessToken;
-      final uri = Uri.parse('${ApiKey.getModelsKey}?filter=$brandUuid');
-
       if (!forceRefresh) {
         final cached = _hydrateModelCache(brandUuid);
         if (cached != null && cached.isNotEmpty) {
@@ -1302,19 +1238,12 @@ class PostController extends GetxController {
         }
       }
 
-      final resp = await http
-          .get(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              if (token != null && token.isNotEmpty)
-                'Authorization': 'Bearer $token',
-            },
-          )
+      final resp = await ApiClient.to.dio
+          .get('models', queryParameters: {'filter': brandUuid})
           .timeout(const Duration(seconds: 10));
 
-      if (resp.statusCode == 200) {
-        final decoded = jsonDecode(resp.body);
+      if (resp.statusCode == 200 && resp.data != null) {
+        final decoded = resp.data;
         final List<ModelDto> parsed = _parseModelList(decoded);
         models.assignAll(parsed);
         selectedBrandUuid.value = brandUuid;
@@ -2210,18 +2139,10 @@ class PostController extends GetxController {
 
   Future<void> _maybeFetchBrands() async {
     if (brands.isNotEmpty) return;
-    final token = await TokenStore.to.accessToken;
     try {
-      final resp = await http.get(
-        Uri.parse(ApiKey.getBrandsKey),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null && token.isNotEmpty)
-            'Authorization': 'Bearer $token',
-        },
-      );
-      if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body);
+      final resp = await ApiClient.to.dio.get('brands');
+      if (resp.statusCode == 200 && resp.data != null) {
+        final data = resp.data;
         if (data is List) {
           final list = data
               .map(
@@ -2230,6 +2151,9 @@ class PostController extends GetxController {
               .whereType<BrandDto>()
               .toList();
           brands.assignAll(list);
+        } else {
+          final parsed = _parseBrandList(data);
+          if (parsed.isNotEmpty) brands.assignAll(parsed);
         }
       }
     } catch (_) {}
@@ -2237,18 +2161,10 @@ class PostController extends GetxController {
 
   Future<void> _maybeFetchModels() async {
     if (models.isNotEmpty) return;
-    final token = await TokenStore.to.accessToken;
     try {
-      final resp = await http.get(
-        Uri.parse(ApiKey.getModelsKey),
-        headers: {
-          'Content-Type': 'application/json',
-          if (token != null && token.isNotEmpty)
-            'Authorization': 'Bearer $token',
-        },
-      );
-      if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body);
+      final resp = await ApiClient.to.dio.get('models');
+      if (resp.statusCode == 200 && resp.data != null) {
+        final data = resp.data;
         if (data is List) {
           final list = data
               .map(
@@ -2257,6 +2173,9 @@ class PostController extends GetxController {
               .whereType<ModelDto>()
               .toList();
           models.assignAll(list);
+        } else {
+          final parsed = _parseModelList(data);
+          if (parsed.isNotEmpty) models.assignAll(parsed);
         }
       }
     } catch (_) {}
