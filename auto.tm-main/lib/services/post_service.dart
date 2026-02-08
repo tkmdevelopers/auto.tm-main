@@ -11,6 +11,8 @@ import 'package:auto_tm/models/post_dtos.dart';
 export 'package:auto_tm/models/post_dtos.dart';
 
 class PostService extends GetxService {
+  static PostService get to => Get.find();
+
   final ApiClient _apiClient;
   final GetStorage _box; // For caching brands/models
 

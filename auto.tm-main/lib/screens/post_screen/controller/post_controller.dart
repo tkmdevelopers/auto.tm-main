@@ -15,6 +15,7 @@ import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dar
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:auto_tm/services/auth/auth_service.dart';
+import 'package:auto_tm/services/post_service.dart';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -494,36 +495,11 @@ class PostController extends GetxController {
     });
 
     try {
-      final response = await ApiClient.to.dio
-          .get('posts/me')
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data;
-        List<dynamic> rawPosts;
-        if (data is List) {
-          rawPosts = data;
-        } else if (data is Map && data['data'] is List) {
-          rawPosts = data['data'] as List;
-        } else {
-          rawPosts = [];
-        }
-
-        final postDtos = rawPosts
-            .map((json) => PostDto.fromJson(json as Map<String, dynamic>))
-            .toList();
-        posts.assignAll(postDtos);
-      } else if (response.statusCode == 401) {
-        Get.snackbar('Error', 'Session expired. Please login again.');
-      } else {
-        Get.snackbar(
-          'Error',
-          'Failed to load posts (${response.statusCode})'.tr,
-        );
-      }
-    } on TimeoutException {
-      debugPrint('Fetch my posts timeout');
-      Get.snackbar('Error', 'Request timed out. Please try again.'.tr);
+      final postDtos = await PostService.to.fetchMyPosts();
+      posts.assignAll(postDtos);
+    } on Failure catch (e) {
+      debugPrint('Fetch my posts error: $e');
+      Get.snackbar('Error', e.message ?? 'Failed to load posts'.tr);
     } catch (e) {
       debugPrint('Fetch my posts error: $e');
       Get.snackbar('Error', 'Failed to load posts: ${e.toString()}'.tr);
@@ -537,14 +513,11 @@ class PostController extends GetxController {
   /// Delete a specific post
   Future<void> deleteMyPost(String uuid) async {
     try {
-      final response = await ApiClient.to.dio.delete('posts/$uuid');
-
-      if (response.statusCode == 200) {
-        posts.removeWhere((post) => post.uuid == uuid);
-        Get.snackbar('Success', 'Post deleted successfully'.tr);
-      } else {
-        Get.snackbar('Error', 'Failed to delete post'.tr);
-      }
+      await PostService.to.deleteMyPost(uuid);
+      posts.removeWhere((post) => post.uuid == uuid);
+      Get.snackbar('Success', 'Post deleted successfully'.tr);
+    } on Failure catch (e) {
+      Get.snackbar('Error', e.message ?? 'Failed to delete post'.tr);
     } catch (e) {
       Get.snackbar('Error', 'Failed to delete post: $e'.tr);
     }
@@ -751,15 +724,7 @@ class PostController extends GetxController {
 
   Future<void> _deleteCreatedPostCascade(String postUuid) async {
     try {
-      final resp = await ApiClient.to.dio
-          .delete('posts/$postUuid')
-          .timeout(const Duration(seconds: 15));
-
-      if (resp.statusCode != null && resp.statusCode! >= 300) {
-        debugPrint(
-          'Cancel cleanup delete failed: ${resp.statusCode} ${resp.data}',
-        );
-      }
+      await PostService.to.deleteCreatedPostCascade(postUuid);
     } catch (e) {
       debugPrint('Cancel cleanup exception: $e');
     }

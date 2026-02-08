@@ -21,6 +21,7 @@ import 'package:auto_tm/services/auth/auth_service.dart';
 import 'package:auto_tm/services/blog_service.dart'; // Added BlogService import
 import 'package:auto_tm/services/subscription_service.dart';
 import 'package:auto_tm/services/brand_history_service.dart';
+import 'package:auto_tm/services/post_service.dart';
 import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/utils/themes.dart';
@@ -318,6 +319,11 @@ Future<void> initServices() async {
   // Register BrandHistoryService
   if (!Get.isRegistered<BrandHistoryService>()) {
     Get.put(BrandHistoryService(Get.find<ApiClient>()));
+  }
+
+  // Register PostService
+  if (!Get.isRegistered<PostService>()) {
+    Get.put(PostService(Get.find<ApiClient>()));
   }
 
   
