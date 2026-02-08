@@ -6,7 +6,6 @@ import 'package:dio/dio.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/models/post_dtos.dart';
-export 'package:auto_tm/models/post_dtos.dart';
 
 class PostService extends GetxService {
   static PostService get to => Get.find();

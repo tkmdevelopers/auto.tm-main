@@ -26,7 +26,6 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 
 import 'upload_manager.dart';
 import 'package:auto_tm/models/post_dtos.dart';
-export 'package:auto_tm/models/post_dtos.dart';
 
 /// Lightweight image signature for dirty tracking
 class _ImageSig {

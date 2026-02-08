@@ -1,4 +1,5 @@
 import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
+import 'package:auto_tm/models/post_dtos.dart';
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:dio/dio.dart';

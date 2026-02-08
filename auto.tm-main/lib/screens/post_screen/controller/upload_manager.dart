@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart'; // for compute
 import 'package:get_storage/get_storage.dart';
 import 'package:uuid/uuid.dart';
 import 'post_controller.dart';
+import 'package:auto_tm/models/post_dtos.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../../global_controllers/connection_controller.dart';
 

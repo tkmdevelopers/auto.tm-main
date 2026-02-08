@@ -7,6 +7,7 @@ import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/services/post_service.dart';
+import 'package:auto_tm/models/post_dtos.dart';
 import 'package:auto_tm/services/token_service/token_store.dart';
 
 import 'post_service_test.mocks.dart';
