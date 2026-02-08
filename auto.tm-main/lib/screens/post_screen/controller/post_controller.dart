@@ -15,6 +15,7 @@ import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dar
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:auto_tm/services/post_service.dart';
+import 'package:auto_tm/services/brand_model_service.dart';
 import 'phone_verification_controller.dart';
 
 import 'package:image_picker/image_picker.dart';
@@ -127,25 +128,17 @@ class PostController extends GetxController {
   dio.CancelToken? _activeCancelToken;
   String? _activePostUuid;
 
-  // Brand/model data
-  final RxList<BrandDto> brands = <BrandDto>[].obs;
-  final RxList<ModelDto> models = <ModelDto>[].obs;
-  // Fast lookup maps (id -> name)
-  final Map<String, String> _brandNameById = {};
-  final Map<String, String> _modelNameById = {};
-  final Set<String> _fetchedBrandModels = <String>{};
-  // Trigger rebuilds when late model names are populated
-  final RxInt modelNameResolutionTick = 0.obs;
-  final RxBool isLoadingB = false.obs;
-  final RxBool isLoadingM = false.obs;
-  final RxBool brandsFromCache = false.obs;
-  final RxBool modelsFromCache = false.obs;
-  final Map<String, List<ModelDto>> _modelsMemoryCache = {};
-
-  // Cache keys and TTL
-  static const _brandCacheKey = 'BRAND_CACHE_V1';
-  static const _modelCacheKey = 'MODEL_CACHE_V1';
-  static const _cacheTtl = Duration(hours: 6);
+  // Brand/model data – delegated to BrandModelService
+  late final BrandModelService _brandModelSvc;
+  RxList<BrandDto> get brands => _brandModelSvc.brands;
+  RxList<ModelDto> get models => _brandModelSvc.models;
+  RxInt get modelNameResolutionTick => _brandModelSvc.modelNameResolutionTick;
+  RxBool get isLoadingB => _brandModelSvc.isLoadingBrands;
+  RxBool get isLoadingM => _brandModelSvc.isLoadingModels;
+  RxBool get brandsFromCache => _brandModelSvc.brandsFromCache;
+  RxBool get modelsFromCache => _brandModelSvc.modelsFromCache;
+  RxString get brandSearchQuery => _brandModelSvc.brandSearchQuery;
+  RxString get searchModel => _brandModelSvc.modelSearchQuery;
 
   // Form persistence and dirty tracking
   final RxBool isFormSaved = false.obs;
@@ -159,36 +152,15 @@ class PostController extends GetxController {
 
   // Additional UI state properties
   final RxString selectedYear = ''.obs;
-  final RxString brandSearchQuery = ''.obs;
-  final RxString searchModel = ''.obs;
   // Posts management
   final RxList<PostDto> posts = <PostDto>[].obs;
   final RxBool isLoadingP = false.obs;
   final RxBool showShimmer = false.obs;
   Timer? _shimmerDelayTimer;
 
-  // Computed getters for filtered lists
-  List<BrandDto> get filteredBrands {
-    if (brandSearchQuery.value.isEmpty) return brands;
-    return brands
-        .where(
-          (brand) => brand.name.toLowerCase().contains(
-            brandSearchQuery.value.toLowerCase(),
-          ),
-        )
-        .toList();
-  }
-
-  List<ModelDto> get filteredModels {
-    if (searchModel.value.isEmpty) return models;
-    return models
-        .where(
-          (model) => model.name.toLowerCase().contains(
-            searchModel.value.toLowerCase(),
-          ),
-        )
-        .toList();
-  }
+  // Computed getters for filtered lists – delegated to BrandModelService
+  List<BrandDto> get filteredBrands => _brandModelSvc.filteredBrands;
+  List<ModelDto> get filteredModels => _brandModelSvc.filteredModels;
 
   @override
   void onInit() {
@@ -196,13 +168,12 @@ class PostController extends GetxController {
     // Initialize phone verification controller
     _phoneCtrl = Get.put(PhoneVerificationController());
     _phoneCtrl.onFieldChanged = markFieldChanged;
-    _hydrateBrandCache();
+    // Initialize brand/model service
+    _brandModelSvc = BrandModelService.to;
     _loadSavedForm();
     _rebuildImageSigCache();
     recoverOrCleanupStaleUpload();
     _attachUploadLifecycleListener();
-    // Build name maps if cached brands/models already loaded
-    _rebuildNameLookups();
   }
 
   @override
@@ -801,256 +772,26 @@ class PostController extends GetxController {
     }
   }
 
-  // Brand and model fetching
-  void fetchBrands({bool forceRefresh = false}) async {
-    if (!forceRefresh && brands.isNotEmpty) return;
-
-    isLoadingB.value = true;
-    try {
-      if (!forceRefresh && brands.isNotEmpty && brandsFromCache.value) {
-        final fresh = _isBrandCacheFresh();
-        if (fresh) {
-          isLoadingB.value = false;
-          return;
-        }
-      }
-
-      final resp = await ApiClient.to.dio
-          .get('brands')
-          .timeout(const Duration(seconds: 10));
-
-      if (resp.statusCode == 200 && resp.data != null) {
-        final decoded = resp.data;
-        final List<BrandDto> parsed = _parseBrandList(decoded);
-        brands.assignAll(parsed);
-        brandsFromCache.value = false;
-        _saveBrandCache(parsed);
-      } else if (resp.statusCode == 401) {
-        _showFailure('Failed to load brands', Failure('Session expired'));
-        _fallbackBrandCache();
-      } else {
-        _showFailure(
-          'Failed to load brands',
-          Failure('Status ${resp.statusCode}'),
-        );
-        _fallbackBrandCache();
-      }
-    } on TimeoutException {
-      _showFailure('Failed to load brands', Failure('Request timed out'));
-      _fallbackBrandCache();
-    } catch (e) {
-      _showFailure('Failed to load brands', Failure(e.toString()));
-      _fallbackBrandCache();
-    } finally {
-      isLoadingB.value = false;
-    }
-  }
-
+  // Brand/model fetching – delegated to BrandModelService
+  void fetchBrands({bool forceRefresh = false}) =>
+      _brandModelSvc.fetchBrands(forceRefresh: forceRefresh);
   void fetchModels(
     String brandUuid, {
     bool forceRefresh = false,
     bool showLoading = true,
-  }) async {
-    if (brandUuid.isEmpty) return;
-
-    if (!forceRefresh &&
-        selectedBrandUuid.value == brandUuid &&
-        models.isNotEmpty) {
-      return;
-    }
-
-    if (showLoading) isLoadingM.value = true;
-
-    try {
-      if (!forceRefresh) {
-        final cached = _hydrateModelCache(brandUuid);
-        if (cached != null && cached.isNotEmpty) {
-          models.assignAll(cached);
-          modelsFromCache.value = true;
-          if (_isModelCacheFresh(brandUuid)) {
-            isLoadingM.value = false;
-            selectedBrandUuid.value = brandUuid;
-            return;
-          }
-        }
-      }
-
-      final resp = await ApiClient.to.dio
-          .get('models', queryParameters: {'filter': brandUuid})
-          .timeout(const Duration(seconds: 10));
-
-      if (resp.statusCode == 200 && resp.data != null) {
-        final decoded = resp.data;
-        final List<ModelDto> parsed = _parseModelList(decoded);
-        models.assignAll(parsed);
-        selectedBrandUuid.value = brandUuid;
-        modelsFromCache.value = false;
-        _saveModelCache(brandUuid, parsed);
-      } else if (resp.statusCode == 401) {
-        _showFailure('Failed to load models', Failure('Session expired'));
-        _fallbackModelCache(brandUuid);
-      } else {
-        _showFailure(
-          'Failed to load models',
-          Failure('Status ${resp.statusCode}'),
-        );
-        _fallbackModelCache(brandUuid);
-      }
-    } on TimeoutException {
-      _showFailure('Failed to load models', Failure('Request timed out'));
-      _fallbackModelCache(brandUuid);
-    } catch (e) {
-      _showFailure('Failed to load models', Failure(e.toString()));
-      _fallbackModelCache(brandUuid);
-    } finally {
-      if (showLoading) isLoadingM.value = false;
-    }
-  }
-
-  void _showFailure(String context, Failure failure) {
-    final msg = failure.message ?? failure.toString();
-    Get.snackbar(context, msg, snackPosition: SnackPosition.BOTTOM);
-  }
-
-  List<BrandDto> _parseBrandList(dynamic decoded) {
-    try {
-      final dynamic listCandidate = decoded is List
-          ? decoded
-          : (decoded is Map && decoded['data'] is List)
-          ? decoded['data']
-          : [];
-      if (listCandidate is! List) return [];
-      return listCandidate
-          .whereType<Map>()
-          .map((m) => BrandDto.fromJson(Map<String, dynamic>.from(m)))
-          .where((b) => b.uuid.isNotEmpty && b.name.isNotEmpty)
-          .toList();
-    } catch (_) {
-      return [];
-    }
-  }
-
-  List<ModelDto> _parseModelList(dynamic decoded) {
-    try {
-      final dynamic listCandidate = decoded is List
-          ? decoded
-          : (decoded is Map && decoded['data'] is List)
-          ? decoded['data']
-          : [];
-      if (listCandidate is! List) return [];
-      return listCandidate
-          .whereType<Map>()
-          .map((m) => ModelDto.fromJson(Map<String, dynamic>.from(m)))
-          .where((m) => m.uuid.isNotEmpty && m.name.isNotEmpty)
-          .toList();
-    } catch (_) {
-      return [];
-    }
-  }
-
-  // Cache management
-  bool _isBrandCacheFresh() {
-    try {
-      final raw = box.read(_brandCacheKey);
-      if (raw is Map && raw['storedAt'] is String) {
-        final ts = DateTime.tryParse(raw['storedAt']);
-        if (ts == null) return false;
-        return DateTime.now().difference(ts) < _cacheTtl;
-      }
-    } catch (_) {}
-    return false;
-  }
-
-  bool _isModelCacheFresh(String brandUuid) {
-    try {
-      final raw = box.read(_modelCacheKey);
-      if (raw is Map && raw[brandUuid] is Map) {
-        final entry = raw[brandUuid];
-        final ts = DateTime.tryParse(entry['storedAt'] ?? '');
-        if (ts == null) return false;
-        return DateTime.now().difference(ts) < _cacheTtl;
-      }
-    } catch (_) {}
-    return false;
-  }
-
-  void _saveBrandCache(List<BrandDto> list) {
-    try {
-      final map = {
-        'storedAt': DateTime.now().toIso8601String(),
-        'items': list.map((b) => {'uuid': b.uuid, 'name': b.name}).toList(),
-      };
-      box.write(_brandCacheKey, map);
-    } catch (_) {}
-  }
-
-  void _saveModelCache(String brandUuid, List<ModelDto> list) {
-    try {
-      final raw = box.read(_modelCacheKey);
-      Map<String, dynamic> cache = {};
-      if (raw is Map) cache = Map<String, dynamic>.from(raw);
-      cache[brandUuid] = {
-        'storedAt': DateTime.now().toIso8601String(),
-        'items': list.map((m) => {'uuid': m.uuid, 'name': m.name}).toList(),
-      };
-      box.write(_modelCacheKey, cache);
-      _modelsMemoryCache[brandUuid] = list;
-    } catch (_) {}
-  }
-
-  void _hydrateBrandCache() {
-    try {
-      final raw = box.read(_brandCacheKey);
-      if (raw is Map && raw['items'] is List) {
-        final fresh = _isBrandCacheFresh();
-        final items = (raw['items'] as List)
-            .whereType<Map>()
-            .map((m) => BrandDto.fromJson(Map<String, dynamic>.from(m)))
-            .where((b) => b.uuid.isNotEmpty)
-            .toList();
-        if (items.isNotEmpty) {
-          brands.assignAll(items);
-          brandsFromCache.value = true;
-          if (!fresh) {
-            Future.microtask(() => fetchBrands(forceRefresh: true));
-          }
-        }
-      }
-    } catch (_) {}
-  }
-
-  List<ModelDto>? _hydrateModelCache(String brandUuid) {
-    try {
-      if (_modelsMemoryCache.containsKey(brandUuid)) {
-        return _modelsMemoryCache[brandUuid];
-      }
-      final raw = box.read(_modelCacheKey);
-      if (raw is Map && raw[brandUuid] is Map) {
-        final entry = raw[brandUuid];
-        final items =
-            (entry['items'] as List?)
-                ?.whereType<Map>()
-                .map((m) => ModelDto.fromJson(Map<String, dynamic>.from(m)))
-                .where((m) => m.uuid.isNotEmpty)
-                .toList() ??
-            [];
-        _modelsMemoryCache[brandUuid] = items;
-        return items;
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  void _fallbackBrandCache() {
-    if (brands.isEmpty) _hydrateBrandCache();
-  }
-
-  void _fallbackModelCache(String brandUuid) {
-    if (models.isEmpty) {
-      final cached = _hydrateModelCache(brandUuid) ?? [];
-      if (cached.isNotEmpty) models.assignAll(cached);
-    }
-  }
+  }) => _brandModelSvc.fetchModels(
+    brandUuid,
+    forceRefresh: forceRefresh,
+    showLoading: showLoading,
+  );
+  String resolveBrandName(String idOrName) =>
+      _brandModelSvc.resolveBrandName(idOrName);
+  String resolveModelName(String idOrName) =>
+      _brandModelSvc.resolveModelName(idOrName);
+  String resolveModelWithBrand(String modelId, String brandId) =>
+      _brandModelSvc.resolveModelWithBrand(modelId, brandId);
+  Future<void> ensureBrandModelCachesLoaded() =>
+      _brandModelSvc.ensureCachesLoaded();
 
   // Permission handling
   Future<void> requestGalleryPermission(BuildContext context) async {
@@ -1487,120 +1228,6 @@ class PostController extends GetxController {
 
   void _rebuildImageSigCache() {
     _imageSigCache = selectedImages.map((e) => _ImageSig(e)).toList();
-  }
-
-  // --- Brand / Model Name Resolution ---
-  void _rebuildNameLookups() {
-    for (final b in brands) {
-      if (b.uuid.isNotEmpty && b.name.isNotEmpty) {
-        _brandNameById[b.uuid] = b.name;
-      }
-    }
-    for (final m in models) {
-      if (m.uuid.isNotEmpty && m.name.isNotEmpty) {
-        _modelNameById[m.uuid] = m.name;
-      }
-    }
-  }
-
-  String resolveBrandName(String idOrName) {
-    if (idOrName.isEmpty) return '';
-    // If it's already a non-UUID-ish human string, return as-is
-    if (!_looksLikeUuid(idOrName)) return idOrName;
-    return _brandNameById[idOrName] ??
-        idOrName; // fallback to id if name unknown
-  }
-
-  String resolveModelName(String idOrName) {
-    if (idOrName.isEmpty) return '';
-    if (!_looksLikeUuid(idOrName)) return idOrName;
-    final existing = _modelNameById[idOrName];
-    if (existing != null) return existing;
-    // Lazy retrieval: if models list not yet fetched fully, attempt fetch once
-    _maybeFetchModels().then((_) {
-      if (_modelNameById.containsKey(idOrName)) {
-        modelNameResolutionTick.value++;
-      }
-    });
-    return idOrName; // temporary fallback (UUID) until resolved
-  }
-
-  /// Resolve model when we also know its brandId: fetch that brand's model list once
-  String resolveModelWithBrand(String modelId, String brandId) {
-    if (modelId.isEmpty) return '';
-    if (!_looksLikeUuid(modelId)) return modelId;
-    final existing = _modelNameById[modelId];
-    if (existing != null) return existing;
-    if (brandId.isNotEmpty &&
-        _looksLikeUuid(brandId) &&
-        !_fetchedBrandModels.contains(brandId)) {
-      _fetchedBrandModels.add(brandId);
-      Future.microtask(() async {
-        fetchModels(brandId, showLoading: false);
-        // Allow fetchModels to complete (heuristic small delay) before rebuilding
-        await Future.delayed(const Duration(milliseconds: 200));
-        _rebuildNameLookups();
-        if (_modelNameById.containsKey(modelId)) {
-          modelNameResolutionTick.value++;
-        }
-      });
-    }
-    return modelId;
-  }
-
-  bool _looksLikeUuid(String s) => RegExp(r'^[0-9a-fA-F-]{16,}$').hasMatch(s);
-
-  Future<void> ensureBrandModelCachesLoaded() async {
-    // If maps already populated with at least one entry, skip
-    if (_brandNameById.isNotEmpty && _modelNameById.isNotEmpty) return;
-    try {
-      await Future.wait([_maybeFetchBrands(), _maybeFetchModels()]);
-      _rebuildNameLookups();
-    } catch (_) {}
-  }
-
-  Future<void> _maybeFetchBrands() async {
-    if (brands.isNotEmpty) return;
-    try {
-      final resp = await ApiClient.to.dio.get('brands');
-      if (resp.statusCode == 200 && resp.data != null) {
-        final data = resp.data;
-        if (data is List) {
-          final list = data
-              .map(
-                (e) => e is Map<String, dynamic> ? BrandDto.fromJson(e) : null,
-              )
-              .whereType<BrandDto>()
-              .toList();
-          brands.assignAll(list);
-        } else {
-          final parsed = _parseBrandList(data);
-          if (parsed.isNotEmpty) brands.assignAll(parsed);
-        }
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _maybeFetchModels() async {
-    if (models.isNotEmpty) return;
-    try {
-      final resp = await ApiClient.to.dio.get('models');
-      if (resp.statusCode == 200 && resp.data != null) {
-        final data = resp.data;
-        if (data is List) {
-          final list = data
-              .map(
-                (e) => e is Map<String, dynamic> ? ModelDto.fromJson(e) : null,
-              )
-              .whereType<ModelDto>()
-              .toList();
-          models.assignAll(list);
-        } else {
-          final parsed = _parseModelList(data);
-          if (parsed.isNotEmpty) models.assignAll(parsed);
-        }
-      }
-    } catch (_) {}
   }
 
   void _attachUploadLifecycleListener() {
