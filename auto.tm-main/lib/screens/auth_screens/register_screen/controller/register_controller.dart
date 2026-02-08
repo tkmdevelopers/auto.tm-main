@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:auto_tm/services/auth/auth_service.dart';
 import 'package:auto_tm/services/auth/phone_formatter.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
-import 'package:auto_tm/services/notification_sevice/notification_service.dart';
+import 'package:auto_tm/services/notification_service/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

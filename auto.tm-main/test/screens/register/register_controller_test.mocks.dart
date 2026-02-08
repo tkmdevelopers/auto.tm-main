@@ -13,7 +13,7 @@ import 'package:auto_tm/screens/profile_screen/model/profile_model.dart'
     as _i12;
 import 'package:auto_tm/services/auth/auth_models.dart' as _i4;
 import 'package:auto_tm/services/auth/auth_service.dart' as _i3;
-import 'package:auto_tm/services/notification_sevice/notification_service.dart'
+import 'package:auto_tm/services/notification_service/notification_service.dart'
     as _i9;
 import 'package:flutter/foundation.dart' as _i7;
 import 'package:flutter/material.dart' as _i6;

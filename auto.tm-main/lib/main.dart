@@ -16,7 +16,7 @@ import 'package:auto_tm/screens/search_screen/search_screen.dart';
 import 'package:auto_tm/screens/post_screen/controller/upload_manager.dart';
 import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
 import 'package:auto_tm/screens/splash_screen/custom_splash_screen.dart';
-import 'package:auto_tm/services/notification_sevice/notification_service.dart';
+import 'package:auto_tm/services/notification_service/notification_service.dart';
 import 'package:auto_tm/services/auth/auth_service.dart';
 import 'package:auto_tm/services/blog_service.dart'; // Added BlogService import
 import 'package:auto_tm/services/subscription_service.dart';

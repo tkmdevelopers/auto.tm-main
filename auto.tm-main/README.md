@@ -62,7 +62,7 @@ lib/
 │   ├── auth/
 │   ├── network/        # ApiClient (Dio + interceptors)
 │   ├── token_service/  # TokenStore (secure storage)
-│   └── notification_sevice/
+│   └── notification_service/
 ├── global_controllers/ # Theme, connection, currency, language
 ├── utils/              # Themes, translation, key.dart (API_BASE)
 ├── ui_components/      # Colors, sizes, styles
