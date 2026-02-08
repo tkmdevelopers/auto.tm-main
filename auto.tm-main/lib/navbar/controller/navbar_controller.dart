@@ -36,8 +36,7 @@ class BottomNavController extends GetxController {
     // Handle navigation and token checks only when changing tab
     // Protected tabs: Post (2) & Profile (4)
     if (index == 2 || index == 4) {
-      final hasTokens = await TokenStore.to.hasTokens;
-      if (!hasTokens) {
+      if (!TokenStore.to.isLoggedIn.value) {
         Get.toNamed('/register');
         return; // Don't change selectedIndex if redirecting
       }

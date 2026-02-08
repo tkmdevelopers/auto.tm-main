@@ -274,7 +274,8 @@ Future<void> initServices() async {
   
   // Register TokenStore (secure token persistence). Must come before ApiClient and AuthService.
   if (!Get.isRegistered<TokenStore>()) {
-    Get.put(TokenStore(), permanent: true);
+    final tokenStore = Get.put(TokenStore(), permanent: true);
+    await tokenStore.init();
   }
 
   // Register ApiClient (Dio + auth interceptor). Must come before AuthService.

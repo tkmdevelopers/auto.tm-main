@@ -12,6 +12,10 @@ class TokenStore extends GetxService {
 
   final FlutterSecureStorage _storage;
 
+  /// Reactive auth flag. UI widgets can use `Obx(() => ...)` on this value
+  /// to rebuild automatically when the user logs in or out.
+  final RxBool isLoggedIn = false.obs;
+
   TokenStore({FlutterSecureStorage? storage})
       : _storage = storage ??
             const FlutterSecureStorage(
@@ -19,6 +23,13 @@ class TokenStore extends GetxService {
             );
 
   static TokenStore get to => Get.find<TokenStore>();
+
+  /// Hydrate [isLoggedIn] from secure storage.
+  /// Must be called once after construction (e.g. in `main.dart`).
+  Future<TokenStore> init() async {
+    isLoggedIn.value = await hasTokens;
+    return this;
+  }
 
   // ── Read ──────────────────────────────────────────────────────
 
@@ -38,6 +49,7 @@ class TokenStore extends GetxService {
       _storage.write(key: _keyRefresh, value: refreshToken),
       if (phone != null) _storage.write(key: _keyPhone, value: phone),
     ]);
+    isLoggedIn.value = true;
   }
 
   Future<void> updateAccessToken(String token) async {
@@ -60,6 +72,7 @@ class TokenStore extends GetxService {
       _storage.delete(key: _keyRefresh),
       _storage.delete(key: _keyPhone),
     ]);
+    isLoggedIn.value = false;
   }
 
   // ── Convenience ───────────────────────────────────────────────
