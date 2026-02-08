@@ -18,6 +18,9 @@ import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
 import 'package:auto_tm/screens/splash_screen/custom_splash_screen.dart';
 import 'package:auto_tm/services/notification_sevice/notification_service.dart';
 import 'package:auto_tm/services/auth/auth_service.dart';
+import 'package:auto_tm/services/blog_service.dart'; // Added BlogService import
+import 'package:auto_tm/services/subscription_service.dart';
+import 'package:auto_tm/services/brand_history_service.dart';
 import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/utils/themes.dart';
@@ -280,17 +283,43 @@ Future<void> initServices() async {
   // Register AuthService (phone OTP + session). Must come after TokenStore and ApiClient.
   if (!Get.isRegistered<AuthService>()) {
     try {
-      await Get.putAsync(() async => await AuthService().init());
+      Get.put(AuthService()); // AuthService uses default constructor
       // #region agent log
-      _logDebug('main.dart:initServices:129', 'AuthService.init() completed', {}, hypothesisId: 'D');
+      _logDebug('main.dart:initServices:129', 'AuthService registered', {}, hypothesisId: 'D');
       // #endregion
     } catch (e, stackTrace) {
       // #region agent log
-      _logDebug('main.dart:initServices:132', 'AuthService.init() failed', {'error': e.toString(), 'errorType': e.runtimeType.toString(), 'stackTrace': stackTrace.toString()}, hypothesisId: 'D');
+      _logDebug('main.dart:initServices:132', 'AuthService registration failed', {'error': e.toString(), 'errorType': e.runtimeType.toString(), 'stackTrace': stackTrace.toString()}, hypothesisId: 'D');
       // #endregion
       rethrow;
     }
   }
+
+  // Register BlogService
+  if (!Get.isRegistered<BlogService>()) {
+    try {
+      Get.put(BlogService(Get.find<ApiClient>())); // Added BlogService registration
+      // #region agent log
+      _logDebug('main.dart:initServices:XXX', 'BlogService registered', {}, hypothesisId: 'X');
+      // #endregion
+    } catch (e, stackTrace) {
+      // #region agent log
+      _logDebug('main.dart:initServices:XXX', 'BlogService registration failed', {'error': e.toString(), 'errorType': e.runtimeType.toString(), 'stackTrace': stackTrace.toString()}, hypothesisId: 'X');
+      // #endregion
+      rethrow;
+    }
+  }
+
+  // Register SubscriptionService
+  if (!Get.isRegistered<SubscriptionService>()) {
+    Get.put(SubscriptionService(Get.find<ApiClient>()));
+  }
+
+  // Register BrandHistoryService
+  if (!Get.isRegistered<BrandHistoryService>()) {
+    Get.put(BrandHistoryService(Get.find<ApiClient>()));
+  }
+
   
   try {
     await Get.putAsync(() async => NotificationService()..init());

@@ -1,10 +1,6 @@
-import 'dart:convert';
-import 'dart:isolate';
-
-import 'package:auto_tm/utils/key.dart';
+import 'package:auto_tm/services/brand_history_service.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:http/http.dart' as http;
 
 class BrandController extends GetxController {
   final box = GetStorage();
@@ -12,6 +8,7 @@ class BrandController extends GetxController {
   var brands = <Map<String, dynamic>>[].obs;
   var isLodaing = false.obs;
   
+  BrandHistoryService get _brandHistoryService => Get.find<BrandHistoryService>();
 
   List<String> loadHistory() {
     return box.read<List<String>>('brand_history') ?? [];
@@ -38,35 +35,11 @@ class BrandController extends GetxController {
       return;
     }
 
-    final url = Uri.parse(ApiKey.getBrandsHistoryKey);
     try {
-      final response = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          // 'Authorization': 'Bearer ${box.read('ACCESS_TOKEN')}'
-        },
-        body: json.encode({
-          "uuids": lastBrands,
-          'post' : false
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        // final data = json.decode(response.body);
-        brands.value = await Isolate.run(() {
-          final jsonData = json.decode(response.body);
-          return List<Map<String, dynamic>>.from(jsonData);
-        });
-      }
-      isLodaing.value = false;
-      // if (response.statusCode == 406) {
-      //   print('00000 favorites');
-      //   await refreshAccesToken();
-      // }
-
-      // ignore: empty_catches
+      final result = await _brandHistoryService.fetchBrandsByUuids(lastBrands.toList());
+      brands.value = result;
     } catch (e) {
+      // Error already logged in service
     } finally {
       isLodaing.value = false;
     }

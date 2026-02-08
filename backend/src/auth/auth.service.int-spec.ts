@@ -27,6 +27,7 @@ import * as dotenv from 'dotenv';
 import * as pg from 'pg';
 import * as bcrypt from 'bcryptjs';
 import { hashToken, validateToken } from "../utils/token.utils";
+import { UserFactory } from "../../test/factories/user.factory";
 
 dotenv.config({ path: '.env.test' });
 
@@ -88,15 +89,13 @@ describe("AuthService (Integration)", () => {
 
     it("should rotate tokens on refresh", async () => {
         // 1. Create User with a valid refresh token hash
-        const userId = uuidv4();
-        const oldRefreshToken = jwtService.sign({ uuid: userId }, { secret: process.env.REFRESH_TOKEN_SECRET_KEY || 'test_refresh_secret' });
+        const oldRefreshToken = jwtService.sign({ uuid: 'ignore_this' }, { secret: process.env.REFRESH_TOKEN_SECRET_KEY || 'test_refresh_secret' });
         const oldHash = await hashToken(oldRefreshToken);
 
-        await User.create({
-            uuid: userId,
-            phone: "+99360000001",
+        const user = await UserFactory.create({
             refreshTokenHash: oldHash
-        } as any);
+        });
+        const userId = user.uuid;
 
         // 2. Call Refresh
         const req: any = {
@@ -123,12 +122,10 @@ describe("AuthService (Integration)", () => {
     });
 
     it("should revoke session on logout", async () => {
-        const userId = uuidv4();
-        await User.create({
-            uuid: userId,
-            phone: "+99360000002",
+        const user = await UserFactory.create({
             refreshTokenHash: "some_hash"
-        } as any);
+        });
+        const userId = user.uuid;
 
         const req: any = { uuid: userId };
         const res: any = { status: jest.fn().mockReturnThis(), json: (d) => d };
@@ -147,11 +144,10 @@ describe("AuthService (Integration)", () => {
         const initialHash = await hashToken(initialToken);
 
         // 1. Setup user with a valid token
-        await User.create({
+        await UserFactory.create({
             uuid: userId,
-            phone: "+99360000003",
             refreshTokenHash: initialHash
-        } as any);
+        });
 
         // Sleep to ensure new token has different IAT
         await new Promise(r => setTimeout(r, 1100));

@@ -14,9 +14,8 @@ import 'package:auto_tm/utils/key.dart';
 import 'package:auto_tm/utils/logger.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:get/get.dart' hide Response, FormData, MultipartFile;
 import 'package:get_storage/get_storage.dart';
-import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -37,7 +36,10 @@ class ProfileController extends GetxController {
     return Get.put(ProfileController(), permanent: true);
   }
 
-  final box = GetStorage();
+  final GetStorage box;
+  
+  ProfileController({GetStorage? storage}) : box = storage ?? GetStorage();
+
   var selectedImage = Rx<Uint8List?>(null);
   // final TextEditingController phoneController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
@@ -70,6 +72,8 @@ class ProfileController extends GetxController {
       false.obs; // set true after first successful load
   // Completer to signal the first fetch completion (success, failure, or timeout)
   Completer<void>? _initialLoadCompleter;
+  
+  Timer? _watchdogTimer;
 
   /// Debug hook: logs current state flags; safe to leave in production (low cost).
   void debugDumpFlags(String label) {
@@ -136,6 +140,7 @@ class ProfileController extends GetxController {
 
   @override
   void onClose() {
+    _watchdogTimer?.cancel();
     nameController.dispose();
     locationController.dispose();
     nameFocus.dispose();
@@ -368,8 +373,10 @@ class ProfileController extends GetxController {
     Duration timeout = const Duration(seconds: 8),
   }) {
     if (hasLoadedProfile.value) return; // already loaded
+    
+    _watchdogTimer?.cancel();
     // Only schedule if this is the first creation of the completer (initial load scenario)
-    Future.delayed(timeout, () {
+    _watchdogTimer = Timer(timeout, () {
       if (!hasLoadedProfile.value && isLoading.value) {
         AppLogger.w(
           'Initial profile load exceeded ${timeout.inSeconds}s; releasing spinner for manual entry',
@@ -547,63 +554,49 @@ class ProfileController extends GetxController {
   }
 
   Future<void> uploadImage(Uint8List imageBytes) async {
-    final accessToken = await TokenStore.to.accessToken;
-    if (accessToken == null || accessToken.isEmpty) {
-      AppLogger.w('uploadImage: No access token found');
-      return;
-    }
-    final uri = Uri.parse(ApiKey.putUserPhotoKey); // Replace with your API URL
-
-    final request = http.MultipartRequest('PUT', uri)
-      ..headers['Authorization'] = 'Bearer $accessToken'
-      ..fields['uuid'] = profile
-          .value!
-          .uuid // Attach UUID
-      ..files.add(
-        http.MultipartFile.fromBytes(
-          'file', // field name expected by backend
+    // Token is handled by ApiClient interceptor automatically
+    try {
+      final formData = FormData.fromMap({
+        'uuid': profile.value!.uuid,
+        'file': MultipartFile.fromBytes(
           imageBytes,
           filename: 'image.jpg',
           contentType: MediaType('image', 'jpeg'),
         ),
-      );
+      });
 
-    final response = await request.send();
-    String? bodyString;
-    Map<String, dynamic>? jsonBody;
-    try {
-      bodyString = await response.stream.bytesToString();
-      if (bodyString.isNotEmpty) {
-        jsonBody = json.decode(bodyString);
-      }
-    } catch (_) {}
+      // Use relative path 'photo/user' - Base URL is handled by ApiClient
+      final response = await ApiClient.to.dio.put('photo/user', data: formData);
 
-    if (response.statusCode == 200 && jsonBody != null) {
-      final paths = jsonBody['paths'];
-      String? chosen;
-      if (paths is Map) {
-        chosen =
-            paths['medium']?.toString() ??
-            paths['large']?.toString() ??
-            paths['small']?.toString();
-      }
-      if (chosen != null && chosen.isNotEmpty) {
-        final current = profile.value;
-        if (current != null) {
-          profile.value = ProfileModel(
-            uuid: current.uuid,
-            name: current.name,
-            email: current.email,
-            phone: current.phone,
-            location: current.location,
-            avatar: chosen,
-            createdAt: current.createdAt,
-            brandUuid: current.brandUuid,
-          );
+      if (response.statusCode == 200 && response.data != null) {
+        final jsonBody = response.data;
+        final paths = jsonBody['paths'];
+        String? chosen;
+        if (paths is Map) {
+          chosen =
+              paths['medium']?.toString() ??
+              paths['large']?.toString() ??
+              paths['small']?.toString();
+        }
+        if (chosen != null && chosen.isNotEmpty) {
+          final current = profile.value;
+          if (current != null) {
+            profile.value = ProfileModel(
+              uuid: current.uuid,
+              name: current.name,
+              email: current.email,
+              phone: current.phone,
+              location: current.location,
+              avatar: chosen,
+              createdAt: current.createdAt,
+              brandUuid: current.brandUuid,
+            );
+          }
         }
       }
+    } catch (e) {
+      AppLogger.e('Error uploading image', error: e);
     }
-    // Auth errors (401/406) are now handled by ApiClient interceptor for Dio calls.
   }
 
   Future<void> uploadProfile() async {
@@ -684,27 +677,14 @@ class ProfileController extends GetxController {
 
   Future<bool> postUserDataSave() async {
     try {
-      final accessToken = await TokenStore.to.accessToken;
-      if (accessToken == null || accessToken.isEmpty) {
-        AppLogger.w('postUserDataSave: No access token found');
-        return false;
-      }
       final trimmedName = nameController.text.trim();
       final Map<String, dynamic> body = {
         if (trimmedName.isNotEmpty) 'name': trimmedName,
         'location': locationController.text,
       };
 
-      final response = await http.put(
-        Uri.parse(ApiKey.setPasswordKey),
-        headers: {
-          "Content-Type": "application/json",
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: json.encode(body),
-      );
-
-      // final resBody = json.decode(response.body);
+      // Use relative path 'auth' which maps to ApiKey.setPasswordKey relative logic
+      final response = await ApiClient.to.dio.put('auth', data: body);
 
       if (response.statusCode == 200) {
         if ((body['name'] ?? '').toString().isNotEmpty) {
@@ -714,13 +694,9 @@ class ProfileController extends GetxController {
         return true; // local merge will happen in uploadProfile
       }
 
-      if (response.statusCode == 401) {
-        // Session expired — redirect to login
-        return false;
-      }
-
       return false;
     } catch (e) {
+      AppLogger.e('Error saving user data', error: e);
       return false;
     } finally {
       isLoadingN.value = false;
