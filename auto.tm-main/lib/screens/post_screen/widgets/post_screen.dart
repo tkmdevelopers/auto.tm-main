@@ -3,12 +3,14 @@ import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
 import 'dart:async'; // for Timer debounce
 import 'package:auto_tm/screens/post_screen/widgets/location_selection.dart';
 import 'package:auto_tm/screens/post_screen/widgets/post_video_photo_widget.dart';
+import 'package:auto_tm/screens/post_screen/widgets/post_form_fields.dart';
+import 'package:auto_tm/screens/post_screen/widgets/post_bottom_sheets.dart';
+import 'package:auto_tm/screens/post_screen/widgets/post_bottom_bar.dart';
+import 'package:auto_tm/screens/post_screen/widgets/post_contact_section.dart';
 // upload_progress_screen deprecated
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// Removed design primitive imports (AppCard/AppSection) since they don't exist in project; using local _buildSectionCard.
 import 'package:get/get.dart';
-import 'package:pinput/pinput.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
 import 'package:get_storage/get_storage.dart';
 import '../controller/upload_manager.dart';
@@ -331,8 +333,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                         child: const SizedBox.shrink(),
                       ),
                     ),
-                    _buildSectionCard(
-                      context,
+                    PostSectionCard(
                       icon: Icons.perm_media_outlined,
                       title: 'post_photos_video'.tr,
                       child: Column(
@@ -342,20 +343,45 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                     // Vehicle Section (Brand, Model, Condition, Year)
                     Container(
                       key: _vehicleSectionKey,
-                      child: _buildSectionCard(
-                        context,
+                      child: PostSectionCard(
                         icon: Icons.directions_car_filled_outlined,
                         title: 'post_vehicle'.tr,
                         child: Column(
                           children: [
                             Obx(
-                              () => _buildSelectableField(
-                                context,
+                              () => PostSelectableField(
                                 label: 'Brand'.tr,
                                 value: postController.selectedBrand.value,
                                 hint: 'Select brand'.tr,
                                 onTap: () => _openSelection(() async {
-                                  await _showBrandBottomSheet(context);
+                                  await showBrandBottomSheet(
+                                    context,
+                                    postController: postController,
+                                    onBrandSelected: (uuid, name) {
+                                      final changed =
+                                          postController.selectedBrandUuid.value !=
+                                          uuid;
+                                      postController.selectedBrand.value = name;
+                                      postController.selectedBrandUuid.value = uuid;
+                                      if (changed) {
+                                        postController.selectedModel.value = '';
+                                        postController.selectedModelUuid.value = '';
+                                        postController.models.clear();
+                                        postController.fetchModels(
+                                          uuid,
+                                          showLoading: false,
+                                        );
+                                        setState(() {
+                                          _modelError = null;
+                                        });
+                                      }
+                                      setState(() {
+                                        _brandError = null;
+                                      });
+                                      postController.markFieldChanged();
+                                    },
+                                    onClose: _safeCloseOverlay,
+                                  );
                                 }),
                                 isRequired: true,
                                 icon: Icons.factory_outlined,
@@ -363,8 +389,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                               ),
                             ),
                             Obx(
-                              () => _buildSelectableField(
-                                context,
+                              () => PostSelectableField(
                                 label: 'Model'.tr,
                                 value: postController.selectedModel.value,
                                 hint:
@@ -379,7 +404,19 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                     .value
                                     .isNotEmpty,
                                 onTap: () => _openSelection(() async {
-                                  await _showModelBottomSheet(context);
+                                  await showModelBottomSheet(
+                                    context,
+                                    postController: postController,
+                                    onModelSelected: (uuid, name) {
+                                      postController.selectedModel.value = name;
+                                      postController.selectedModelUuid.value = uuid;
+                                      setState(() {
+                                        _modelError = null;
+                                      });
+                                      postController.markFieldChanged();
+                                    },
+                                    onClose: _safeCloseOverlay,
+                                  );
                                 }),
                                 isRequired: true,
                                 icon: Icons.directions_car_outlined,
@@ -387,35 +424,38 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                               ),
                             ),
                             Obx(
-                              () => _buildSelectableField(
-                                context,
+                              () => PostSelectableField(
                                 label: 'Condition'.tr,
                                 value: postController.selectedCondition.value,
                                 hint: 'Select condition'.tr,
                                 onTap: () => _openSelection(() async {
-                                  await _showOptionsBottomSheet(
+                                  await showOptionsBottomSheet(
                                     context,
-                                    'Condition'.tr,
-                                    [
+                                    title: 'Condition'.tr,
+                                    options: [
                                       {'value': 'New', 'displayKey': 'New'},
                                       {'value': 'Used', 'displayKey': 'Used'},
                                     ],
-                                    postController.selectedCondition,
+                                    selectedValue: postController.selectedCondition,
+                                    onClose: _safeCloseOverlay,
                                   );
                                 }),
                                 isRequired: true,
                               ),
                             ),
                             Obx(
-                              () => _buildSelectableField(
-                                context,
+                              () => PostSelectableField(
                                 label: 'Year'.tr,
                                 value: postController.selectedYear.value.isEmpty
                                     ? ''
                                     : postController.selectedYear.value,
                                 hint: 'Select year'.tr,
                                 onTap: () => _openSelection(() async {
-                                  await _showYearBottomSheet(context);
+                                  await showYearBottomSheet(
+                                    context,
+                                    postController: postController,
+                                    onClose: _safeCloseOverlay,
+                                  );
                                 }),
                                 isRequired: true,
                                 icon: Icons.calendar_today_outlined,
@@ -425,14 +465,12 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
-                    _buildSectionCard(
-                      context,
+                    PostSectionCard(
                       icon: Icons.price_change_outlined,
                       title: 'post_pricing'.tr,
                       child: Column(
                         children: [
-                          _buildTextFormField(
-                            context,
+                          PostTextFormField(
                             label: 'Price'.tr,
                             controller: postController.price,
                             keyboardType: TextInputType.number,
@@ -442,6 +480,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(11),
                             ],
+                            onFieldChanged: () => postController.markFieldChanged(),
                             validatorFn: (value) {
                               // Remove leading zeros
                               final trimmed = value.replaceAll(
@@ -505,13 +544,11 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                         ],
                       ),
                     ),
-                    _buildSectionCard(
-                      context,
+                    PostSectionCard(
                       icon: Icons.location_on_outlined,
                       title: 'Location'.tr, // post_location_section
                       child: Obx(
-                        () => _buildSelectableField(
-                          context,
+                        () => PostSelectableField(
                           label: "Location".tr,
                           value: postController.selectedLocation.value,
                           hint: 'post_select_location'.tr,
@@ -530,191 +567,29 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
-                    _buildSectionCard(
-                      context,
+                    PostSectionCard(
                       icon: Icons.phone_outlined,
                       title: 'post_contact_info'.tr,
-                      child: Obx(() {
-                        return Column(
-                          children: [
-                            _buildTextFormField(
-                              context,
-                              label: 'Phone number'.tr,
-                              controller: postController.phoneController,
-                              keyboardType: TextInputType.phone,
-                              hint: '61234567',
-                              prefixText: '+993 ',
-                              // Enforce subscriber-only 8 digits
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(8),
-                              ],
-                              isRequired: true,
-                              // Add a suffix with a verified chip when applicable
-                              // Suffix shows a small 'Verified' chip when phone matches trusted original & no OTP needed
-                              suffix: Obx(() {
-                                final showChip =
-                                    postController.isPhoneVerified.value &&
-                                    !postController.needsOtp.value;
-                                if (!showChip) return const SizedBox.shrink();
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 8.0),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.primaryContainer,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.verified_rounded,
-                                          size: 16,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'post_verified'.tr,
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: theme.colorScheme.primary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }),
-                            ),
-                            if (!postController.isPhoneVerified.value &&
-                                postController.needsOtp.value)
-                              Column(
-                                children: [
-                                  const SizedBox(height: 8),
-                                  if (postController.showOtpField.value)
-                                    Pinput(
-                                      length: 5,
-                                      defaultPinTheme: PinTheme(
-                                        width: 48,
-                                        height: 56,
-                                        textStyle: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600,
-                                          color: theme.colorScheme.onSurface,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.05),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                      ),
-                                      focusedPinTheme: PinTheme(
-                                        width: 48,
-                                        height: 56,
-                                        textStyle: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.bold,
-                                          color: theme.colorScheme.onSurface,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.05),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          border: Border.all(
-                                            color: theme.colorScheme.onSurface,
-                                          ),
-                                        ),
-                                      ),
-                                      focusNode: postController.otpFocus,
-                                      controller: postController.otpController,
-                                      onCompleted: (pin) =>
-                                          postController.verifyOtp(),
-                                    ),
-                                  const SizedBox(height: 16),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: FilledButton.icon(
-                                      icon: postController.showOtpField.value
-                                          ? const Icon(
-                                              Icons.check_circle_outline,
-                                            )
-                                          : const Icon(Icons.send_outlined),
-                                      label: Text(
-                    postController.showOtpField.value
-                      ? 'post_verify_otp'.tr
-                      : 'post_send_otp'.tr,
-                                      ),
-                                      onPressed:
-                                          postController.showOtpField.value
-                                          ? () => postController.verifyOtp()
-                                          : (postController.isSendingOtp.value
-                                                ? null
-                                                : () =>
-                                                      postController.sendOtp()),
-                                      style: FilledButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Obx(() {
-                                    if (postController.countdown.value > 0) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 8.0,
-                                        ),
-                                        child: Text(
-                                          'post_resend_code_in'.trParams({'seconds': postController.countdown.value.toString()}),
-                                          style: TextStyle(
-                                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                                          ),
-                                        ),
-                                      );
-                                    } else if (postController
-                                        .showOtpField
-                                        .value) {
-                                      return TextButton(
-                                        onPressed: () =>
-                                            postController.sendOtp(),
-                                        child: Text('post_resend_code'.tr),
-                                      );
-                                    } else {
-                                      return const SizedBox.shrink();
-                                    }
-                                  }),
-                                ],
-                              ),
-                          ],
-                        );
-                      }),
+                      child: PostContactSection(
+                        postController: postController,
+                        onFieldChanged: () => postController.markFieldChanged(),
+                      ),
                     ),
-                    _buildSectionCard(
-                      context,
+                    PostSectionCard(
                       icon: Icons.engineering_outlined,
                       title: 'post_technical_details'.tr,
                       child: Column(
                         children: [
                           Obx(
-                            () => _buildSelectableField(
-                              context,
+                            () => PostSelectableField(
                               label: 'Engine type'.tr,
                               value: postController.selectedEngineType.value,
                               hint: 'Select engine type'.tr,
                               onTap: () => _openSelection(() async {
-                                await _showOptionsBottomSheet(
+                                await showOptionsBottomSheet(
                                   context,
-                                  'Engine type'.tr,
-                                  [
+                                  title: 'Engine type'.tr,
+                                  options: [
                                     {'value': 'Petrol', 'displayKey': 'Petrol'},
                                     {'value': 'Diesel', 'displayKey': 'Diesel'},
                                     {'value': 'Hybrid', 'displayKey': 'Hybrid'},
@@ -723,20 +598,24 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                       'displayKey': 'Electric',
                                     },
                                   ],
-                                  postController.selectedEngineType,
+                                  selectedValue: postController.selectedEngineType,
+                                  onClose: _safeCloseOverlay,
                                 );
                               }),
                               isRequired: false, // now optional
                             ),
                           ),
                           // Engine Power now selection-only (no free text)
-                          _buildSelectableField(
-                            context,
+                          PostSelectableField(
                             label: 'post_engine_power_l_label'.tr,
                             value: postController.enginePower.text,
                             hint: 'post_select_engine_size'.tr,
                             onTap: () async {
-                              await _showEnginePowerBottomSheet(context);
+                              await showEnginePowerBottomSheet(
+                                context,
+                                postController: postController,
+                                onClose: _safeCloseOverlay,
+                              );
                               setState(() {}); // refresh displayed value
                             },
                             isRequired: false,
@@ -744,16 +623,15 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                           ),
                           // Transmission type (moved into Technical Details now instead of Condition/Year)
                           Obx(
-                            () => _buildSelectableField(
-                              context,
+                            () => PostSelectableField(
                               label: 'Transmission'.tr,
                               value: postController.selectedTransmission.value,
                               hint: 'Select transmission'.tr,
                               onTap: () => _openSelection(() async {
-                                await _showOptionsBottomSheet(
+                                await showOptionsBottomSheet(
                                   context,
-                                  'Transmission'.tr,
-                                  [
+                                  title: 'Transmission'.tr,
+                                  options: [
                                     {
                                       'value': 'Automatic',
                                       'displayKey': 'Automatic',
@@ -768,30 +646,31 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                       'displayKey': 'transmission_dual_clutch', // localized display
                                     },
                                   ],
-                                  postController.selectedTransmission,
+                                  selectedValue: postController.selectedTransmission,
+                                  onClose: _safeCloseOverlay,
                                 );
                               }),
                               isRequired: false,
                             ),
                           ),
-                          _buildTextFormField(
-                            context,
+                          PostTextFormField(
                             label: 'post_mileage_km_label'.tr,
                             controller: postController.milleage,
                             keyboardType: TextInputType.number,
                             hint: 'post_mileage_example'.tr,
+                            onFieldChanged: () => postController.markFieldChanged(),
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(9),
                             ],
                           ),
-                          _buildTextFormField(
-                            context,
+                          PostTextFormField(
                             label: 'Description'.tr,
                             controller: postController.description,
                             keyboardType: TextInputType.multiline,
                             hint: 'post_description_hint'.tr,
                             maxLines: 5,
+                            onFieldChanged: () => postController.markFieldChanged(),
                           ),
                         ],
                       ),
@@ -802,7 +681,20 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
             ),
           ),
         ),
-        bottomNavigationBar: _buildBottomBar(theme),
+        bottomNavigationBar: PostBottomBar(
+          postController: postController,
+          onPost: () => postController.startManagedUpload(),
+          onUploadBlocked: _showUploadBlockedDialog,
+          brandError: _brandError,
+          modelError: _modelError,
+          onValidationFailed: (bErr, mErr) {
+            setState(() {
+              _brandError = bErr;
+              _modelError = mErr;
+            });
+            _scrollToVehicleSection();
+          },
+        ),
       ),
     );
   }
@@ -889,906 +781,6 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildSectionCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required Widget child,
-  }) {
-    final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: theme.colorScheme.onSurface, size: 22),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Divider(height: 24),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomBar(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          top: BorderSide(
-            color: theme.colorScheme.outline.withValues(alpha: 0.2),
-          ),
-        ),
-      ),
-      child: Obx(() {
-        final isPosting = postController.isPosting.value;
-        final manager = Get.find<UploadManager>();
-        final task = manager.currentTask.value;
-        final locked = manager.isLocked.value;
-        final failedOrCancelled = task != null && task.isFailed.value;
-        return Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: OutlinedButton(
-                // Enable save if there is any input; internally validate requirements.
-                onPressed: postController.hasAnyInput
-                    ? () {
-                        // If nothing changed and already saved, give feedback.
-                        if (postController.isFormSaved.value &&
-                            !postController.isDirty.value) {
-                          Get.rawSnackbar(
-                            message: 'No changes to save'.tr,
-                            duration: const Duration(seconds: 2),
-                          );
-                          return;
-                        }
-                        final wasCompleteBefore = postController.hasMinimumData;
-                        postController.saveForm();
-                        final nowComplete = postController.hasMinimumData;
-                        final msg = nowComplete
-                            ? 'Form saved'.tr // post_form_saved
-                            : (wasCompleteBefore
-                                ? 'Form saved (still complete)'.tr // post_form_saved_still_complete
-                                : 'Partial form saved'.tr); // post_partial_form_saved
-                        Get.rawSnackbar(
-                          message: msg,
-                          duration: const Duration(seconds: 2),
-                        );
-                      }
-                    : null,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: Obx(() {
-                  final saved = postController.isFormSaved.value;
-                  final dirty = postController.isDirty.value;
-          final label = saved
-            ? (dirty ? 'post_save_form'.tr : 'post_saved'.tr)
-            : 'post_save_form'.tr;
-                  return Text(label);
-                }),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 3,
-              child: FilledButton(
-                onPressed: isPosting
-                    ? null
-                    : () async {
-                        setState(() {
-                          _brandError =
-                              postController.selectedBrandUuid.value.isEmpty
-                              ? 'Brand required'.tr // post_brand_required
-                              : null;
-                          _modelError = postController.selectedModelUuid.value.isEmpty
-                              ? 'Model required'.tr // post_model_required
-                              : null;
-                        });
-                        if (_brandError != null || _modelError != null) {
-                          _scrollToVehicleSection();
-                          return;
-                        }
-                        if (locked && task != null) {
-                          _showUploadBlockedDialog(context, manager, task);
-                          return;
-                        }
-                        if (!postController.isPhoneVerified.value) {
-                          Get.snackbar(
-                            'Error',
-                            'You have to go through OTP verification.'.tr, // post_error_otp_required
-                            snackPosition: SnackPosition.BOTTOM,
-                          );
-                          return;
-                        }
-                        await postController.startManagedUpload();
-                      },
-                style: FilledButton.styleFrom(
-                  backgroundColor: theme.colorScheme.onSurface,
-                  disabledBackgroundColor: theme.colorScheme.onSurface
-                      .withValues(alpha: 0.3),
-                  foregroundColor: theme.colorScheme.surface,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: isPosting
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                theme.colorScheme.surface,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Posting...'.tr, // post_posting
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      )
-                    : (locked && failedOrCancelled
-                          ? Text(
-                              'Resolve pending upload'.tr, // post_resolve_pending_upload
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            )
-                          : Text(
-                              'post_post_action'.tr,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            )),
-              ),
-            ),
-            const SizedBox(width: 12),
-            IconButton(
-              tooltip: 'Reset form'.tr, // post_reset_form
-              onPressed:
-                  (postController.hasAnyInput ||
-                      postController.isFormSaved.value ||
-                      postController.isDirty.value)
-                  ? () {
-                      final hadSaved = postController.isFormSaved.value;
-                      postController.clearSavedForm();
-                      postController.reset();
-                      Get.rawSnackbar(
-                        message: hadSaved ? 'Form cleared'.tr : 'Form reset'.tr, // post_form_cleared / post_form_reset
-                        duration: const Duration(seconds: 2),
-                      );
-                    }
-                  : null,
-              icon: Icon(
-                Icons.refresh_rounded,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-          ],
-        );
-      }),
-    );
-  }
-
-  Widget _buildSelectableField(
-    BuildContext context, {
-    required String label,
-    required String value,
-    required String hint,
-    required VoidCallback onTap,
-    bool enabled = true,
-    bool isRequired = false,
-    IconData? icon,
-    String? errorText,
-  }) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildLabel(context, label, isRequired: isRequired),
-          InkWell(
-            onTap: enabled ? onTap : null,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withValues(
-                  alpha: enabled ? 0.05 : 0.03,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: errorText == null
-                      ? (enabled
-                            ? theme.colorScheme.outline.withValues(alpha: 0.3)
-                            : theme.colorScheme.outline.withValues(alpha: 0.15))
-                      : theme.colorScheme.error,
-                ),
-              ),
-              child: Row(
-                children: [
-                  if (icon != null)
-                    Icon(
-                      icon,
-                      color: !enabled
-                          ? theme.colorScheme.onSurface.withValues(alpha: 0.3)
-                          : (errorText == null
-                                ? theme.colorScheme.onSurface.withValues(
-                                    alpha: 0.7,
-                                  )
-                                : theme.colorScheme.error),
-                      size: 20,
-                    ),
-                  if (icon != null) const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      value.isEmpty ? hint : value,
-                      style: TextStyle(
-                        color: !enabled
-                            ? theme.colorScheme.onSurface.withValues(alpha: 0.3)
-                            : (value.isEmpty
-                                  ? theme.colorScheme.onSurface.withValues(
-                                      alpha: 0.5,
-                                    )
-                                  : theme.colorScheme.onSurface),
-                        fontWeight: FontWeight.w500,
-                        fontSize: 16,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      softWrap: false,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: !enabled
-                        ? theme.colorScheme.onSurface.withValues(alpha: 0.25)
-                        : (errorText == null
-                              ? theme.colorScheme.onSurface.withValues(
-                                  alpha: 0.5,
-                                )
-                              : theme.colorScheme.error),
-                    size: 16,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (errorText != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4, left: 4),
-              child: Text(
-                errorText,
-                style: TextStyle(
-                  color: theme.colorScheme.error,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLabel(
-    BuildContext context,
-    String label, {
-    bool isRequired = false,
-  }) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: RichText(
-        text: TextSpan(
-          text: label,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            color: theme.colorScheme.onSurface,
-            fontSize: 14,
-          ),
-          children: [
-            if (isRequired)
-              TextSpan(
-                text: ' *',
-                style: TextStyle(
-                  color: theme.colorScheme.error,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextFormField(
-    BuildContext context, {
-    required String label,
-    required TextEditingController controller,
-    required TextInputType keyboardType,
-    required String hint,
-    bool isRequired = false,
-    int maxLines = 1,
-    String? prefixText,
-    Widget? suffix,
-    List<TextInputFormatter>? inputFormatters,
-    String? Function(String value)? validatorFn,
-  }) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildLabel(context, label, isRequired: isRequired),
-          TextFormField(
-            controller: controller,
-            keyboardType: keyboardType,
-            maxLines: maxLines,
-            inputFormatters: inputFormatters,
-            style: TextStyle(
-              color: theme.colorScheme.onSurface,
-              fontWeight: FontWeight.w500,
-            ),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                fontWeight: FontWeight.normal,
-              ),
-              prefixText: prefixText,
-              prefixStyle: TextStyle(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-                fontSize: 16,
-              ),
-              suffixIcon: suffix,
-              filled: true,
-              fillColor: theme.colorScheme.onSurface.withValues(alpha: 0.05),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.3),
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.3),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.onSurface,
-                  width: 1.5,
-                ),
-              ),
-            ),
-            onChanged: (v) {
-              if (validatorFn != null) {
-                validatorFn(v.trim());
-              }
-              postController.markFieldChanged();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // _buildCheckbox removed (unused after UI simplification).
-
-  Future<void> _showBrandBottomSheet(BuildContext context) async {
-    final theme = Theme.of(context);
-    final postController = Get.find<PostController>();
-    // Reset brand search query each time sheet opens
-    postController.brandSearchQuery.value = '';
-
-    return Get.bottomSheet(
-      Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                "Select Brand".tr,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search brand...'.tr, // post_brand_search_hint
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: theme.colorScheme.onSurface.withValues(
-                    alpha: 0.05,
-                  ),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                onChanged: (value) {
-                  postController.brandSearchQuery.value = value;
-                },
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: Obx(() {
-                if (postController.isLoadingB.value) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final brands = postController.filteredBrands;
-                if (brands.isEmpty) {
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text("No brands found".tr), // post_no_brands_found
-                      const SizedBox(height: 12),
-                      FilledButton.icon(
-                        onPressed: () =>
-                            postController.fetchBrands(forceRefresh: true),
-                        icon: const Icon(Icons.refresh),
-                        label: Text('post_retry'.tr),
-                      ),
-                    ],
-                  );
-                }
-                return ListView.builder(
-                  itemCount: brands.length,
-                  itemBuilder: (context, index) {
-                    final brand = brands[index];
-                    return RadioListTile(
-                      // TODO(RadioGroup-migration): Replace individual RadioListTile usages
-                      // with a parent RadioGroup widget once refactor begins.
-                      // Plan:
-                      // 1. Introduce a StatelessWidget wrapping RadioGroup<String> providing
-                      //    options + selectedValue + onChanged.
-                      // 2. Migrate this builder to emit RadioMenuButton or custom
-                      //    list tiles inside RadioGroup.
-                      // 3. Remove deprecated groupValue/onChanged parameters.
-                      // 4. Add semantic labels for accessibility.
-                      title: Text(
-                        brand.name,
-                        style: TextStyle(color: theme.colorScheme.onSurface),
-                      ),
-                      value: brand.uuid,
-                      groupValue: postController.selectedBrandUuid.value,
-                      onChanged: (newValue) {
-                        if (!NavigationUtils.throttle('brand_select')) return;
-                        final changed =
-                            postController.selectedBrandUuid.value !=
-                            brand.uuid;
-                        postController.selectedBrand.value = brand.name;
-                        postController.selectedBrandUuid.value = brand.uuid;
-                        if (changed) {
-                          // Clear any previously selected model when brand changes
-                          postController.selectedModel.value = '';
-                          postController.selectedModelUuid.value = '';
-                          postController.models.clear();
-                          // Prefetch models silently for new brand
-                          postController.fetchModels(
-                            brand.uuid,
-                            showLoading: false,
-                          );
-                          setState(() {
-                            _modelError =
-                                null; // clear stale model error if any
-                          });
-                        }
-                        setState(() {
-                          _brandError = null; // clear brand validation error
-                        });
-                        postController.markFieldChanged();
-                        if (!mounted) return;
-                        if (Get.isBottomSheetOpen == true) _safeCloseOverlay();
-                      },
-                      activeColor: theme.colorScheme.onSurface,
-                    );
-                  },
-                );
-              }),
-            ),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-    );
-  }
-
-  Future<void> _showModelBottomSheet(BuildContext context) async {
-    final theme = Theme.of(context);
-    final postController = Get.find<PostController>();
-    // Reset model search query each open
-    postController.searchModel.value = '';
-
-    return Get.bottomSheet(
-      Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                "Select Model".tr,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search model...'.tr, // post_model_search_hint
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: theme.colorScheme.onSurface.withValues(
-                    alpha: 0.05,
-                  ),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                onChanged: (value) {
-                  postController.searchModel.value = value;
-                },
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: Obx(() {
-                if (postController.isLoadingM.value) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final models = postController.filteredModels;
-                if (models.isEmpty) {
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text("No models found".tr), // post_no_models_found
-                      const SizedBox(height: 12),
-                      FilledButton.icon(
-                        onPressed: () => postController.fetchModels(
-                          postController.selectedBrandUuid.value,
-                          forceRefresh: true,
-                        ),
-                        icon: const Icon(Icons.refresh),
-                        label: Text('post_retry'.tr),
-                      ),
-                    ],
-                  );
-                }
-                return ListView.builder(
-                  itemCount: models.length,
-                  itemBuilder: (context, index) {
-                    final model = models[index];
-                    return ListTile(
-                      title: Text(
-                        model.name,
-                        style: TextStyle(color: theme.colorScheme.onSurface),
-                      ),
-                      onTap: () {
-                        if (!NavigationUtils.throttle('model_select')) return;
-                        postController.selectedModel.value = model.name;
-                        postController.selectedModelUuid.value = model.uuid;
-                        setState(() {
-                          _modelError = null;
-                        });
-                        postController.markFieldChanged();
-                        if (!mounted) return;
-                        if (Get.isBottomSheetOpen == true) _safeCloseOverlay();
-                      },
-                    );
-                  },
-                );
-              }),
-            ),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-    );
-  }
-
-  Future<void> _showOptionsBottomSheet(
-    BuildContext context,
-    String title,
-    List<Map<String, String>> options,
-    RxString selectedValue,
-  ) async {
-    final theme = Theme.of(context);
-    return Get.bottomSheet(
-      Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-            const Divider(height: 1),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final optionData = options[index];
-                  final String englishValue = optionData['value']!;
-                  final String displayKey = optionData['displayKey']!;
-                  bool isSelected = selectedValue.value == englishValue;
-
-                  return ListTile(
-                    title: Text(
-                      displayKey.tr,
-                      style: TextStyle(
-                        color: isSelected
-                            ? theme.colorScheme.onSurface
-                            : theme.colorScheme.onSurface.withValues(
-                                alpha: 0.7,
-                              ),
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? Icon(
-                            Icons.check_circle_rounded,
-                            color: theme.colorScheme.onSurface,
-                          )
-                        : null,
-                    onTap: () {
-                      if (!NavigationUtils.throttle('option_select')) return;
-                      selectedValue.value = englishValue;
-                      // Mark form dirty / changed for partial save logic
-                      try {
-                        final pc = Get.find<PostController>();
-                        pc.markFieldChanged();
-                      } catch (_) {}
-                      _safeCloseOverlay();
-                    },
-                  );
-                },
-              ),
-            ),
-            SizedBox(height: MediaQuery.of(context).padding.bottom),
-          ],
-        ),
-      ),
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-    );
-  }
-
-  Future<void> _showEnginePowerBottomSheet(BuildContext context) async {
-    final theme = Theme.of(context);
-    final sizes = <double>[];
-    // Common engine displacements from 0.6L to 10.0L
-    for (double v = 0.6; v <= 2.0; v += 0.1)
-      sizes.add(
-        double.parse(v.toStringAsFixed(1)),
-      ); // finer granularity for small engines
-    for (double v = 2.0; v <= 6.0; v += 0.2)
-      sizes.add(double.parse(v.toStringAsFixed(1))); // mid-range
-    for (double v = 6.5; v <= 10.0; v += 0.5)
-      sizes.add(double.parse(v.toStringAsFixed(1))); // large engines
-    // Deduplicate (2.0 added twice) then sort
-    final setSizes = sizes.toSet().toList()..sort();
-    final selectedRaw = postController.enginePower.text;
-    await Get.bottomSheet(
-      Container(
-        height: MediaQuery.of(context).size.height * 0.55,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Select Engine Size (L)'.tr,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: ListView.builder(
-                itemCount: setSizes.length,
-                itemBuilder: (context, index) {
-                  final v = setSizes[index];
-                  final label = v
-                      .toStringAsFixed(1)
-                      .replaceAll(RegExp(r'\.0'), '.0');
-                  final isSelected =
-                      selectedRaw == label ||
-                      selectedRaw == label.replaceAll('.0', '');
-                  return ListTile(
-                    title: Text(
-                      '$label L',
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? Icon(
-                            Icons.check_circle_rounded,
-                            color: theme.colorScheme.onSurface,
-                          )
-                        : null,
-                    onTap: () {
-                      if (!NavigationUtils.throttle('engine_size_select'))
-                        return;
-                      postController.enginePower.text = v.toStringAsFixed(1);
-                      postController.markFieldChanged();
-                      _safeCloseOverlay();
-                    },
-                  );
-                },
-              ),
-            ),
-            SizedBox(height: MediaQuery.of(context).padding.bottom),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-    );
-  }
-
-  Future<void> _showYearBottomSheet(BuildContext context) async {
-    final theme = Theme.of(context);
-    final currentYear = DateTime.now().year;
-    // Generate descending list of years (e.g., 2025 .. 1980)
-    final years = [for (int y = currentYear; y >= 1980; y--) y];
-    await Get.bottomSheet(
-      Container(
-        height: MediaQuery.of(context).size.height * 0.55,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Select Year'.tr,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: ListView.builder(
-                itemCount: years.length,
-                itemBuilder: (context, index) {
-                  final year = years[index];
-                  final isSelected =
-                      postController.selectedYear.value == year.toString();
-                  return ListTile(
-                    title: Text(
-                      year.toString(),
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? Icon(
-                            Icons.check_circle_rounded,
-                            color: theme.colorScheme.onSurface,
-                          )
-                        : null,
-                    onTap: () {
-                      if (!NavigationUtils.throttle('year_select')) return;
-                      postController.selectedYear.value = year.toString();
-                      // Also normalize selectedDate to Jan 1 of that year for downstream logic.
-                      postController.selectedDate.value = DateTime(year, 1, 1);
-                      postController.markFieldChanged();
-                      _safeCloseOverlay();
-                    },
-                  );
-                },
-              ),
-            ),
-            SizedBox(height: MediaQuery.of(context).padding.bottom),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-    );
-  }
+  // --- Extracted to post_form_fields.dart, post_bottom_sheets.dart,
+  //     post_bottom_bar.dart, post_contact_section.dart ---
 }
