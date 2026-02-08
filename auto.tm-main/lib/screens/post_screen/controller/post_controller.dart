@@ -14,8 +14,8 @@ import 'package:get/get.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:auto_tm/services/auth/auth_service.dart';
 import 'package:auto_tm/services/post_service.dart';
+import 'phone_verification_controller.dart';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -58,15 +58,20 @@ class PostController extends GetxController {
   final TextEditingController vinCode = TextEditingController();
   final TextEditingController description = TextEditingController();
 
-  // Phone verification
-  final TextEditingController phoneController = TextEditingController();
-  // We now keep a single canonical full phone number string in +993XXXXXXXX format.
-  // Backend/user storage supplies phone like '+99361678767'. We compare exact string (after normalization).
-  String _originalFullPhone = ''; // e.g. +99361678767
-  final RxBool isOriginalPhone = true.obs;
-  final TextEditingController otpController = TextEditingController();
-  final FocusNode otpFocus = FocusNode();
-  Timer? _timer;
+  // Phone verification - delegated to PhoneVerificationController
+  late final PhoneVerificationController _phoneCtrl;
+  TextEditingController get phoneController => _phoneCtrl.phoneController;
+  TextEditingController get otpController => _phoneCtrl.otpController;
+  FocusNode get otpFocus => _phoneCtrl.otpFocus;
+  RxBool get isOriginalPhone => _phoneCtrl.isOriginalPhone;
+  RxBool get isPhoneVerified => _phoneCtrl.isPhoneVerified;
+  RxBool get isLoadingOtp => _phoneCtrl.isLoadingOtp;
+  RxInt get resendCountdown => _phoneCtrl.resendCountdown;
+  RxBool get canResend => _phoneCtrl.canResend;
+  RxBool get needsOtp => _phoneCtrl.needsOtp;
+  RxBool get showOtpField => _phoneCtrl.showOtpField;
+  RxBool get isSendingOtp => _phoneCtrl.isSendingOtp;
+  RxInt get countdown => _phoneCtrl.countdown;
 
   // Form selections
   final RxString selectedBrandUuid = ''.obs;
@@ -142,12 +147,6 @@ class PostController extends GetxController {
   static const _modelCacheKey = 'MODEL_CACHE_V1';
   static const _cacheTtl = Duration(hours: 6);
 
-  // Phone verification state
-  final RxBool isPhoneVerified = false.obs;
-  final RxBool isLoadingOtp = false.obs;
-  final RxInt resendCountdown = 0.obs;
-  final RxBool canResend = true.obs;
-
   // Form persistence and dirty tracking
   final RxBool isFormSaved = false.obs;
   final RxBool hydratedFromStorage = false.obs;
@@ -162,11 +161,6 @@ class PostController extends GetxController {
   final RxString selectedYear = ''.obs;
   final RxString brandSearchQuery = ''.obs;
   final RxString searchModel = ''.obs;
-  final RxBool needsOtp = false.obs;
-  final RxBool showOtpField = false.obs;
-  final RxBool isSendingOtp = false.obs;
-  final RxInt countdown = 0.obs;
-
   // Posts management
   final RxList<PostDto> posts = <PostDto>[].obs;
   final RxBool isLoadingP = false.obs;
@@ -199,12 +193,12 @@ class PostController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _initializeOriginalPhone();
-    _attachProfilePhoneListener();
+    // Initialize phone verification controller
+    _phoneCtrl = Get.put(PhoneVerificationController());
+    _phoneCtrl.onFieldChanged = markFieldChanged;
     _hydrateBrandCache();
     _loadSavedForm();
     _rebuildImageSigCache();
-    phoneController.addListener(_onPhoneInputChanged);
     recoverOrCleanupStaleUpload();
     _attachUploadLifecycleListener();
     // Build name maps if cached brands/models already loaded
@@ -213,11 +207,6 @@ class PostController extends GetxController {
 
   @override
   void onClose() {
-    phoneController.removeListener(_onPhoneInputChanged);
-    phoneController.dispose();
-    otpController.dispose();
-    otpFocus.dispose();
-    _timer?.cancel();
     _shimmerDelayTimer?.cancel();
     try {
       _uploadProgressSub?.cancel();
@@ -245,47 +234,6 @@ class PostController extends GetxController {
     super.onClose();
   }
 
-  void _onPhoneInputChanged() {
-    markFieldChanged();
-    final sub = phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
-    final current = sub.isEmpty ? '' : '993$sub';
-    if (sub.isEmpty) {
-      isPhoneVerified.value = false;
-      needsOtp.value = false; // wait until user types something meaningful
-      showOtpField.value = false;
-      if (kDebugMode) {
-        // ignore: avoid_print
-        print('[phone] cleared -> reset verification flags');
-      }
-      return;
-    }
-    if (_originalFullPhone.isNotEmpty &&
-        _stripPlus(_originalFullPhone) == current) {
-      if (!isPhoneVerified.value) isPhoneVerified.value = true;
-      needsOtp.value = false;
-      showOtpField.value = false;
-      _timer?.cancel();
-      countdown.value = 0;
-      otpController.clear();
-      if (kDebugMode) {
-        // ignore: avoid_print
-        print(
-          '[phone] auto-verified using original full phone=$_originalFullPhone sub=$sub',
-        );
-      }
-      return;
-    }
-    // Any non-default phone always requires OTP (even if previously verified in a prior session)
-    isPhoneVerified.value = false;
-    needsOtp.value = true;
-    if (kDebugMode) {
-      // ignore: avoid_print
-      print('[phone] changed to new subscriber=$sub -> requires OTP');
-    }
-    // Don't auto-show OTP input until the user presses send
-    // Keep existing showOtpField state if user is mid-verification
-  }
-
   /// Computed property for minimum data check
   bool get hasMinimumData =>
       selectedBrand.value.isNotEmpty &&
@@ -308,8 +256,7 @@ class PostController extends GetxController {
         milleage.text.trim().isNotEmpty ||
         vinCode.text.trim().isNotEmpty ||
         description.text.trim().isNotEmpty ||
-        phoneController.text.trim().isNotEmpty &&
-            phoneController.text.trim() != _originalFullPhone ||
+        _phoneCtrl.hasModifiedPhone ||
         selectedImages.isNotEmpty ||
         selectedVideo.value != null;
   }
@@ -413,7 +360,7 @@ class PostController extends GetxController {
     }
 
     try {
-      final fullPhone = '+' + _buildFullPhoneDigits();
+      final fullPhone = _phoneCtrl.fullPhoneNumber;
       final response = await ApiClient.to.dio.post(
         'posts',
         data: {
@@ -461,9 +408,12 @@ class PostController extends GetxController {
         if (data is Map) return data['uuid']?.toString();
         return null;
       } else {
-        final errorData = response.data is Map ? response.data as Map : <String, dynamic>{};
+        final errorData = response.data is Map
+            ? response.data as Map
+            : <String, dynamic>{};
         final errorMsg =
-            (errorData['error'] ?? errorData['message'] ?? 'Unknown error').toString();
+            (errorData['error'] ?? errorData['message'] ?? 'Unknown error')
+                .toString();
         debugPrint('Post creation failed (${response.statusCode}): $errorMsg');
         uploadError.value = errorMsg;
         Get.snackbar(
@@ -1134,131 +1084,9 @@ class PostController extends GetxController {
   // Token refresh is now handled by the Dio ApiClient interceptor.
   // The duplicated refreshAccessToken() method has been removed.
 
-  // Phone verification methods
-  Future<void> sendOtp() async {
-    isSendingOtp.value = true;
-    try {
-      final validationError = _validatePhoneInput();
-      if (validationError != null) {
-        Get.snackbar('Invalid phone', validationError);
-        return;
-      }
-      final otpPhone =
-          _buildFullPhoneDigits(); // digits-only including 993 prefix
-      if (_originalFullPhone.isNotEmpty &&
-          _stripPlus(_originalFullPhone) == otpPhone) {
-        // Original trusted phone: no OTP required
-        isPhoneVerified.value = true;
-        needsOtp.value = false;
-        showOtpField.value = false;
-        return;
-      }
-      final subscriber = otpPhone.substring(3); // assumes validated
-      final result = await AuthService.to.sendOtp(subscriber);
-      if (kDebugMode) {
-        // ignore: avoid_print
-        print(
-          '[otp][post] send via AuthService success=${result.success} raw=${result.raw}',
-        );
-      }
-      if (result.success) {
-        showOtpField.value = true;
-        needsOtp.value = true;
-        _startCountdown();
-        Get.snackbar('OTP Sent', 'OTP has been sent to +$otpPhone');
-      } else {
-        Get.snackbar('Error', result.message ?? 'Failed to send OTP');
-      }
-    } catch (e) {
-      Get.snackbar('Exception', 'Failed to send OTP: $e');
-    } finally {
-      isSendingOtp.value = false;
-    }
-  }
-
-  Future<void> verifyOtp() async {
-    final phoneError = _validatePhoneInput();
-    if (phoneError != null) {
-      Get.snackbar('Invalid phone', phoneError);
-      return;
-    }
-    final otp = otpController.text.trim();
-    if (!RegExp(r'^\d{5}$').hasMatch(otp)) {
-      Get.snackbar('Invalid', 'OTP must be exactly 5 digits');
-      return;
-    }
-    final otpPhone = _buildFullPhoneDigits();
-    try {
-      final subscriber = otpPhone.substring(3);
-      final result = await AuthService.to.verifyOtp(subscriber, otp);
-      if (kDebugMode) {
-        // ignore: avoid_print
-        print(
-          '[otp][post] verify via AuthService success=${result.success} raw=${result.raw}',
-        );
-      }
-      if (result.success) {
-        isPhoneVerified.value = true;
-        needsOtp.value = false;
-        showOtpField.value = false;
-        _timer?.cancel();
-        Get.snackbar('Success', 'Phone verified successfully');
-      } else {
-        Get.snackbar(
-          'Invalid OTP',
-          result.message ?? 'Please check the code and try again',
-        );
-      }
-    } catch (e) {
-      Get.snackbar('Error', 'Error verifying OTP: $e');
-    }
-  }
-
-  void _startCountdown() {
-    countdown.value = 60;
-    canResend.value = false;
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (countdown.value > 0) {
-        countdown.value--;
-      } else {
-        canResend.value = true;
-        timer.cancel();
-      }
-    });
-  }
-
-  // --- Phone helper utilities (subscriber-only input) ---
-  // User enters only 8 digit subscriber beginning with 6 or 7. Full phone = 993 + subscriber
-  static final RegExp _subscriberPattern = RegExp(r'^[67]\d{7}$');
-  static final RegExp _fullDigitsPattern = RegExp(r'^993[67]\d{7}$');
-
-  String _stripPlus(String v) => v.startsWith('+') ? v.substring(1) : v;
-
-  String _extractSubscriber(String full) {
-    final digits = full.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.startsWith('993') && digits.length >= 11)
-      return digits.substring(3);
-    return digits;
-  }
-
-  String _buildFullPhoneDigits() {
-    final sub = phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (sub.isEmpty) return '';
-    return '993$sub';
-  }
-
-  String? _validatePhoneInput() {
-    final digits = phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
-    if (digits.isEmpty) return 'Phone number required';
-    if (digits.length != 8) return 'Enter 8 digits (e.g. 6XXXXXXX)';
-    if (!_subscriberPattern.hasMatch(digits)) {
-      if (!RegExp(r'^[67]').hasMatch(digits)) return 'Must start with 6 or 7';
-      return 'Invalid phone digits';
-    }
-    if (!_fullDigitsPattern.hasMatch('993$digits')) return 'Invalid full phone';
-    return null;
-  }
+  // Phone verification methods - delegated to PhoneVerificationController
+  Future<void> sendOtp() => _phoneCtrl.sendOtp();
+  Future<void> verifyOtp() => _phoneCtrl.verifyOtp();
 
   // Date selection method
   Future<void> showDatePickerAndroid(BuildContext context) async {
@@ -1284,14 +1112,9 @@ class PostController extends GetxController {
     milleage.clear();
     vinCode.clear();
     description.clear();
-    // Re-apply original subscriber digits (not full +993 form) if known
-    if (_originalFullPhone.isNotEmpty) {
-      final sub = _extractSubscriber(_originalFullPhone);
-      phoneController.text = sub.length == 8 ? sub : '';
-    } else {
-      phoneController.clear();
-    }
-    otpController.clear();
+
+    // Reset phone verification state (restores original profile phone)
+    _phoneCtrl.resetVerification();
 
     // Reset selections
     selectedBrandUuid.value = '';
@@ -1316,14 +1139,7 @@ class PostController extends GetxController {
     brandSearchQuery.value = '';
     searchModel.value = '';
 
-    // Reset phone verification
-    // Default phone is implicitly verified
-    // Original phone trusted
-    isPhoneVerified.value = true;
-    needsOtp.value = false;
-    showOtpField.value = false;
-    isSendingOtp.value = false;
-    countdown.value = 0;
+    // Reset upload state
     isLoading.value = false;
     uploadProgress.value = 0.0;
     uploadStatus.value = 'post_upload_ready'.tr;
@@ -1343,75 +1159,6 @@ class PostController extends GetxController {
     _rebuildImageSigCache();
     // Ensure posting flag cleared after a form reset triggered by upload success
     if (isPosting.value) isPosting.value = false;
-  }
-
-  // --- Original phone initialization & normalization ---
-  void _initializeOriginalPhone() {
-    try {
-      // Single source: ProfileController phone. If absent now, listener will adopt later.
-      String? candidate;
-      if (Get.isRegistered<ProfileController>()) {
-        final pc = Get.find<ProfileController>();
-        if (pc.phone.value.isNotEmpty) candidate = pc.phone.value;
-      }
-      if (candidate == null || candidate.isEmpty) return; // wait for listener
-      final normalized = _normalizeToFullPhone(candidate);
-      if (normalized == null) return;
-      _originalFullPhone = normalized;
-      final sub = _extractSubscriber(_originalFullPhone);
-      if (sub.length == 8 && phoneController.text.trim().isEmpty) {
-        phoneController.text = sub; // subscriber only in field
-      }
-      isOriginalPhone.value = true;
-      isPhoneVerified.value = true;
-      needsOtp.value = false;
-      showOtpField.value = false;
-    } catch (_) {}
-  }
-
-  void _attachProfilePhoneListener() {
-    if (!Get.isRegistered<ProfileController>()) return;
-    final pc = Get.find<ProfileController>();
-    if (_originalFullPhone.isEmpty && pc.phone.value.isNotEmpty) {
-      final n = _normalizeToFullPhone(pc.phone.value);
-      if (n != null) _adoptOriginalPhone(n);
-    }
-    ever<String>(pc.phone, (p) {
-      if (_originalFullPhone.isNotEmpty) return; // already locked
-      if (p.isEmpty) return;
-      final n = _normalizeToFullPhone(p);
-      if (n != null) _adoptOriginalPhone(n);
-    });
-  }
-
-  void _adoptOriginalPhone(String fullPhone) {
-    _originalFullPhone = fullPhone;
-    final sub = _extractSubscriber(fullPhone);
-    if (phoneController.text.trim().isEmpty && sub.length == 8) {
-      phoneController.text = sub;
-    }
-    isOriginalPhone.value = true;
-    isPhoneVerified.value = true;
-    needsOtp.value = false;
-    showOtpField.value = false;
-  }
-
-  String? _normalizeToFullPhone(String raw) {
-    try {
-      var cleaned = raw.replaceAll(RegExp(r'[^0-9+]'), '');
-      if (cleaned.startsWith('+')) cleaned = cleaned.substring(1);
-      // If exactly 8-digit subscriber starting with 6 or 7
-      if (RegExp(r'^[67]\d{7}$').hasMatch(cleaned)) {
-        cleaned = '993$cleaned';
-      }
-      // Some sources might give 12 digits (e.g., 9936 + 7 digits) - still accept if prefix 993
-      if (!cleaned.startsWith('993')) return null;
-      if (cleaned.length < 11)
-        return null; // need at least country(3)+subscriber(8)
-      return '+$cleaned';
-    } catch (_) {
-      return null;
-    }
   }
 
   // Form persistence and dirty tracking
@@ -1508,14 +1255,7 @@ class PostController extends GetxController {
       description.text = (raw['description'] ?? '') as String;
 
       // Always prefer originalFullPhone subscriber; ignore saved phone to avoid conflicts
-      if (_originalFullPhone.isNotEmpty) {
-        final sub = _extractSubscriber(_originalFullPhone);
-        if (sub.length == 8) phoneController.text = sub;
-        isPhoneVerified.value = true;
-        isOriginalPhone.value = true;
-        needsOtp.value = false;
-        showOtpField.value = false;
-      }
+      _phoneCtrl.restoreOriginalPhone();
 
       // Load images
       selectedImages.clear();
@@ -1706,12 +1446,7 @@ class PostController extends GetxController {
       description.text = (raw['description'] ?? '') as String;
 
       // Restore only subscriber digits (no +993 prefix) to avoid showing full international format
-      if (_originalFullPhone.isNotEmpty) {
-        final sub = _extractSubscriber(_originalFullPhone);
-        phoneController.text = sub.length == 8 ? sub : '';
-      } else {
-        phoneController.text = '';
-      }
+      _phoneCtrl.restoreOriginalPhone();
 
       // Load images
       final imgList = (raw['images'] as List?)?.toList() ?? [];
