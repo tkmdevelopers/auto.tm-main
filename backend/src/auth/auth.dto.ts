@@ -1,4 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { UserRole } from "./auth.entity";
+import { Photo } from "src/photo/photo.entity";
 
 /**
  * Auth DTOs
@@ -8,6 +10,46 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
  * - POST /api/v1/otp/send - Request OTP
  * - GET /api/v1/otp/verify - Verify OTP, get tokens
  */
+
+/**
+ * Token response (Access + Refresh)
+ */
+export class TokenResponse {
+  @ApiProperty({ description: "Short-lived JWT access token" })
+  accessToken: string;
+
+  @ApiProperty({ description: "Long-lived JWT refresh token for rotation" })
+  refreshToken: string;
+}
+
+/**
+ * User profile response
+ */
+export class ProfileResponse {
+  @ApiProperty()
+  uuid: string;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiPropertyOptional()
+  email?: string;
+
+  @ApiProperty()
+  phone: string;
+
+  @ApiPropertyOptional()
+  location?: string;
+
+  @ApiProperty({ type: [String] })
+  access: string[];
+
+  @ApiProperty({ enum: UserRole })
+  role: UserRole;
+
+  @ApiPropertyOptional({ type: () => Photo })
+  avatar?: Photo;
+}
 
 /**
  * Update current user profile

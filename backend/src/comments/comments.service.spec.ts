@@ -1,8 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { CommentsService } from "./comments.service";
-import { User } from '../../src/auth/auth.entity'; // Import User entity
-import { Comments } from './comments.entity'; // Import Comments entity
-import { Posts } from '../../src/post/post.entity'; // Import Posts entity
+import { User } from "../../src/auth/auth.entity"; // Import User entity
+import { Comments } from "./comments.entity"; // Import Comments entity
+import { Posts } from "../../src/post/post.entity"; // Import Posts entity
 
 describe("CommentsService", () => {
   let service: CommentsService;

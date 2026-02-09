@@ -112,7 +112,11 @@ export class BrandsService {
     }
   }
 
-  async unsubscribe(body: BrandsUUID, req: AuthenticatedRequest, res: Response) {
+  async unsubscribe(
+    body: BrandsUUID,
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       const { uuid } = body;
       if (!uuid) {
@@ -139,7 +143,11 @@ export class BrandsService {
       return res.status(error.status).json(error);
     }
   }
-  async findAll(query: FindALlBrands, req: AuthenticatedRequest, res: Response) {
+  async findAll(
+    query: FindALlBrands,
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       const { limit, model, offset, post, search, sortAs, location } = query;
       const includePayload: {}[] = [{ model: this.photo, as: "photo" }];

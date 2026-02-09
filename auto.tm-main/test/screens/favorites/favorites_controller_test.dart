@@ -2,11 +2,11 @@
 // path_provider and initialise GetStorage before any tests run.
 
 import 'package:auto_tm/screens/favorites_screen/controller/favorites_controller.dart';
-import 'package:auto_tm/services/network/api_client.dart';
+import 'package:auto_tm/services/favorite_service.dart';
 import 'package:dio/dio.dart';
+import 'package:get/get.dart' hide Response;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart' hide Response;
 import 'package:get_storage/get_storage.dart';
 import 'package:mockito/mockito.dart';
 
@@ -43,6 +43,7 @@ void main() {
   setUp(() async {
     testSetup = TestSetup();
     await testSetup.init();
+    Get.put(FavoriteService());
   });
 
   tearDown(() {

@@ -1,9 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuthService } from "./auth.service";
-import { User } from './auth.entity'; // Import User entity
-import { Photo } from '../photo/photo.entity'; // Import Photo entity
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
+import { User } from "./auth.entity"; // Import User entity
+import { Photo } from "../photo/photo.entity"; // Import Photo entity
+import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
 
 describe("AuthService", () => {
   let service: AuthService;
@@ -24,18 +24,17 @@ describe("AuthService", () => {
 
   const mockConfigService = {
     get: jest.fn((key: string) => {
-      if (key === 'JWT_SECRET') return 'test_jwt_secret';
-      if (key === 'JWT_REFRESH_SECRET') return 'test_jwt_refresh_secret';
+      if (key === "JWT_SECRET") return "test_jwt_secret";
+      if (key === "JWT_REFRESH_SECRET") return "test_jwt_refresh_secret";
       return null;
     }),
   };
 
   const mockJwtService = {
-    sign: jest.fn(() => 'mock_jwt_token'),
-    signAsync: jest.fn(() => 'mock_jwt_token_async'),
+    sign: jest.fn(() => "mock_jwt_token"),
+    signAsync: jest.fn(() => "mock_jwt_token_async"),
     // Add other methods used by AuthService on JwtService
   };
-
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

@@ -36,7 +36,11 @@ export class VlogService {
     }
   }
 
-  async findAll(query: FindAllVlogDto, req: AuthenticatedRequest, res: Response) {
+  async findAll(
+    query: FindAllVlogDto,
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       const {
         userId,

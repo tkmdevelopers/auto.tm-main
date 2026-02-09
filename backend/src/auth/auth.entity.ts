@@ -18,7 +18,7 @@ import { BrandsUser } from "src/junction/brands_user";
 import { Photo } from "src/photo/photo.entity";
 import { Posts } from "src/post/post.entity";
 import { Vlogs } from "src/vlog/vlog.entity";
-enum UserRole {
+export enum UserRole {
   ADMIN = "admin",
   OWNER = "owner",
   USER = "user",
@@ -26,7 +26,11 @@ enum UserRole {
 @Table({ tableName: "users" })
 export class User extends Model {
   @ApiProperty()
-  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
+  @Column({
+    primaryKey: true,
+    type: DataType.UUID,
+    defaultValue: DataType.UUIDV4,
+  })
   uuid: string;
   @ApiProperty()
   @Column({ allowNull: true })

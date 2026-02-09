@@ -88,12 +88,19 @@ flutter build ios --release # iOS build (macOS only)
 - **Photo/Video:** Uses Sharp and FFmpeg. stored in `uploads/`.
 
 ### Frontend (Flutter + GetX)
+**Architecture:** Layered Clean Architecture (UI -> Domain -> Data).
 **State Management:** GetX (`Rx<T>`, `Obx()`, `GetxController`).
 **Networking:** Dio with interceptors for JWT injection and refresh.
 **Structure:**
-- `lib/screens/`: UI features.
-- `lib/services/`: Logic (Auth, API, Tokens).
-- `lib/global_controllers/`: App-wide state (Theme, Language).
+- `lib/screens/`: UI features (Widgets + Controllers).
+- `lib/domain/`: Business logic.
+    - `/models/`: Pure entities (e.g., `Post`).
+    - `/repositories/`: Abstract definitions of data operations.
+- `lib/data/`: Data implementation.
+    - `/dtos/`: Raw API response objects (e.g., `PostDto`).
+    - `/mappers/`: Converters from DTO -> Domain Model.
+    - `/repositories/`: Concrete implementations (e.g., `PostRepositoryImpl`).
+- `lib/services/`: Global services (Auth, Network, Notifications).
 
 ## Authentication Flow
 

@@ -4,6 +4,7 @@ import 'package:auto_tm/global_controllers/connection_controller.dart';
 import 'package:auto_tm/global_controllers/download_controller.dart';
 import 'package:auto_tm/global_controllers/theme_controller.dart';
 import 'package:auto_tm/navbar/navbar.dart';
+import 'package:auto_tm/screens/auth_screens/register_screen/auth_binding.dart';
 import 'package:auto_tm/screens/auth_screens/register_screen/otp_screen.dart';
 import 'package:auto_tm/screens/auth_screens/register_screen/register_screen.dart';
 import 'package:auto_tm/screens/filter_screen/filter_screen.dart';
@@ -23,6 +24,9 @@ import 'package:auto_tm/services/subscription_service.dart';
 import 'package:auto_tm/services/brand_history_service.dart';
 import 'package:auto_tm/services/post_service.dart';
 import 'package:auto_tm/services/brand_model_service.dart';
+import 'package:auto_tm/services/favorite_service.dart';
+import 'package:auto_tm/services/filter_service.dart';
+import 'package:auto_tm/services/search_service.dart';
 import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/utils/themes.dart';
@@ -31,7 +35,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -333,6 +336,11 @@ Future<void> initServices() async {
     Get.put(BrandModelService(Get.find<ApiClient>()));
   }
 
+  // Register FavoriteService
+  if (!Get.isRegistered<FavoriteService>()) {
+    Get.put(FavoriteService());
+  }
+
   
   try {
     await Get.putAsync(() async => NotificationService()..init());
@@ -361,6 +369,16 @@ Future<void> initServices() async {
     }
   }
   
+  // Register FilterService
+  if (!Get.isRegistered<FilterService>()) {
+    Get.put(FilterService());
+  }
+
+  // Register SearchService
+  if (!Get.isRegistered<SearchService>()) {
+    Get.put(SearchService());
+  }
+
   if (!Get.isRegistered<FilterController>()) {
     try {
       Get.put(FilterController(), permanent: true);
@@ -496,8 +514,16 @@ class AlphaMotorsApp extends StatelessWidget {
               getPages: [
                 GetPage(name: '/', page: () => AuthCheckPage()),
                 GetPage(name: '/splash', page: () => CustomSplashScreen()),
-                GetPage(name: '/register', page: () => SRegisterPage()),
-                GetPage(name: '/checkOtp', page: () => OtpScreen()),
+                GetPage(
+                  name: '/register',
+                  page: () => SRegisterPage(),
+                  binding: AuthBinding(),
+                ),
+                GetPage(
+                  name: '/checkOtp',
+                  page: () => OtpScreen(),
+                  binding: AuthBinding(),
+                ),
                 GetPage(name: '/navView', page: () => BottomNavView()),
                 GetPage(name: '/home', page: () => HomeScreen()),
                 GetPage(name: '/profile', page: () => ProfileScreen()),

@@ -75,7 +75,7 @@ export class PhotoService {
 
         await PhotoPosts.create({
           postId: body.uuid,
-          photoUuid: uuid,  // Fixed: column name is photoUuid, not uuid
+          photoUuid: uuid, // Fixed: column name is photoUuid, not uuid
         });
       }
 
@@ -133,7 +133,7 @@ export class PhotoService {
       });
       await PhotoPosts.destroy({
         where: {
-          photoUuid: uuid,  // Fixed: column name is photoUuid, not uuid
+          photoUuid: uuid, // Fixed: column name is photoUuid, not uuid
         },
       });
       return { message: "OK" };

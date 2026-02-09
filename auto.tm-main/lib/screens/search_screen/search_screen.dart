@@ -113,9 +113,9 @@ class SearchScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: InkWell(
                         onTap: () {
-                          filterController.selectedBrand.value = hint.brandLabel;
+                          filterController.selectedBrandName.value = hint.brandLabel;
                           filterController.selectedBrandUuid.value = hint.brandUuid;
-                          filterController.selectedModel.value = hint.modelLabel;
+                          filterController.selectedModelName.value = hint.modelLabel;
                           filterController.selectedModelUuid.value = hint.modelUuid;
                           filterController.searchProducts();
                           Get.to(() => FilterResultPage());

@@ -17,12 +17,10 @@ void main() {
   late PostService postService;
   late MockDio mockDio;
   late MockFlutterSecureStorage mockStorage;
-  late MockGetStorage mockBox;
   late TokenStore tokenStore;
   late ApiClient apiClient;
 
   setUpAll(() async {
-    // Initialize GetStorage for tests
     TestWidgetsFlutterBinding.ensureInitialized();
   });
 
@@ -32,7 +30,6 @@ void main() {
 
     mockDio = MockDio();
     mockStorage = MockFlutterSecureStorage();
-    mockBox = MockGetStorage();
 
     // Configure Dio mock
     when(mockDio.interceptors).thenReturn(Interceptors());
@@ -42,10 +39,6 @@ void main() {
     when(mockStorage.read(key: 'ACCESS_TOKEN'))
         .thenAnswer((_) async => 'test_token');
     
-    // Configure GetStorage mock
-    when(mockBox.read(any)).thenReturn(null);
-    when(mockBox.write(any, any)).thenAnswer((_) async {});
-
     // Create services
     tokenStore = TokenStore(storage: mockStorage);
     apiClient = ApiClient(dio: mockDio);
@@ -54,7 +47,7 @@ void main() {
     Get.put<TokenStore>(tokenStore);
     Get.put<ApiClient>(apiClient);
 
-    postService = PostService.withStorage(apiClient, mockBox);
+    postService = PostService(apiClient);
     Get.put<PostService>(postService);
   });
 
@@ -68,8 +61,8 @@ void main() {
       final myPostsData = [
         {
           'uuid': 'my_post_1',
-          'brand': 'Mercedes',
-          'model': 'E-Class',
+          'brandName': 'Mercedes',
+          'modelName': 'E-Class',
           'price': 55000.0,
           'year': 2024,
           'milleage': 10000,
@@ -79,8 +72,8 @@ void main() {
         },
         {
           'uuid': 'my_post_2',
-          'brand': 'BMW',
-          'model': 'X5',
+          'brandName': 'BMW',
+          'modelName': 'X5',
           'price': 65000.0,
           'year': 2023,
           'milleage': 20000,
@@ -113,8 +106,8 @@ void main() {
         'data': [
           {
             'uuid': 'post_1',
-            'brand': 'Toyota',
-            'model': 'Camry',
+            'brandName': 'Toyota',
+            'modelName': 'Camry',
             'price': 25000.0,
             'year': 2023,
             'milleage': 50000,

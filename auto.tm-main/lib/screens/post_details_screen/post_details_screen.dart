@@ -391,7 +391,7 @@ class PostDetailsScreen extends StatelessWidget {
                                   ),
                                   child: Text(
                                     '${post.value?.brand} ${post.value?.model}',
-                                    style: AppStyles.f24w7.copyWith(
+                                    style: AppStyles.f24w7Th(context).copyWith(
                                       fontWeight: FontWeight.w600,
                                       color: theme.colorScheme.onSurface,
                                     ),
@@ -411,7 +411,7 @@ class PostDetailsScreen extends StatelessWidget {
                                   ),
                                   child: Text(
                                     '${'Posted date:'.tr} ${post.value != null ? favoritesController.formatDate(post.value!.createdAt) : ''}',
-                                    style: AppStyles.f12w4.copyWith(
+                                    style: AppStyles.f12w4Th(context).copyWith(
                                       color: Color(0xFF403A3A),
                                     ),
                                   ),
@@ -497,7 +497,7 @@ class PostDetailsScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Seller\'s comment'.tr,
-                          style: AppStyles.f20w5.copyWith(
+                          style: AppStyles.f20w5Th(context).copyWith(
                             fontWeight: FontWeight.w600,
                             color: theme.colorScheme.onSurface,
                           ),
@@ -515,7 +515,7 @@ class PostDetailsScreen extends StatelessWidget {
                                 post.value?.description.isNotEmpty == true
                                     ? post.value!.description // DO NOT translate user text
                                     : '-',
-                                style: AppStyles.f16w4.copyWith(
+                                style: AppStyles.f16w4Th(context).copyWith(
                                   color: theme.colorScheme.onSurface,
                                 ),
                               ),
@@ -539,7 +539,7 @@ class PostDetailsScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Comments'.tr,
-                          style: AppStyles.f20w5.copyWith(
+                          style: AppStyles.f20w5Th(context).copyWith(
                             fontWeight: FontWeight.w600,
                             color: theme.colorScheme.onSurface,
                           ),
@@ -659,7 +659,7 @@ class PostDetailsScreen extends StatelessWidget {
                 ),
                 child: Text(
                   'Call'.tr,
-                  style: AppStyles.f18w4.copyWith(
+                  style: AppStyles.f18w4Th(context).copyWith(
                     color: AppColors.scaffoldColor,
                   ),
                 ),
@@ -774,9 +774,9 @@ class _DynamicCharacteristics extends StatelessWidget {
       rows.add(Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: _buildCharacteristicsItem(first)),
+          Expanded(child: _buildCharacteristicsItem(context, first)),
           const SizedBox(width: 12),
-          Expanded(child: second != null ? _buildCharacteristicsItem(second) : const SizedBox()),
+          Expanded(child: second != null ? _buildCharacteristicsItem(context, second) : const SizedBox()),
         ],
       ));
       if (i + 2 < characteristics.length) rows.add(const SizedBox(height: 10));
@@ -793,7 +793,7 @@ class _DynamicCharacteristics extends StatelessWidget {
         children: [
           Text(
             'Characteristics'.tr,
-            style: AppStyles.f20w5.copyWith(
+            style: AppStyles.f20w5Th(context).copyWith(
               fontWeight: FontWeight.w600,
               color: theme.colorScheme.onSurface,
             ),
@@ -810,7 +810,7 @@ class _DynamicCharacteristics extends StatelessWidget {
     );
   }
 
-  Widget _buildCharacteristicsItem(_CharacteristicEntry e) {
+  Widget _buildCharacteristicsItem(BuildContext context, _CharacteristicEntry e) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -830,7 +830,7 @@ class _DynamicCharacteristics extends StatelessWidget {
             children: [
               Text(
                 '${e.label}:',
-                style: AppStyles.f16w6.copyWith(
+                style: AppStyles.f16w6Th(context).copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -838,7 +838,7 @@ class _DynamicCharacteristics extends StatelessWidget {
               ),
               Text(
                 e.value ?? '-',
-                style: AppStyles.f14w4.copyWith(
+                style: AppStyles.f14w4Th(context).copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),

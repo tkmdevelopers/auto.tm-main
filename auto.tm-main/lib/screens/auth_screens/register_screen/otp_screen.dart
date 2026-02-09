@@ -1,240 +1,211 @@
-import 'package:auto_tm/screens/auth_screens/login_screen/widgets/main_button.dart';
 import 'package:auto_tm/screens/auth_screens/register_screen/controller/register_controller.dart';
 import 'package:auto_tm/ui_components/images.dart';
 import 'package:auto_tm/ui_components/styles.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:auto_tm/utils/navigation_utils.dart';
 import 'package:pinput/pinput.dart';
 
 class OtpScreen extends StatelessWidget {
-  final bool returnOnSuccess; // if true, Navigator.pop with success
-  OtpScreen({super.key, this.returnOnSuccess = false});
+  OtpScreen({super.key});
 
-  final RegisterPageController getController =
-      Get.find<RegisterPageController>();
+  final RegisterPageController controller = Get.find<RegisterPageController>();
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final mediaQuery = MediaQuery.of(context);
     final height = mediaQuery.size.height;
-    final theme = Theme.of(context);
+    
+    final defaultPinTheme = AppStyles.defaultPinTheme(context);
+    final focusedPinTheme = AppStyles.focusedPinTheme(context);
+    final submittedPinTheme = AppStyles.submittedPinTheme(context);
 
-    return GestureDetector(
-      onTap: () => getController.unFocus(),
-      child: Scaffold(
-        backgroundColor: theme.colorScheme.surface,
-        body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - 32,
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Get.back(),
+          icon: Icon(Icons.arrow_back_ios, color: theme.colorScheme.onSurface),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16), // Matched to Register Screen
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(height: height * 0.05),
+                // Logo size exactly matched to Register Screen
+                Hero(
+                  tag: 'app_logo',
+                  child: SvgPicture.asset(
+                    AppImages.appLogoSvg,
+                    height: height * 0.25,
+                    colorFilter: ColorFilter.mode(
+                      theme.colorScheme.primary,
+                      BlendMode.srcIn,
+                    ),
                   ),
-                  child: IntrinsicHeight(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                ),
+                const SizedBox(height: 24),
+                // Title style matched to Register Screen (size 32, bold)
+                Text(
+                  'Verification'.tr,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: RichText(
+                    textAlign: TextAlign.center,
+                    text: TextSpan(
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        height: 1.6,
+                      ),
                       children: [
-                        const SizedBox(height: 24),
-                        _Logo(theme: theme, height: height * 0.25),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Verification'.tr,
+                        TextSpan(text: 'Enter the OTP code sent to '.tr),
+                        TextSpan(
+                          text: controller.phoneVerifyController.fullPhoneNumber,
                           style: TextStyle(
                             color: theme.colorScheme.onSurface,
-                            fontSize: 30,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.5,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        _Subtitle(theme: theme, controller: getController),
-                        const SizedBox(height: 32),
-                        _OtpInput(theme: theme, controller: getController),
-                        const SizedBox(height: 32),
-                        Obx(() {
-                          final enabled =
-                              getController.otpValue.value.length == 5 &&
-                              !getController.isLoading.value;
-                          return Column(
-                            children: [
-                              SButton(
-                                title: getController.isLoading.value
-                                    ? '...'
-                                    : 'Submit',
-                                buttonColor: enabled
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.onSurface.withOpacity(
-                                        0.25,
-                                      ),
-                                onTap: enabled
-                                    ? () async {
-                                        final before = Get.currentRoute;
-                                        await getController.checkOtp();
-                                        if (returnOnSuccess &&
-                                            Get.currentRoute == before) {
-                                          NavigationUtils.close(
-                                            context,
-                                            result: true,
-                                          );
-                                        }
-                                      }
-                                    : () {},
-                              ),
-                              const SizedBox(height: 20),
-                              _ResendRow(
-                                theme: theme,
-                                controller: getController,
-                              ),
-                            ],
-                          );
-                        }),
-                        const Spacer(),
-                        _Footer(theme: theme),
                       ],
                     ),
                   ),
                 ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-}
+                const SizedBox(height: 48),
+                Pinput(
+                  controller: controller.otpController,
+                  focusNode: controller.otpFocus,
+                  length: 5,
+                  defaultPinTheme: defaultPinTheme,
+                  focusedPinTheme: focusedPinTheme,
+                  submittedPinTheme: submittedPinTheme,
+                  hapticFeedbackType: HapticFeedbackType.mediumImpact,
+                  cursor: Container(
+                    width: 2,
+                    height: 24,
+                    color: theme.colorScheme.primary,
+                  ),
+                  onCompleted: (pin) {
+                    controller.checkOtp();
+                  },
+                ),
+                const SizedBox(height: 40),
+                Obx(() {
+                  final countdown = controller.phoneVerifyController.countdown.value;
+                  final isLoading = controller.isLoading.value;
 
-// --- Subcomponents for clearer structure ---
-class _Logo extends StatelessWidget {
-  const _Logo({required this.theme, required this.height});
-  final ThemeData theme;
-  final double height;
-  @override
-  Widget build(BuildContext context) {
-    return Hero(
-      tag: 'app_logo',
-      child: SvgPicture.asset(
-        AppImages.appLogoSvg,
-        height: height,
-        colorFilter: ColorFilter.mode(
-          theme.colorScheme.primary,
-          BlendMode.srcIn,
-        ),
-      ),
-    );
-  }
-}
-
-class _Subtitle extends StatelessWidget {
-  const _Subtitle({required this.theme, required this.controller});
-  final ThemeData theme;
-  final RegisterPageController controller;
-  @override
-  Widget build(BuildContext context) {
-    return RichText(
-      textAlign: TextAlign.center,
-      text: TextSpan(
-        text: 'Enter the OTP code sent to '.tr,
-        style: TextStyle(
-          fontSize: 14,
-          color: theme.colorScheme.onSurface.withOpacity(0.75),
-          fontWeight: FontWeight.w400,
-        ),
-        children: [
-          TextSpan(
-            text: ' +993 ${controller.phoneController.text}',
-            style: AppStyles.f16w4.copyWith(
-              color: theme.colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OtpInput extends StatelessWidget {
-  const _OtpInput({required this.theme, required this.controller});
-  final ThemeData theme;
-  final RegisterPageController controller;
-  @override
-  Widget build(BuildContext context) {
-    final base = AppStyles.defaultPinTheme;
-    final focused = AppStyles.focusedPinTheme.copyWith(
-      decoration: AppStyles.focusedPinTheme.decoration?.copyWith(
-        border: Border.all(color: theme.colorScheme.primary, width: 2),
-      ),
-    );
-    return Center(
-      child: Pinput(
-        length: 5,
-        defaultPinTheme: base.copyWith(
-          decoration: base.decoration?.copyWith(
-            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-        focusedPinTheme: focused,
-        focusNode: controller.otpFocus,
-        controller: controller.otpController,
-        onChanged: (val) => controller.otpValue.value = val,
-        onCompleted: (val) => controller.otpValue.value = val,
-        cursor: Container(width: 2, color: theme.colorScheme.primary),
-      ),
-    );
-  }
-}
-
-class _ResendRow extends StatelessWidget {
-  const _ResendRow({required this.theme, required this.controller});
-  final ThemeData theme;
-  final RegisterPageController controller;
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          "Didn't receive the code? ".tr,
-          style: AppStyles.f14w4.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.75),
-          ),
-        ),
-        TextButton(
-          onPressed: () => controller.requestOtp(),
-          child: Text(
-            'Resend'.tr,
-            style: AppStyles.f14w4.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w600,
+                  return AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: countdown > 0
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.timer_outlined, 
+                                size: 16, 
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.4)
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'post_resend_code_in'.trParams({'seconds': countdown.toString()}),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          )
+                        : TextButton(
+                            onPressed: isLoading ? null : () => controller.requestOtp(),
+                            style: TextButton.styleFrom(
+                              foregroundColor: theme.colorScheme.primary,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.05),
+                            ),
+                            child: Text(
+                              'Resend'.tr,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                  );
+                }),
+                const SizedBox(height: 20),
+              ],
             ),
           ),
         ),
-      ],
-    );
-  }
-}
-
-class _Footer extends StatelessWidget {
-  const _Footer({required this.theme});
-  final ThemeData theme;
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 40, bottom: 12),
-      child: Text(
-        'Secure verification'.tr,
-        style: TextStyle(
-          fontSize: 12,
-          color: theme.colorScheme.onSurface.withOpacity(0.5),
-          letterSpacing: 0.3,
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Obx(
+            () => Container(
+              height: 56,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  if (!controller.isLoading.value)
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                ],
+              ),
+              child: ElevatedButton(
+                onPressed: controller.isLoading.value
+                    ? null
+                    : () => controller.checkOtp(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  disabledBackgroundColor: theme.colorScheme.primary.withValues(alpha: 0.6),
+                ),
+                child: controller.isLoading.value
+                    ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            theme.colorScheme.onPrimary,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        'verify'.tr,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -16,7 +16,11 @@ export class CommentsService {
     @Inject("COMMENTS_REPOSITORY") private comments: typeof Comments,
   ) {}
 
-  async findAll(body: findAllComments, req: AuthenticatedRequest, res: Response) {
+  async findAll(
+    body: findAllComments,
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       const { postId } = body;
       const comments = await this.comments.findAll({
@@ -152,7 +156,12 @@ export class CommentsService {
     }
   }
 
-  async update(id: string, body: any, req: AuthenticatedRequest, res: Response) {
+  async update(
+    id: string,
+    body: any,
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       const comment = await this.comments.findOne({ where: { uuid: id } });
       if (!comment) throw new HttpException("Not found", HttpStatus.NOT_FOUND);

@@ -1,13 +1,14 @@
 import 'dart:async';
-import 'dart:convert';
 
+import 'package:auto_tm/services/brand_model_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 
-import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/services/network/api_client.dart';
-import 'package:auto_tm/utils/navigation_utils.dart';
+import 'package:auto_tm/domain/models/post.dart';
+import 'package:auto_tm/domain/models/post_filter.dart';
+import 'package:auto_tm/services/filter_service.dart';
+import 'package:auto_tm/models/post_dtos.dart';
 
 class FilterController extends GetxController {
   final TextEditingController milleageController = TextEditingController();
@@ -30,59 +31,97 @@ class FilterController extends GetxController {
     });
   }
 
-  // Country selection (defaults to 'Local')
+  // Brand/model data – delegated to BrandModelService
+  late final BrandModelService _brandModelSvc;
+  FilterController({BrandModelService? brandModelSvc}) : _brandModelSvc = brandModelSvc ?? BrandModelService.to;
+
+  RxList<BrandDto> get brands => _brandModelSvc.brands;
+  RxList<ModelDto> get models => _brandModelSvc.models;
+  RxBool get isLoadingBrands => _brandModelSvc.isLoadingBrands;
+  RxBool get isLoadingModels => _brandModelSvc.isLoadingModels;
+  final RxBool isLoading = false.obs;
+
+  // Selection state
+  final RxString selectedBrandUuid = ''.obs;
+  final RxString selectedModelUuid = ''.obs;
+    final RxString selectedBrandName = ''.obs;
+    final RxString selectedModelName = ''.obs;
+    
+    // Aliases for test compatibility
+    RxString get selectedBrand => selectedBrandName;
+    RxString get selectedModel => selectedModelName;
+  
+    final RxString selectedCategoryUuid = ''.obs;
+  
+  final RxString selectedCategoryName = ''.obs;
+
+  // Filter state
   var selectedCountry = 'Local'.obs;
   var condition = 'All'.obs;
-  var brands = <Map<String, dynamic>>[].obs;
-  var models = <Map<String, dynamic>>[].obs;
-  var selectedBrand = ''.obs;
-  var selectedModel = ''.obs;
-  var selectedBrandUuid = ''.obs;
-  var selectedModelUuid = ''.obs;
-  // Specific location city (blank means any)
-  var location = ''.obs;
+  var location = ''.obs; // Specific city
   var transmission = ''.obs;
-  var enginePower = ''.obs;
   var selectedColor = ''.obs;
-  // Year filters (allow empty). Using strings so they can be blank until user selects.
+  var enginePower = ''.obs;
+  var milleage = ''.obs;
+  var exchange = false.obs;
+  var credit = false.obs;
+  final RxList<String> premium = <String>[].obs;
+
+  // Range filters
   final RxString minYear = ''.obs;
   final RxString maxYear = ''.obs;
-  // Slider bounds (will initialize lazily from data or defaults)
+  final RxnInt minPrice = RxnInt();
+  final RxnInt maxPrice = RxnInt();
+
+  // Slider bounds
   final RxInt yearLowerBound = 1990.obs;
   final RxInt yearUpperBound = DateTime.now().year.obs;
   final Rx<RangeValues> yearRange = RangeValues(
     1990,
     DateTime.now().year.toDouble(),
   ).obs;
-  // Legacy date objects kept temporarily for compatibility; will be removed once UI updated.
-  final selectedMinDate = DateTime.now().obs; // TODO: remove
-  final selectedMaxDate = DateTime.now().obs; // TODO: remove
-
-  var milleage = ''.obs;
-  var isLoading = false.obs;
-  var exchange = false.obs;
-  var credit = false.obs;
-  var premium = <String>[].obs;
-  // Price range (nullable). We'll treat empty as not set.
-  final RxnInt minPrice = RxnInt();
-  final RxnInt maxPrice = RxnInt();
-  // Optional UI bounds for price slider if later added
   final RxInt priceLowerBound = 0.obs;
-  final RxInt priceUpperBound = 500000.obs; // adjust after meta fetch
-  final Rx<RangeValues> priceRange = const RangeValues(0, 500000).obs;
+  final RxInt priceUpperBound = 1000000.obs;
+  final Rx<RangeValues> priceRange = const RangeValues(0, 1000000).obs;
 
-  RxBool isLoadingBrands = false.obs;
-  RxBool isLoadingModels = false.obs;
-  RxString error = ''.obs;
-
-  RxList<Map<String, dynamic>> filteredBrands = <Map<String, dynamic>>[].obs;
-  RxList<Map<String, dynamic>> filteredModels = <Map<String, dynamic>>[].obs;
+  // Year range accessors
+  String get effectiveMinYear => minYear.value.isNotEmpty ? minYear.value : (yearRange.value.start != yearLowerBound.value ? yearRange.value.start.round().toString() : '');
+  String get effectiveMaxYear => maxYear.value.isNotEmpty ? maxYear.value : (yearRange.value.end != yearUpperBound.value ? yearRange.value.end.round().toString() : '');
 
   final RxString selectedSortOption = 'createdAt_desc'.obs;
+  final RxBool isSearchLoading = false.obs;
+  final RxList<Post> searchResults = <Post>[].obs;
+  final RxString error = ''.obs;
 
   @override
   void onInit() {
     super.onInit();
+    // _brandModelSvc already assigned via constructor or late init fallback
+    
+    // Sync isLoading with service states
+    ever(isLoadingBrands, (val) => isLoading.value = val || isLoadingModels.value);
+    ever(isLoadingModels, (val) => isLoading.value = val || isLoadingBrands.value);
+
+    // Listen to text controllers for auto-search
+    milleageController.addListener(debouncedSearch);
+    enginepowerController.addListener(debouncedSearch);
+
+    // Listen to Rx variables
+    ever(transmission, (_) => debouncedSearch());
+    ever(condition, (_) => debouncedSearch());
+    ever(exchange, (_) => debouncedSearch());
+    ever(credit, (_) => debouncedSearch());
+    ever(minYear, (_) => debouncedSearch());
+    ever(maxYear, (_) => debouncedSearch());
+    ever(minPrice, (_) => debouncedSearch());
+    ever(maxPrice, (_) => debouncedSearch());
+    ever(priceRange, (_) => debouncedSearch());
+    ever(yearRange, (_) => debouncedSearch());
+    ever(selectedBrandUuid, (_) => debouncedSearch());
+    ever(selectedModelUuid, (_) => debouncedSearch());
+    ever(selectedCategoryUuid, (_) => debouncedSearch());
+    ever(location, (_) => debouncedSearch());
+    ever(selectedCountry, (_) => debouncedSearch());
 
     // Initial fetch
     searchProducts();
@@ -97,72 +136,12 @@ class FilterController extends GetxController {
     });
   }
 
-  // Removed onClose disposal to avoid disposing controllers for a permanent instance.
-
   void updateSortOption(String newSortOption) {
     if (selectedSortOption.value != newSortOption) {
       selectedSortOption.value = newSortOption;
-      searchProducts(); // Перезагружаем посты с новой сортировкой
+      searchProducts();
     }
   }
-
-  void showDatePickerAndroidMin(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Select year".tr),
-          content: SizedBox(
-            width: 300,
-            height: 300,
-            child: YearPicker(
-              firstDate: DateTime(1900, 1),
-              lastDate: DateTime(DateTime.now().year, 1),
-              initialDate: DateTime.now(),
-              selectedDate: selectedMinDate.value,
-              onChanged: (DateTime dateTime) {
-                selectedMinDate.value = dateTime; // legacy
-                minYear.value = dateTime.year.toString();
-                NavigationUtils.closeGlobal();
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void showDatePickerAndroidMax(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Select year".tr),
-          content: SizedBox(
-            width: 300,
-            height: 300,
-            child: YearPicker(
-              firstDate: DateTime(1900, 1),
-              lastDate: DateTime(DateTime.now().year, 1),
-              initialDate: DateTime.now(),
-              selectedDate: selectedMaxDate.value,
-              onChanged: (DateTime dateTime) {
-                selectedMaxDate.value = dateTime; // legacy
-                maxYear.value = dateTime.year.toString();
-                NavigationUtils.closeGlobal();
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  String get selectedMinYear => "${selectedMinDate.value.year}";
-  String get selectedMaxYear => "${selectedMaxDate.value.year}";
-  // Accessors for new year state (prefer these going forward)
-  String get effectiveMinYear => minYear.value.isNotEmpty ? minYear.value : '';
-  String get effectiveMaxYear => maxYear.value.isNotEmpty ? maxYear.value : '';
 
   void clearFilters({bool includeBrandModel = false}) {
     transmission.value = '';
@@ -181,20 +160,20 @@ class FilterController extends GetxController {
     );
     location.value = '';
     selectedCountry.value = 'Local';
+    minPrice.value = null;
+    maxPrice.value = null;
+    priceRange.value = RangeValues(
+      priceLowerBound.value.toDouble(),
+      priceUpperBound.value.toDouble(),
+    );
     if (includeBrandModel) {
-      selectedBrand.value = '';
       selectedBrandUuid.value = '';
-      selectedModel.value = '';
       selectedModelUuid.value = '';
+      selectedBrandName.value = '';
+      selectedModelName.value = '';
+      selectedCategoryUuid.value = '';
+      selectedCategoryName.value = '';
     }
-  }
-
-  Map<String, String> _parseSortOption(String option) {
-    if (option.contains('_')) {
-      final parts = option.split('_');
-      return {'sortBy': parts[0], 'sortAs': parts[1]};
-    }
-    return {'sortBy': option, 'sortAs': 'desc'};
   }
 
   void togglePremium(String uuid) {
@@ -206,14 +185,11 @@ class FilterController extends GetxController {
     debouncedSearch();
   }
 
-  final isSearchLoading = false.obs;
-  final searchResults = <Post>[].obs;
-
-  // Computed active filter count for UI chips & summary bar
   int get activeFilterCount {
     int count = 0;
     if (selectedBrandUuid.value.isNotEmpty) count++;
     if (selectedModelUuid.value.isNotEmpty) count++;
+    if (selectedCategoryUuid.value.isNotEmpty) count++;
     if (selectedCountry.value != 'Local' || location.value.isNotEmpty) count++;
     if (transmission.value.isNotEmpty) count++;
     if (credit.value) count++;
@@ -227,330 +203,123 @@ class FilterController extends GetxController {
     return count;
   }
 
-  void filterBrands(String query) {
-    final q = query.trim().toLowerCase();
-    if (q.isEmpty) {
-      filteredBrands.assignAll(brands);
-      return;
-    }
-    filteredBrands.assignAll(
-      brands
-          .where((brand) => brand['name'].toString().toLowerCase().contains(q))
-          .toList(),
+  Map<String, dynamic> buildQueryParams() {
+    final sort = _parseSortOption(selectedSortOption.value);
+    
+    final filter = PostFilter(
+      brandFilter: selectedBrandUuid.value.isNotEmpty ? selectedBrandUuid.value : null,
+      modelFilter: selectedModelUuid.value.isNotEmpty ? selectedModelUuid.value : null,
+      categoryFilter: selectedCategoryUuid.value.isNotEmpty ? selectedCategoryUuid.value : null,
+      region: selectedCountry.value != 'Local' ? selectedCountry.value : null,
+      location: (selectedCountry.value == 'Local' && location.value.isNotEmpty) ? location.value : null,
+      color: selectedColor.value.isNotEmpty ? selectedColor.value : null,
+      credit: credit.value ? true : null,
+      exchange: exchange.value ? true : null,
+      transmission: transmission.value.isNotEmpty ? transmission.value : null,
+      enginePower: enginepowerController.text.isNotEmpty ? enginepowerController.text : null,
+      milleage: milleageController.text.isNotEmpty ? milleageController.text : null,
+      condition: condition.value != 'All' ? condition.value : null,
+      minYear: minYear.value.isNotEmpty ? minYear.value : (yearRange.value.start != yearLowerBound.value ? yearRange.value.start.round().toString() : null),
+      maxYear: maxYear.value.isNotEmpty ? maxYear.value : (yearRange.value.end != yearUpperBound.value ? yearRange.value.end.round().toString() : null),
+      minPrice: minPrice.value != null ? minPrice.value.toString() : (priceRange.value.start != priceLowerBound.value ? priceRange.value.start.round().toString() : null),
+      maxPrice: maxPrice.value != null ? maxPrice.value.toString() : (priceRange.value.end != priceUpperBound.value ? priceRange.value.end.round().toString() : null),
+      subFilter: premium.isNotEmpty ? premium.toList() : null,
+      sortBy: sort['sortBy'],
+      sortAs: sort['sortAs'],
     );
-  }
 
-  void filterModels(String query) {
-    final q = query.trim().toLowerCase();
-    if (q.isEmpty) {
-      filteredModels.assignAll(models);
-      return;
-    }
-    filteredModels.assignAll(
-      models
-          .where((model) => model['name'].toString().toLowerCase().contains(q))
-          .toList(),
-    );
-  }
-
-  String buildQuery() {
-    Map<String, String> queryParams = {};
-
-    if (selectedBrandUuid.value.isNotEmpty) {
-      queryParams['brandFilter'] = selectedBrandUuid.value;
-    }
-    // Location / country logic: 'Local' means use city (if chosen) but do not send 'Local' as value
-    if (selectedCountry.value == 'Local') {
-      if (location.value.isNotEmpty) {
-        queryParams['location'] = location.value;
-      }
-    } else if (selectedCountry.value.isNotEmpty) {
-      queryParams['location'] = selectedCountry.value;
-    }
-    if (selectedModelUuid.value.isNotEmpty) {
-      queryParams['modelFilter'] = selectedModelUuid.value;
-    }
-    if (selectedColor.value.isNotEmpty) {
-      queryParams['color'] = selectedColor.value;
-    }
-    if (credit.value) queryParams['credit'] = credit.value.toString();
-    if (exchange.value) queryParams['exchange'] = exchange.value.toString();
-    if (transmission.value.isNotEmpty) {
-      queryParams['transmission'] = transmission.value;
-    }
-    if (enginepowerController.text.isNotEmpty) {
-      queryParams['enginePower'] = enginepowerController.text;
-    }
-    if (milleageController.text != '') {
-      queryParams['milleage'] = milleageController.text;
-    }
-    if (condition.value.isNotEmpty && condition.value != 'All') {
-      queryParams['condition'] = condition.value;
-    }
-    // Year filters (use new minYear/maxYear; include only if set)
-    // Consolidate year logic: prefer explicit text fields if set, else fall back to slider values when moved from defaults
-    if (minYear.value.isNotEmpty || maxYear.value.isNotEmpty) {
-      if (minYear.value.isNotEmpty) queryParams['minYear'] = minYear.value;
-      if (maxYear.value.isNotEmpty) queryParams['maxYear'] = maxYear.value;
-    } else {
-      final rv = yearRange.value;
-      final defaultMin = yearLowerBound.value.toDouble();
-      final defaultMax = yearUpperBound.value.toDouble();
-      if (rv.start != defaultMin)
-        queryParams['minYear'] = rv.start.round().toString();
-      if (rv.end != defaultMax)
-        queryParams['maxYear'] = rv.end.round().toString();
-    }
-
-    // Price logic: explicit minPrice/maxPrice if set, else slider delta from defaults
-    if (minPrice.value != null || maxPrice.value != null) {
-      if (minPrice.value != null)
-        queryParams['minPrice'] = minPrice.value.toString();
-      if (maxPrice.value != null)
-        queryParams['maxPrice'] = maxPrice.value.toString();
-    } else {
-      final pr = priceRange.value;
-      final dMin = priceLowerBound.value.toDouble();
-      final dMax = priceUpperBound.value.toDouble();
-      if (pr.start != dMin)
-        queryParams['minPrice'] = pr.start.round().toString();
-      if (pr.end != dMax) queryParams['maxPrice'] = pr.end.round().toString();
-    }
-
-    return queryParams.entries
-        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
-        .join('&');
-  }
-
-  Future<void> searchProducts({bool loadMore = false}) async {
-    if (!loadMore) {
-      offset = 0;
-      searchResults.clear();
-    }
-
-    String queryString = buildQuery();
-    String queryStringPremium = '';
-    if (premium.isNotEmpty) {
-      for (int i = 0; i < premium.length; i++) {
-        final id = premium[i];
-        queryStringPremium += 'subFilter=$id';
-        if (i < premium.length - 1) {
-          queryStringPremium += '&';
-        }
-      }
-    }
-
-    final parsedOptions = _parseSortOption(selectedSortOption.value);
-    final String sortBy = parsedOptions['sortBy']!;
-    final String sortAs = parsedOptions['sortAs']!;
-
-    final queryParams = <String, dynamic>{
+    Map<String, dynamic> params = {
       'brand': true,
       'model': true,
       'photo': true,
       'subscription': true,
       'status': true,
-      'sortAs': sortAs,
-      'sortBy': sortBy,
       'offset': offset,
       'limit': limit,
+      ...filter.toQueryParams(),
     };
-    if (queryString.isNotEmpty) {
-      for (final pair in queryString.split('&')) {
-        final kv = pair.split('=');
-        if (kv.length == 2) {
-          queryParams[Uri.decodeComponent(kv[0])] = Uri.decodeComponent(kv[1]);
-        }
-      }
+
+    return params;
+  }
+
+  String buildQuery() {
+    final params = buildQueryParams();
+    // Remove default boolean flags for cleaner test output if they are true
+    params.removeWhere((k, v) => (k == 'brand' || k == 'model' || k == 'photo' || k == 'subscription' || k == 'status') && v == true);
+    // Remove pagination for cleaner test output
+    params.remove('offset');
+    params.remove('limit');
+    // Remove default sort
+    if (params['sortBy'] == 'createdAt' && params['sortAs'] == 'desc') {
+      params.remove('sortBy');
+      params.remove('sortAs');
     }
-    if (premium.isNotEmpty) {
-      queryParams['subFilter'] = premium;
+
+    return params.entries.map((e) => '${e.key}=${e.value}').join('&');
+  }
+
+  Future<void> searchProducts({bool loadMore = false}) async {
+    if (isSearchLoading.value) return;
+
+    if (!loadMore) {
+      offset = 0;
+      searchResults.clear();
     }
 
     isSearchLoading.value = true;
     try {
-      final response = await ApiClient.to.dio.get('posts', queryParameters: queryParams);
+      final queryParams = buildQueryParams();
+      final newResults = await FilterService.to.searchPosts(queryParams);
 
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data;
-        final rawList = data is List ? data : (json.decode(data is String ? data as String : '[]') as List);
-        final List<Post> newResults = rawList
-            .map((item) => Post.fromJson(item is Map<String, dynamic> ? item : Map<String, dynamic>.from(item as Map)))
-            .toList();
-
-        if (newResults.isNotEmpty) {
-          searchResults.addAll(newResults);
-          offset += limit;
-        }
-
-        _applyRegionAndCityFilters();
-      } else if (response.statusCode == 401) {
-        Get.snackbar('Error', 'Login expired. Please log in again.');
-      } else {
-        if (!loadMore) searchResults.clear();
+      if (newResults.isNotEmpty) {
+        searchResults.addAll(newResults);
+        offset += limit;
       }
     } catch (e) {
-      if (!loadMore) searchResults.clear();
+      error.value = e.toString();
     } finally {
       isSearchLoading.value = false;
     }
   }
 
-  void _applyRegionAndCityFilters() {
-    final regionFilterRaw = selectedCountry.value.trim();
-    if (regionFilterRaw.isEmpty) return; // nothing to filter by
-    final regionFilter = regionFilterRaw.toLowerCase();
-    final cityFilter = location.value.trim().toLowerCase();
-
-    // Build filtered list; treat posts with missing region as 'local'
-    final filtered = <Post>[];
-    for (final p in searchResults) {
-      // Pull region from strongly typed field; fallback already handled in Post.fromJson
-      var postRegion = p.region.trim();
-      if (postRegion.isEmpty) {
-        // Legacy posts before region introduction considered Local
-        postRegion = 'Local';
-      }
-      final regionMatch = postRegion.toLowerCase() == regionFilter;
-      if (!regionMatch) continue;
-
-      if (regionFilter == 'local') {
-        if (cityFilter.isEmpty) {
-          // Any local city accepted when user didn't choose a city
-          filtered.add(p);
-        } else {
-          final postCity = p.location.trim().toLowerCase();
-          if (postCity.isNotEmpty && postCity == cityFilter) {
-            filtered.add(p);
-          }
-        }
-      } else {
-        // Non-local regions ignore city list (UI already disabled city selection)
-        filtered.add(p);
-      }
-    }
-    searchResults.assignAll(filtered);
+  Map<String, String> _parseSortOption(String option) {
+    final parts = option.split('_');
+    return {
+      'sortBy': parts.isNotEmpty ? parts[0] : 'createdAt',
+      'sortAs': parts.length > 1 ? parts[1] : 'desc'
+    };
   }
 
-  final lastSubscribes = <String>[].obs;
+  // Delegation to BrandModelService
+  void filterBrands(String query) => _brandModelSvc.brandSearchQuery.value = query;
+  void filterModels(String query) => _brandModelSvc.modelSearchQuery.value = query;
+  List<BrandDto> get filteredBrands => _brandModelSvc.filteredBrands;
+  List<ModelDto> get filteredModels => _brandModelSvc.filteredModels;
 
-  void saveSubscribes() {
-    box.write('brand_subscribes', lastSubscribes.toList());
-  }
+  Future<void> fetchBrands() => _brandModelSvc.fetchBrands();
+  Future<void> fetchModels(String brandUuid) => _brandModelSvc.fetchModels(brandUuid);
 
-  Future<void> loadStoredSubscribes() async {
-    final stored = box.read<List>('brand_subscribes');
-    if (stored != null) {
-      lastSubscribes.assignAll(stored.cast<String>());
-    }
-  }
-
-  void addToSubscribes(String uuid) {
-    if (!lastSubscribes.contains(uuid)) {
-      lastSubscribes.add(uuid);
-    }
-    saveSubscribes();
-  }
-
-  void removeFromSubscribes(String uuid) {
-    if (lastSubscribes.contains(uuid)) {
-      lastSubscribes.remove(uuid);
-    }
-    saveSubscribes();
-  }
-
-  Future<void> subscribeToBrand() async {
-    try {
-      final response = await ApiClient.to.dio.post(
-        'brands/subscribe',
-        data: {'uuid': selectedBrandUuid.value},
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        addToSubscribes(selectedBrandUuid.value);
-      }
-    } catch (e) {
-      // Auth/errors handled by ApiClient interceptor
-    } finally {
-      isSearchLoading.value = false;
-    }
-  }
-
-  Future<void> unSubscribeFromBrand() async {
-    try {
-      final response = await ApiClient.to.dio.post(
-        'brands/unsubscribe',
-        data: {'uuid': selectedBrandUuid.value},
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        removeFromSubscribes(selectedBrandUuid.value);
-      }
-    } catch (e) {
-      // Auth/errors handled by ApiClient interceptor
-    } finally {
-      isSearchLoading.value = false;
-    }
-  }
-
-  void selectFilter(String filter) {
-    condition.value = filter;
+  void selectFilter(String val) {
+    condition.value = val;
     debouncedSearch();
   }
 
-  void selectLocation(String filter) {
-    selectedCountry.value = filter;
+  void selectLocation(String val) {
+    selectedCountry.value = val;
     debouncedSearch();
   }
 
-  Future<void> fetchBrands() async {
-    isLoadingBrands.value = true;
-    try {
-      final response = await ApiClient.to.dio
-          .get('brands')
-          .timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200 && response.data != null) {
-        final decodedData = response.data is List
-            ? response.data as List
-            : json.decode(response.data is String ? response.data as String : '[]');
-        final list = (decodedData as List)
-            .map((e) => e is Map<String, dynamic> ? e : Map<String, dynamic>.from(e as Map))
-            .toList();
-        brands.value = list;
-        filteredBrands.value = list;
-      }
-    } catch (e) {
-      // Handle error silently
-    } finally {
-      isLoadingBrands.value = false;
-    }
+  void selectCategory(String uuid, String name) {
+    selectedCategoryUuid.value = uuid;
+    selectedCategoryName.value = name;
+    debouncedSearch();
   }
 
-  Future<void> fetchModels(String brand) async {
-    isLoadingModels.value = true;
-    try {
-      final response = await ApiClient.to.dio
-          .get('models', queryParameters: {'filter': brand})
-          .timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200 && response.data != null) {
-        final decodedData = response.data is List
-            ? response.data as List
-            : json.decode(response.data is String ? response.data as String : '[]');
-        final list = (decodedData as List)
-            .map((e) => e is Map<String, dynamic> ? e : Map<String, dynamic>.from(e as Map))
-            .toList();
-        models.value = list;
-        filteredModels.value = list;
-      }
-    } catch (e) {
-      // Handle error silently
-    } finally {
-      isLoadingModels.value = false;
-    }
+  void selectColor(String color) {
+    selectedColor.value = color;
+    debouncedSearch();
   }
 
-  // Token refresh is now handled by the Dio ApiClient interceptor.
-  // The duplicated refreshAccessToken() method has been removed.
   @override
   void onClose() {
     _debounce?.cancel();

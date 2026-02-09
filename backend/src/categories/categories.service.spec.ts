@@ -1,8 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { CategoriesService } from "./categories.service";
-import { Photo } from '../../src/photo/photo.entity'; // Import Photo entity
-import { Posts } from '../../src/post/post.entity'; // Import Posts entity
-import { Categories } from './categories.entity'; // Import Categories entity
+import { Photo } from "../../src/photo/photo.entity"; // Import Photo entity
+import { Posts } from "../../src/post/post.entity"; // Import Posts entity
+import { Categories } from "./categories.entity"; // Import Categories entity
 
 describe("CategoriesService", () => {
   let service: CategoriesService;

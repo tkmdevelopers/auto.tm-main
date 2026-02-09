@@ -3,8 +3,6 @@
 // Uses Fake classes for GetxService subclasses (AuthService, NotificationService)
 // because Mockito mocks crash with GetX's onStart lifecycle.
 
-import 'dart:io';
-
 import 'package:auto_tm/screens/auth_screens/register_screen/controller/register_controller.dart';
 import 'package:auto_tm/services/auth/phone_formatter.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';

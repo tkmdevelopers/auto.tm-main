@@ -9,33 +9,33 @@ import {
   Post,
   Put,
   Req,
-  Res,
-  UseGuards,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import {
+  ApiConsumes,
+  ApiOperation,
   ApiResponse,
   ApiSecurity,
   ApiTags,
-  ApiConsumes,
-  ApiOperation,
-  ApiBody,
 } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
 import {
   DeleteOne,
   FindOne,
   firebaseDto,
+  ProfileResponse,
+  TokenResponse,
   Update,
   UpdateUser,
 } from "./auth.dto";
-import { Request, Response } from "express";
 import { AuthGuard } from "src/guards/auth.guard";
 import { RefreshGuard } from "src/guards/refresh.guard";
 import { AdminGuard } from "src/guards/admin.guard";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { muletrOptionsForUsers } from "src/photo/config/multer.config";
+import { AuthenticatedRequest } from "src/utils/types";
 
 /**
  * Auth Controller
@@ -63,18 +63,13 @@ export class AuthController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: "Rotated tokens returned",
-    schema: {
-      example: {
-        accessToken: "new-jwt-access-token",
-        refreshToken: "new-jwt-refresh-token",
-      },
-    },
+    type: TokenResponse,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
     description: "Token reuse detected or invalid refresh token",
   })
-  async refresh(@Req() req: Request) {
+  async refresh(@Req() req: AuthenticatedRequest): Promise<TokenResponse> {
     return this.authService.refresh(req);
   }
 
@@ -85,14 +80,9 @@ export class AuthController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: "Logged out successfully",
-    schema: {
-      example: {
-        message: "Successfully logged out",
-      },
-    },
   })
-  async logout(@Req() req: Request, @Res() res: Response) {
-    return this.authService.logout(req, res);
+  async logout(@Req() req: AuthenticatedRequest) {
+    return this.authService.logout(req);
   }
 
   // ============================================================
@@ -106,19 +96,10 @@ export class AuthController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: "Current user data",
-    schema: {
-      example: {
-        uuid: "user-uuid",
-        name: "User Name",
-        phone: "+99362120020",
-        location: "Aşgabat",
-        role: "user",
-        avatar: null,
-      },
-    },
+    type: ProfileResponse,
   })
-  async me(@Req() req: Request, @Res() res: Response) {
-    return this.authService.me(req, res);
+  async me(@Req() req: AuthenticatedRequest): Promise<ProfileResponse> {
+    return this.authService.me(req);
   }
 
   @Put()
@@ -128,19 +109,9 @@ export class AuthController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: "Profile updated successfully",
-    schema: {
-      example: {
-        message: "Successfully changed",
-        uuid: "user-uuid",
-      },
-    },
   })
-  async patch(
-    @Body() body: UpdateUser,
-    @Res() res: Response,
-    @Req() req: Request,
-  ) {
-    return this.authService.patch(body, req, res);
+  async patch(@Body() body: UpdateUser, @Req() req: AuthenticatedRequest) {
+    return this.authService.patch(body, req);
   }
 
   // ============================================================
@@ -154,18 +125,12 @@ export class AuthController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: "Firebase token set successfully",
-    schema: {
-      example: {
-        message: "Firebase token set successfully",
-      },
-    },
   })
   async setFirebaseToken(
     @Body() body: firebaseDto,
-    @Req() req: Request,
-    @Res() res: Response,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.authService.setFirebase(body, req, res);
+    return this.authService.setFirebase(body, req);
   }
 
   // ============================================================
@@ -181,10 +146,9 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "Avatar uploaded successfully" })
   async uploadAvatar(
     @UploadedFile() file: Express.Multer.File,
-    @Req() req: Request,
-    @Res() res: Response,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.authService.uploadAvatar(file, req, res);
+    return this.authService.uploadAvatar(file, req);
   }
 
   @Delete("avatar")
@@ -192,8 +156,8 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @ApiSecurity("token")
   @ApiResponse({ status: 200, description: "Avatar deleted successfully" })
-  async deleteAvatar(@Req() req: Request, @Res() res: Response) {
-    return this.authService.deleteAvatar(req, res);
+  async deleteAvatar(@Req() req: AuthenticatedRequest) {
+    return this.authService.deleteAvatar(req);
   }
 
   // ============================================================
@@ -202,50 +166,33 @@ export class AuthController {
 
   @Get("/users")
   @ApiOperation({ summary: "List all users (admin only)" })
-  @UseGuards(AuthGuard)
-  @UseGuards(AdminGuard)
+  @UseGuards(AuthGuard, AdminGuard)
   @ApiSecurity("token")
-  async findAll(@Req() req: Request, @Res() res: Response) {
-    return this.authService.findAll(req, res);
+  async findAll() {
+    return this.authService.findAll();
   }
 
   @Get("/:uuid")
   @ApiOperation({ summary: "Get user by ID (admin only)" })
-  @UseGuards(AuthGuard)
-  @UseGuards(AdminGuard)
+  @UseGuards(AuthGuard, AdminGuard)
   @ApiSecurity("token")
-  async findOne(
-    @Param() param: FindOne,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    return this.authService.findOne(param, req, res);
+  async findOne(@Param() param: FindOne) {
+    return this.authService.findOne(param);
   }
 
   @Patch("/:uuid")
   @ApiOperation({ summary: "Update user (admin only)" })
-  @UseGuards(AuthGuard)
-  @UseGuards(AdminGuard)
+  @UseGuards(AuthGuard, AdminGuard)
   @ApiSecurity("token")
-  async update(
-    @Param() param: FindOne,
-    @Body() body: Update,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    return this.authService.update(param, body, req, res);
+  async update(@Param() param: FindOne, @Body() body: Update) {
+    return this.authService.update(param, body);
   }
 
   @Delete("/:uuid")
   @ApiOperation({ summary: "Delete user (admin only)" })
-  @UseGuards(AuthGuard)
-  @UseGuards(AdminGuard)
+  @UseGuards(AuthGuard, AdminGuard)
   @ApiSecurity("token")
-  async delete(
-    @Param() param: DeleteOne,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    return this.authService.deleteOne(param, req, res);
+  async delete(@Param() param: DeleteOne) {
+    return this.authService.deleteOne(param);
   }
 }

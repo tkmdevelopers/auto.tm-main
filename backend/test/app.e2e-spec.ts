@@ -11,12 +11,13 @@ describe("AppController (e2e)", () => {
   let moduleFixture: TestingModule; // Declare moduleFixture here
 
   beforeEach(async () => {
-    moduleFixture = await Test.createTestingModule({ // Assign to moduleFixture
+    moduleFixture = await Test.createTestingModule({
+      // Assign to moduleFixture
       imports: [AppModule],
     })
-    .overrideGuard(AuthGuard) // Override the AuthGuard
-    .useValue({ canActivate: () => true }) // Provide a mock implementation
-    .compile();
+      .overrideGuard(AuthGuard) // Override the AuthGuard
+      .useValue({ canActivate: () => true }) // Provide a mock implementation
+      .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();

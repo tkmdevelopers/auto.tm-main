@@ -1,7 +1,5 @@
 import 'package:auto_tm/screens/post_details_screen/controller/comments_controller.dart';
-import 'package:auto_tm/services/network/api_client.dart';
-import 'package:auto_tm/services/token_service/token_store.dart';
-import 'package:dio/dio.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:mockito/mockito.dart';

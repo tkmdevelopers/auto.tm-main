@@ -1,5 +1,6 @@
-import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
-import 'package:auto_tm/models/post_dtos.dart';
+import 'package:auto_tm/data/dtos/post_dto.dart';
+import 'package:auto_tm/domain/models/post.dart' as domain;
+import 'package:auto_tm/models/post_dtos.dart' hide PostDto;
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:dio/dio.dart';
@@ -141,8 +142,8 @@ void main() {
     test('should parse complete post data', () {
       final json = {
         'uuid': 'post_123',
-        'brand': 'Toyota',
-        'model': 'Camry',
+        'brandName': 'Toyota',
+        'modelName': 'Camry',
         'brandsId': 'brand_id',
         'modelsId': 'model_id',
         'price': 25000.0,
@@ -156,8 +157,8 @@ void main() {
       final post = PostDto.fromJson(json);
 
       expect(post.uuid, 'post_123');
-      expect(post.brand, 'Toyota');
-      expect(post.model, 'Camry');
+      expect(post.brandName, 'Toyota');
+      expect(post.modelName, 'Camry');
       expect(post.price, 25000.0);
       expect(post.year, 2023.0);
       expect(post.status, true);
@@ -171,30 +172,10 @@ void main() {
       final post = PostDto.fromJson(json);
 
       expect(post.uuid, 'post_123');
-      expect(post.brand, '');
-      expect(post.model, '');
-      expect(post.price, 0.0);
+      expect(post.brandName, isNull);
+      expect(post.modelName, isNull);
+      expect(post.price, isNull);
       expect(post.status, isNull);
-    });
-
-    test('should extract brand from nested object', () {
-      final json = {
-        'uuid': 'post_123',
-        'brands': {'uuid': 'b1', 'name': 'Toyota'},
-      };
-
-      final post = PostDto.fromJson(json);
-      expect(post.brand, 'Toyota');
-    });
-
-    test('should extract model from nested object', () {
-      final json = {
-        'uuid': 'post_123',
-        'models': {'uuid': 'm1', 'name': 'Camry'},
-      };
-
-      final post = PostDto.fromJson(json);
-      expect(post.model, 'Camry');
     });
   });
 
@@ -233,32 +214,47 @@ void main() {
   // 7. POST STATUS EXTENSION TESTS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  group('PostDto - Status Extension', () {
+  group('domain.Post - Status Extension', () {
     test('null status should be pending', () {
-      final post = PostDto(
-        uuid: 'p1', brand: '', model: '', brandId: '', modelId: '',
+      final post = domain.Post(
+        uuid: 'p1', brand: '', model: '', 
         price: 0, photoPath: '', year: 0, milleage: 0,
         currency: '', createdAt: '', status: null,
+        photoPaths: [], enginePower: 0, transmission: '',
+        condition: '', engineType: '', vinCode: '',
+        region: '', location: '', exchange: false, credit: false,
+        description: '', phoneNumber: '', 
+        video: null, file: null,
       );
 
       expect(post.triStatus, PostStatusTri.pending);
     });
 
     test('true status should be active', () {
-      final post = PostDto(
-        uuid: 'p1', brand: '', model: '', brandId: '', modelId: '',
+      final post = domain.Post(
+        uuid: 'p1', brand: '', model: '', 
         price: 0, photoPath: '', year: 0, milleage: 0,
         currency: '', createdAt: '', status: true,
+        photoPaths: [], enginePower: 0, transmission: '',
+        condition: '', engineType: '', vinCode: '',
+        region: '', location: '', exchange: false, credit: false,
+        description: '', phoneNumber: '', 
+        video: null, file: null,
       );
 
       expect(post.triStatus, PostStatusTri.active);
     });
 
     test('false status should be inactive', () {
-      final post = PostDto(
-        uuid: 'p1', brand: '', model: '', brandId: '', modelId: '',
+      final post = domain.Post(
+        uuid: 'p1', brand: '', model: '', 
         price: 0, photoPath: '', year: 0, milleage: 0,
         currency: '', createdAt: '', status: false,
+        photoPaths: [], enginePower: 0, transmission: '',
+        condition: '', engineType: '', vinCode: '',
+        region: '', location: '', exchange: false, credit: false,
+        description: '', phoneNumber: '', 
+        video: null, file: null,
       );
 
       expect(post.triStatus, PostStatusTri.inactive);

@@ -10,9 +10,7 @@ import 'package:get/get.dart';
 class SRegisterPage extends StatelessWidget {
   SRegisterPage({super.key});
 
-  final RegisterPageController getController = Get.put(
-    RegisterPageController(),
-  );
+  final RegisterPageController getController = Get.find<RegisterPageController>();
 
   @override
   Widget build(BuildContext context) {

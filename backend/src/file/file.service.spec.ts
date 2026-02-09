@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { FileService } from "./file.service";
-import { File } from './file.entity'; // Import File entity
+import { File } from "./file.entity"; // Import File entity
 
 describe("FileService", () => {
   let service: FileService;

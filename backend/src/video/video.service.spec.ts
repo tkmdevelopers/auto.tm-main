@@ -1,7 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { VideoService } from "./video.service";
-import { Posts } from '../post/post.entity'; // Import Posts entity
-import { Video } from './video.entity'; // Import Video entity
+import { Posts } from "../post/post.entity"; // Import Posts entity
+import { Video } from "./video.entity"; // Import Video entity
 
 describe("VideoService", () => {
   let service: VideoService;

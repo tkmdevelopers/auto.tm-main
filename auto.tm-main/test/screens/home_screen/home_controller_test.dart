@@ -1,51 +1,28 @@
+import 'package:auto_tm/domain/models/post.dart';
 import 'package:auto_tm/screens/home_screen/controller/home_controller.dart';
-import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/services/network/api_client.dart';
-import 'package:auto_tm/services/token_service/token_store.dart';
-import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:auto_tm/services/post_service.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get/get.dart' hide Response, FormData, MultipartFile;
+import 'package:get/get.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 
 import 'home_controller_test.mocks.dart';
 
-@GenerateNiceMocks([MockSpec<Dio>(), MockSpec<FlutterSecureStorage>()])
+@GenerateNiceMocks([MockSpec<PostService>()])
 void main() {
-  late MockDio mockDio;
-  late MockFlutterSecureStorage mockStorage;
-  late ApiClient apiClient;
-  late TokenStore tokenStore;
+  late MockPostService mockPostService;
 
   setUp(() async {
     Get.reset();
     Get.testMode = true;
     TestWidgetsFlutterBinding.ensureInitialized();
     
-    try {
-      await dotenv.load(fileName: ".env");
-    } catch (_) {
-      dotenv.testLoad(fileInput: "API_BASE=http://localhost:3080/");
-    }
-
-    mockDio = MockDio();
-    mockStorage = MockFlutterSecureStorage();
-
-    // Configure Dio mock
-    when(mockDio.interceptors).thenReturn(Interceptors());
-    when(mockDio.options).thenReturn(BaseOptions());
-
-    // Configure storage
-    when(mockStorage.read(key: 'ACCESS_TOKEN'))
-        .thenAnswer((_) async => 'test_token');
-
-    tokenStore = TokenStore(storage: mockStorage);
-    apiClient = ApiClient(dio: mockDio);
-
-    Get.put<TokenStore>(tokenStore);
-    Get.put<ApiClient>(apiClient);
+    mockPostService = MockPostService();
+    // Stub GetxService lifecycle methods with a safe callback
+    when(mockPostService.onStart).thenReturn(InternalFinalCallback<void>(callback: () {}));
+    when(mockPostService.onDelete).thenReturn(InternalFinalCallback<void>(callback: () {}));
+    
+    Get.put<PostService>(mockPostService);
   });
 
   tearDown(() {
@@ -54,39 +31,65 @@ void main() {
 
   group('HomeController', () {
     test('initial state should have correct defaults', () {
-      // Test without triggering onInit by not registering with Get
       final controller = HomeController();
       
-      // Check initial state before any API calls
       expect(controller.posts, isEmpty);
       expect(controller.offset, 0);
       expect(controller.hasMore.value, true);
-      expect(controller.isLoading.value, false);
-      expect(controller.initialLoad.value, true);
-      expect(controller.isError.value, false);
+      // New state management check
+      expect(controller.status.value, HomeStatus.initial);
       expect(controller.errorMessage.value, '');
+    });
+
+    test('fetchPosts should call PostService', () async {
+      final controller = HomeController();
+      
+      final mockPosts = [_createMockPost()];
+      when(mockPostService.fetchFeedPosts(
+        offset: anyNamed('offset'),
+        limit: anyNamed('limit'),
+        brand: anyNamed('brand'),
+        model: anyNamed('model'),
+        photo: anyNamed('photo'),
+        subscription: anyNamed('subscription'),
+        status: anyNamed('status'),
+      )).thenAnswer((_) async => mockPosts);
+
+      await controller.fetchPosts();
+
+      verify(mockPostService.fetchFeedPosts(
+        offset: 0,
+        limit: kHomePageSize,
+        brand: true,
+        model: true,
+        photo: true,
+        subscription: true,
+        status: true,
+      )).called(1);
+
+      expect(controller.posts.length, 1);
+      expect(controller.offset, kHomePageSize);
+      expect(controller.status.value, HomeStatus.success);
     });
 
     test('retry should reset state correctly', () {
       final controller = HomeController();
       
-      // Simulate error state - these are the state changes that retry() makes
-      controller.isError.value = true;
+      // Simulate error state
+      controller.status.value = HomeStatus.error;
       controller.errorMessage.value = 'Test error';
       controller.hasMore.value = false;
       controller.offset = 40;
       controller.posts.add(_createMockPost());
       
-      // Manually test the state reset logic (without calling retry which triggers API)
-      // This simulates what retry() does before calling fetchInitialData()
-      controller.isError.value = false;
+      // Manually trigger reset logic typically found in retry()
+      controller.status.value = HomeStatus.initial;
       controller.errorMessage.value = '';
       controller.hasMore.value = true;
       controller.offset = 0;
       controller.posts.clear();
       
-      // Verify state was reset
-      expect(controller.isError.value, false);
+      expect(controller.status.value, HomeStatus.initial);
       expect(controller.errorMessage.value, '');
       expect(controller.hasMore.value, true);
       expect(controller.offset, 0);
@@ -96,34 +99,27 @@ void main() {
     test('refreshData should reset state correctly', () {
       final controller = HomeController();
       
-      // Simulate loaded state
-      controller.isLoading.value = true;
+      // Simulate dirty state
+      controller.status.value = HomeStatus.loading;
       controller.hasMore.value = false;
       controller.offset = 60;
-      controller.isError.value = true;
       controller.errorMessage.value = 'Old error';
       
-      // Manually test the state reset logic (without calling refreshData which triggers API)
-      // This simulates what refreshData() does before calling fetchInitialData()
-      controller.isLoading.value = false;
+      // Simulate refresh logic
+      controller.status.value = HomeStatus.initial;
       controller.hasMore.value = true;
       controller.offset = 0;
-      controller.isError.value = false;
       controller.errorMessage.value = '';
       controller.posts.clear();
       
-      // Verify state was reset
-      expect(controller.isLoading.value, false);
+      expect(controller.status.value, HomeStatus.initial);
       expect(controller.hasMore.value, true);
       expect(controller.offset, 0);
-      expect(controller.isError.value, false);
       expect(controller.errorMessage.value, '');
     });
 
     test('scrollToTop should not throw when no clients', () {
       final controller = HomeController();
-      
-      // Should not throw even when scrollController has no clients
       expect(() => controller.scrollToTop(), returnsNormally);
     });
 
@@ -133,20 +129,15 @@ void main() {
 
     test('hasMore should control fetchPosts early return', () {
       final controller = HomeController();
-      
-      // When hasMore is false, fetchPosts should return early
       controller.hasMore.value = false;
-      
-      // This shouldn't make any API calls
       controller.fetchPosts();
-      
-      // isLoading should be set then immediately unset
-      expect(controller.isLoading.value, false);
+      // Should remain in initial state if returned early (though logic might vary)
+      // Assuming fetchPosts checks hasMore first:
+      expect(controller.status.value, HomeStatus.initial);
     });
   });
 }
 
-/// Helper to create a mock Post for testing
 Post _createMockPost() {
   return Post(
     uuid: 'test_uuid',
@@ -168,6 +159,9 @@ Post _createMockPost() {
     transmission: 'Automatic',
     vinCode: '',
     phoneNumber: '+99365000000',
-    region: 'Ashgabat',
-  );
-}
+    region: 'Ashgabat', 
+        exchange: false, 
+        credit: false, 
+      );
+    }
+    

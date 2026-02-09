@@ -120,9 +120,10 @@ class ResultPremiumSelection extends StatelessWidget {
                           const SizedBox(width: 12),
                           // Text(
                           //   option.price.toString(), // Your premium type name
-                          //   style: AppStyles.f14w4.copyWith(
-                          //     color: isSelected
-                          //         ? AppColors.primaryColor
+                            //   style: AppStyles.f14w4Th(context).copyWith(
+                            //     color: isSelected
+                            //         ? AppColors.primaryColor
+                          
                           //         : theme.colorScheme.onSurface,
                           //   ),
                           // ),

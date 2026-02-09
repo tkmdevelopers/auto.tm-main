@@ -14,7 +14,11 @@ import { Posts } from "src/post/post.entity";
 @Table({ tableName: "categories" })
 export class Categories extends Model {
   @ApiProperty()
-  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
+  @Column({
+    primaryKey: true,
+    type: DataType.UUID,
+    defaultValue: DataType.UUIDV4,
+  })
   uuid: string;
   @ApiProperty()
   @Column({ type: DataType.JSONB, allowNull: false })

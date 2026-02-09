@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
+import 'package:auto_tm/models/post_dtos.dart';
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -58,7 +59,7 @@ class PostDetailsController extends GetxController {
             '[PostDetailsController] video section raw: $videoSection',
           );
         }
-        post.value = Post.fromJson(data);
+        post.value = PostLegacyExtension.fromJson(data);
         if (kDebugMode)
           debugPrint(
             '[PostDetailsController] parsed post video: ${post.value?.video}',

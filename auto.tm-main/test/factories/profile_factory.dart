@@ -16,6 +16,8 @@ class ProfileFactory {
       location: location ?? 'Aşgabat',
       createdAt: DateTime.now(),
       brandUuid: [],
+      role: UserRole.user,
+      access: [],
     );
   }
 

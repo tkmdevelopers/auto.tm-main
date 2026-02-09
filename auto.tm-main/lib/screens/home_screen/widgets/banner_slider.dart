@@ -1,6 +1,5 @@
 import 'package:auto_tm/global_controllers/theme_controller.dart';
 import 'package:auto_tm/screens/home_screen/controller/banner_controller.dart';
-import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/images.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:carousel_slider/carousel_slider.dart';

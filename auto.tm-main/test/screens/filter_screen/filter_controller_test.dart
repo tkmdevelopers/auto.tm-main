@@ -5,8 +5,48 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
+import 'package:get/get.dart';
 
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
+import 'package:auto_tm/models/post_dtos.dart';
+import 'package:auto_tm/services/brand_model_service.dart';
+
+class MockBrandModelService extends Mock implements BrandModelService {
+  @override
+  final brands = <BrandDto>[].obs;
+  @override
+  final models = <ModelDto>[].obs;
+  @override
+  final isLoadingBrands = false.obs;
+  @override
+  final isLoadingModels = false.obs;
+  @override
+  final brandsFromCache = false.obs;
+  @override
+  final modelsFromCache = false.obs;
+  @override
+  final brandSearchQuery = ''.obs;
+  @override
+  final modelSearchQuery = ''.obs;
+  @override
+  final modelNameResolutionTick = 0.obs;
+
+  @override
+  List<BrandDto> get filteredBrands {
+    final query = brandSearchQuery.value.toLowerCase().trim();
+    if (query.isEmpty) return brands;
+    return brands.where((b) => b.name.toLowerCase().contains(query)).toList();
+  }
+
+  @override
+  List<ModelDto> get filteredModels {
+    final query = modelSearchQuery.value.toLowerCase().trim();
+    if (query.isEmpty) return models;
+    return models.where((m) => m.name.toLowerCase().contains(query)).toList();
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -41,9 +81,11 @@ void main() {
 
   group('FilterController - buildQuery', () {
     late FilterController controller;
+    late MockBrandModelService mockBrandModelSvc;
 
     setUp(() {
-      controller = FilterController();
+      mockBrandModelSvc = MockBrandModelService();
+      controller = FilterController(brandModelSvc: mockBrandModelSvc);
     });
 
     test('should return empty string with no filters', () {
@@ -176,9 +218,11 @@ void main() {
 
   group('FilterController - activeFilterCount', () {
     late FilterController controller;
+    late MockBrandModelService mockBrandModelSvc;
 
     setUp(() {
-      controller = FilterController();
+      mockBrandModelSvc = MockBrandModelService();
+      controller = FilterController(brandModelSvc: mockBrandModelSvc);
     });
 
     test('should be 0 with no active filters', () {
@@ -240,9 +284,11 @@ void main() {
 
   group('FilterController - clearFilters', () {
     late FilterController controller;
+    late MockBrandModelService mockBrandModelSvc;
 
     setUp(() {
-      controller = FilterController();
+      mockBrandModelSvc = MockBrandModelService();
+      controller = FilterController(brandModelSvc: mockBrandModelSvc);
     });
 
     test('should reset all filters except brand/model', () {
@@ -298,16 +344,21 @@ void main() {
 
   group('FilterController - filterBrands', () {
     late FilterController controller;
+    late MockBrandModelService mockBrandModelSvc;
 
     setUp(() {
-      controller = FilterController();
-      controller.brands.value = [
-        {'uuid': '1', 'name': 'Toyota'},
-        {'uuid': '2', 'name': 'BMW'},
-        {'uuid': '3', 'name': 'Mercedes-Benz'},
-        {'uuid': '4', 'name': 'Hyundai'},
-        {'uuid': '5', 'name': 'Toyota Motor'},
+      mockBrandModelSvc = MockBrandModelService();
+      final brandsList = [
+        BrandDto(uuid: '1', name: 'Toyota'),
+        BrandDto(uuid: '2', name: 'BMW'),
+        BrandDto(uuid: '3', name: 'Mercedes-Benz'),
+        BrandDto(uuid: '4', name: 'Hyundai'),
+        BrandDto(uuid: '5', name: 'Toyota Motor'),
       ];
+      
+      mockBrandModelSvc.brands.assignAll(brandsList);
+
+      controller = FilterController(brandModelSvc: mockBrandModelSvc);
     });
 
     test('should show all when query is empty', () {
@@ -338,15 +389,20 @@ void main() {
 
   group('FilterController - filterModels', () {
     late FilterController controller;
+    late MockBrandModelService mockBrandModelSvc;
 
     setUp(() {
-      controller = FilterController();
-      controller.models.value = [
-        {'uuid': '1', 'name': 'Camry'},
-        {'uuid': '2', 'name': 'Corolla'},
-        {'uuid': '3', 'name': 'RAV4'},
-        {'uuid': '4', 'name': 'Camaro'},
+      mockBrandModelSvc = MockBrandModelService();
+      final modelsList = [
+        ModelDto(uuid: '1', name: 'Camry'),
+        ModelDto(uuid: '2', name: 'Corolla'),
+        ModelDto(uuid: '3', name: 'RAV4'),
+        ModelDto(uuid: '4', name: 'Camaro'),
       ];
+
+      mockBrandModelSvc.models.assignAll(modelsList);
+
+      controller = FilterController(brandModelSvc: mockBrandModelSvc);
     });
 
     test('should show all when query is empty', () {
@@ -366,9 +422,11 @@ void main() {
 
   group('FilterController - sort and premium', () {
     late FilterController controller;
+    late MockBrandModelService mockBrandModelSvc;
 
     setUp(() {
-      controller = FilterController();
+      mockBrandModelSvc = MockBrandModelService();
+      controller = FilterController(brandModelSvc: mockBrandModelSvc);
     });
 
     test('updateSortOption should change sort', () {
@@ -395,9 +453,11 @@ void main() {
 
   group('FilterController - year accessors', () {
     late FilterController controller;
+    late MockBrandModelService mockBrandModelSvc;
 
     setUp(() {
-      controller = FilterController();
+      mockBrandModelSvc = MockBrandModelService();
+      controller = FilterController(brandModelSvc: mockBrandModelSvc);
     });
 
     test('effectiveMinYear returns empty when unset', () {

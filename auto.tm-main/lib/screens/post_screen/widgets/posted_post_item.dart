@@ -114,8 +114,6 @@ class PostedPostItem extends StatelessWidget {
   final String uuid;
   final String model;
   final String brand;
-  final String? brandId;
-  final String? modelId;
   final double price;
   final String photoPath;
   final double year;
@@ -129,8 +127,6 @@ class PostedPostItem extends StatelessWidget {
     required this.uuid,
     required this.model,
     required this.brand,
-    this.brandId,
-    this.modelId,
     required this.price,
     required this.photoPath,
     required this.year,
@@ -252,27 +248,16 @@ class PostedPostItem extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             // Title
-            Obx(() {
-              final resolvedBrand = postController.resolveBrandName(brand);
-              final _ = postController.modelNameResolutionTick.value;
-              final resolvedModel = postController.resolveModelWithBrand(
-                (modelId?.isNotEmpty ?? false) ? modelId! : model,
-                (brandId?.isNotEmpty ?? false) ? brandId! : brand,
-              );
-              final title =
-                  "${(resolvedBrand.isEmpty ? 'Unknown' : resolvedBrand)} ${(resolvedModel.isEmpty ? '' : resolvedModel)}"
-                      .trim();
-              return Text(
-                title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              );
-            }),
+            Text(
+              "$brand $model".trim(),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: 6),
             // Price and Year / Mileage row
             Row(

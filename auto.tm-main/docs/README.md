@@ -1,6 +1,7 @@
 # Alpha Motors (auto.tm) — Flutter App Documentation
 
-> **Version:** 1.0.0+3 &nbsp;|&nbsp; **Dart SDK:** ^3.9.2 &nbsp;|&nbsp; **Last updated:** February 2026
+> **Version:** 1.0.0+3 &nbsp;|&nbsp; **Dart SDK:** ^3.9.2 &nbsp;|&nbsp; **Last updated:** February 8, 2026  
+> **Test Status:** ✅ 250/250 tests passing (1 skipped)
 
 Alpha Motors is a car marketplace mobile application built with **Flutter + GetX** on the frontend and **NestJS + PostgreSQL** on the backend. It supports OTP-based phone authentication, car listing CRUD with photo/video upload, real-time push notifications, brand subscriptions, blog publishing with a rich-text editor, multi-language (EN / TM / RU), multi-currency (TMT / USD), and dark mode.
 

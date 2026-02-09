@@ -16,7 +16,11 @@ import { Posts } from "src/post/post.entity";
 @Table({ tableName: "models" })
 export class Models extends Model {
   @ApiProperty()
-  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
+  @Column({
+    primaryKey: true,
+    type: DataType.UUID,
+    defaultValue: DataType.UUIDV4,
+  })
   uuid: string;
   @ApiProperty()
   @Column

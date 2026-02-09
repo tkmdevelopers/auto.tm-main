@@ -1,9 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ModelsService } from "./models.service";
-import { Brands } from '../brands/brands.entity'; // Import Brands entity
-import { Models } from './models.entity'; // Import Models entity
-import { Posts } from '../post/post.entity'; // Import Posts entity
-import { Photo } from '../photo/photo.entity'; // Import Photo entity
+import { Brands } from "../brands/brands.entity"; // Import Brands entity
+import { Models } from "./models.entity"; // Import Models entity
+import { Posts } from "../post/post.entity"; // Import Posts entity
+import { Photo } from "../photo/photo.entity"; // Import Photo entity
 
 describe("ModelsService", () => {
   let service: ModelsService;

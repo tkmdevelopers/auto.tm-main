@@ -1,9 +1,8 @@
-import 'dart:convert';
 import 'dart:async';
-import 'dart:isolate';
 
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/services/network/api_client.dart';
+import 'package:auto_tm/models/post_dtos.dart';
+import 'package:auto_tm/services/favorite_service.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
@@ -70,27 +69,11 @@ class FavoritesController extends GetxController {
     }
 
     try {
-      final response = await ApiClient.to.dio.post(
-        'posts/list',
-        data: {
-          'uuids': favorites,
-          'brand': 'true',
-          'model': 'true',
-          'photo': 'true',
-        },
-      );
-
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data;
-        if (data is List) {
-          favoriteProducts.assignAll(
-            (data as List)
-                .map((item) => Post.fromJson(item as Map<String, dynamic>))
-                .toList(),
-          );
-        }
-      }
-    } catch (e) {}
+      final posts = await FavoriteService.to.fetchFavoritePosts(favorites);
+      favoriteProducts.assignAll(posts);
+    } catch (e) {
+       // Controller-level error handling if needed, or silent fail as before
+    }
   }
 
   void toggleFavorite(String uuid) {
@@ -165,12 +148,9 @@ class FavoritesController extends GetxController {
 
   Future<void> subscribeToBrand(String brandUuid) async {
     try {
-      final response = await ApiClient.to.dio.post(
-        'brands/subscribe',
-        data: {'uuid': brandUuid},
-      );
+      final success = await FavoriteService.to.subscribeToBrand(brandUuid);
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (success) {
         Get.snackbar(
           'common_success'.tr,
           'favourites_subscribe_success'.tr,
@@ -189,12 +169,9 @@ class FavoritesController extends GetxController {
 
   Future<void> unSubscribeFromBrand(String brandUuid) async {
     try {
-      final response = await ApiClient.to.dio.post(
-        'brands/unsubscribe',
-        data: {'uuid': brandUuid},
-      );
+      final success = await FavoriteService.to.unsubscribeFromBrand(brandUuid);
 
-      if (response.statusCode == 200) {
+      if (success) {
         Get.snackbar(
           'common_success'.tr,
           'favourites_unsubscribe_success'.tr,
@@ -246,24 +223,16 @@ class FavoritesController extends GetxController {
     }
 
     try {
-      final response = await ApiClient.to.dio.post(
-        'brands/list',
-        data: {'uuids': lastSubscribes, 'post': true},
-      );
-      if (response.statusCode == 200 && response.data != null) {
-        final jsonData = response.data is List
-            ? response.data as List
-            : json.decode(response.data is String ? response.data as String : '[]');
-        subscribedBrands.value = (jsonData as List)
-            .map((e) => e is Map<String, dynamic> ? e : Map<String, dynamic>.from(e as Map))
-            .toList();
+      final jsonData = await FavoriteService.to.fetchSubscribedBrands(lastSubscribes);
+      
+      if (jsonData.isNotEmpty) {
+        subscribedBrands.value = jsonData;
         final List<Post> allPosts = [];
-        for (final brand in jsonData as List) {
-          final map = brand is Map<String, dynamic> ? brand : Map<String, dynamic>.from(brand as Map);
+        for (final map in jsonData) {
           final postsList = map['posts'];
           if (postsList is List) {
             allPosts.addAll(
-              (postsList as List).map((postJson) => Post.fromJson(postJson as Map<String, dynamic>)),
+              postsList.map((postJson) => PostLegacyExtension.fromJson(postJson as Map<String, dynamic>)),
             );
           }
         }

@@ -181,10 +181,11 @@ class SFilterColors extends StatelessWidget {
                                       Icons.radio_button_off,
                                       color: AppColors.textTertiaryColor,
                                     ),
-                              onTap: () {
-                                colorController.toggleColor(color);
-                                filterController.selectedColor.value = color;
-                              },
+                                                onTap: () {
+                                                  colorController.toggleColor(color);
+                                                  filterController.selectColor(color);
+                                                },
+                              
                             ),
                           );
                         }),

@@ -1,16 +1,16 @@
-import 'dart:io';
-import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:async';
-import 'package:get/get.dart';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:auto_tm/global_controllers/connection_controller.dart';
 import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
+import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
+import 'package:auto_tm/screens/post_screen/controller/upload_persistence_service.dart';
 import 'package:flutter/foundation.dart'; // for compute
-import 'package:get_storage/get_storage.dart';
-import 'package:uuid/uuid.dart';
-import 'post_controller.dart';
-import 'package:auto_tm/models/post_dtos.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import '../../../global_controllers/connection_controller.dart';
+import 'package:get/get.dart';
+import 'package:uuid/uuid.dart';
 
 /// Upload phases for a post task.
 enum UploadPhase {
@@ -173,8 +173,7 @@ class UploadManager extends GetxService {
       StreamController<UploadProgressEvent>.broadcast();
   Stream<UploadProgressEvent> get progressStream => _progressCtrl.stream;
   final _uuid = const Uuid();
-  final _box = GetStorage();
-  static const _persistKey = 'ACTIVE_UPLOAD_TASK_V1';
+  final _persistence = UploadPersistenceService();
   final _notifications = FlutterLocalNotificationsPlugin();
   bool _notificationsInitialized = false;
   // Rolling speed samples (timestamp, uploadedBytes)
@@ -192,7 +191,10 @@ class UploadManager extends GetxService {
   RxString get etaDisplay => currentTask.value?.etaDisplay ?? '--:--'.obs;
 
   Future<UploadManager> init() async {
-    _recoverPersisted();
+    final recovered = _persistence.recoverTask();
+    if (recovered != null) {
+      currentTask.value = recovered;
+    }
     await _initNotifications();
     return this;
   }
@@ -410,14 +412,16 @@ class UploadManager extends GetxService {
   }
 
   // ---- Weighted Step Pipeline ----
-  Future<void> _runWeightedPipeline(
-    PostController controller,
+  
+  /// Calculate upload pipeline weights based on media size.
+  /// Returns (createWeight, mediaWeight, finalizeWeight) normalized to sum to 1.0
+  ({double create, double media, double finalize}) _calculatePipelineWeights(
     UploadTask task,
-  ) async {
-    // Dynamic weighting: create (fixed base), media (proportional to bytes), finalize (fixed tail)
+  ) {
     const baseCreate = 0.12;
     const baseFinalize = 0.10;
-    // Compute media bytes (video + photos)
+
+    // Compute total media bytes (video + photos)
     int videoBytes = 0;
     try {
       if (task.snapshot.videoFile != null &&
@@ -428,34 +432,38 @@ class UploadManager extends GetxService {
         videoBytes = task.snapshot.compressedVideoFile!.lengthSync();
       }
     } catch (_) {}
+
     int photosBytes = 0;
     try {
-      photosBytes = task.snapshot.photoBytesLengths.fold<int>(
-        0,
-        (a, b) => a + b,
-      );
+      photosBytes = task.snapshot.photoBytesLengths.fold<int>(0, (a, b) => a + b);
     } catch (_) {}
+
     final totalMediaBytes = (videoBytes + photosBytes).clamp(0, 1 << 62);
-    double mediaWeight;
-    if (totalMediaBytes == 0) {
-      // No media -> redistribute to create/finalize proportionally
-      mediaWeight = 0.0;
-    } else {
-      // Allocate remaining after base weights
-      final remaining = 1.0 - (baseCreate + baseFinalize);
-      mediaWeight = remaining; // all remaining goes to media for now
-    }
-    // Normalize in case of edge cases
+    final mediaWeight = totalMediaBytes == 0
+        ? 0.0
+        : (1.0 - (baseCreate + baseFinalize));
+
+    // Normalize weights to sum to 1.0
     final totalCheck = baseCreate + baseFinalize + mediaWeight;
     final normFactor = totalCheck == 0 ? 1.0 : (1.0 / totalCheck);
-    final wCreate = (baseCreate * normFactor).clamp(0.0, 1.0);
-    final wFinalize = (baseFinalize * normFactor).clamp(0.0, 1.0);
-    final wMedia = (mediaWeight * normFactor).clamp(0.0, 1.0);
 
+    return (
+      create: (baseCreate * normFactor).clamp(0.0, 1.0),
+      media: (mediaWeight * normFactor).clamp(0.0, 1.0),
+      finalize: (baseFinalize * normFactor).clamp(0.0, 1.0),
+    );
+  }
+
+  /// Create pipeline steps (create post, upload media, finalize) with dynamic weights
+  List<_PipelineStep> _createPipelineSteps(
+    PostController controller,
+    UploadTask task,
+    ({double create, double media, double finalize}) weights,
+  ) {
     final steps = <_PipelineStep>[
       _PipelineStep(
         name: 'create',
-        weight: wCreate,
+        weight: weights.create,
         phase: UploadPhase.preparing,
         run: () async {
           final id = await controller.postDetails();
@@ -464,84 +472,17 @@ class UploadManager extends GetxService {
         },
         retry: 2,
       ),
-      if (wMedia > 0)
+      if (weights.media > 0)
         _PipelineStep(
           name: 'media',
-          weight: wMedia,
+          weight: weights.media,
           phase: UploadPhase.uploadingPhotos,
-          run: () async {
-            if (task.publishedPostId.value == null) {
-              throw Exception('Missing post id for media upload');
-            }
-            // Sequential enforcement: video first (if any), then photos one by one updating status
-            final postId = task.publishedPostId.value!;
-            // Video
-            final snap = task.snapshot;
-            if (snap.hasVideo &&
-                (snap.compressedVideoFile?.existsSync() == true ||
-                    snap.videoFile?.existsSync() == true)) {
-              // Mark explicit phase for UI timeline
-              task.phase.value = UploadPhase.uploadingVideo;
-              task.status.value = 'Uploading video…'.tr;
-              _emitMirror(task);
-              final videoOk = await _runWithNetworkWait(
-                controller,
-                task,
-                () => controller.uploadSingleVideo(
-                  postId,
-                  snap,
-                  onBytes: (delta) =>
-                      _onMediaDelta(task, deltaBytes: delta, video: true),
-                ),
-              );
-              if (!videoOk) {
-                final fallback = 'post_upload_video_failed'.tr;
-                throw Exception(
-                  controller.uploadError.value.isEmpty
-                      ? fallback
-                      : controller.uploadError.value,
-                );
-              }
-            }
-            // Photos sequential
-            final totalPhotos = snap.photoBase64.length;
-            for (var i = 0; i < totalPhotos; i++) {
-              // Switch phase only once (first photo) if we had video or starting photos
-              if (task.phase.value != UploadPhase.uploadingPhotos) {
-                task.phase.value = UploadPhase.uploadingPhotos;
-              }
-              task.status.value = 'Uploading photo @current of @total…'
-                  .trParams({'current': '${i + 1}', 'total': '$totalPhotos'});
-              _emitMirror(task);
-              final ok = await _runWithNetworkWait(
-                controller,
-                task,
-                () => controller.uploadSinglePhoto(
-                  postId,
-                  snap,
-                  i,
-                  onBytes: (delta) =>
-                      _onMediaDelta(task, deltaBytes: delta, video: false),
-                ),
-              );
-              if (!ok) {
-                final fallback = 'post_upload_photo_failed'.tr;
-                throw Exception(
-                  controller.uploadError.value.isEmpty
-                      ? fallback
-                      : controller.uploadError.value,
-                );
-              }
-            }
-            if (controller.isUploadCancelled.value) {
-              throw _Cancelled();
-            }
-          },
+          run: () => _uploadMedia(controller, task),
           retry: 2,
         ),
       _PipelineStep(
         name: 'finalize',
-        weight: wFinalize,
+        weight: weights.finalize,
         phase: UploadPhase.finalizing,
         run: () async {
           await controller.fetchMyPosts();
@@ -549,11 +490,93 @@ class UploadManager extends GetxService {
         retry: 1,
       ),
     ];
+    return steps;
+  }
+
+  /// Upload video (if present) and photos sequentially
+  Future<void> _uploadMedia(PostController controller, UploadTask task) async {
+    final postId = task.publishedPostId.value;
+    if (postId == null) {
+      throw Exception('Missing post id for media upload');
+    }
+
+    final snap = task.snapshot;
+
+    // Upload video first if present
+    if (snap.hasVideo &&
+        (snap.compressedVideoFile?.existsSync() == true ||
+            snap.videoFile?.existsSync() == true)) {
+      task.phase.value = UploadPhase.uploadingVideo;
+      task.status.value = 'Uploading video…'.tr;
+      _emitMirror(task);
+
+      final videoOk = await _runWithNetworkWait(
+        controller,
+        task,
+        () => controller.uploadSingleVideo(
+          postId,
+          snap,
+          onBytes: (delta) => _onMediaDelta(task, deltaBytes: delta, video: true),
+        ),
+      );
+
+      if (!videoOk) {
+        final fallback = 'post_upload_video_failed'.tr;
+        throw Exception(
+          controller.uploadError.value.isEmpty
+              ? fallback
+              : controller.uploadError.value,
+        );
+      }
+    }
+
+    // Upload photos sequentially
+    final totalPhotos = snap.photoBase64.length;
+    for (var i = 0; i < totalPhotos; i++) {
+      if (task.phase.value != UploadPhase.uploadingPhotos) {
+        task.phase.value = UploadPhase.uploadingPhotos;
+      }
+      task.status.value = 'Uploading photo @current of @total…'
+          .trParams({'current': '${i + 1}', 'total': '$totalPhotos'});
+      _emitMirror(task);
+
+      final ok = await _runWithNetworkWait(
+        controller,
+        task,
+        () => controller.uploadSinglePhoto(
+          postId,
+          snap,
+          i,
+          onBytes: (delta) => _onMediaDelta(task, deltaBytes: delta, video: false),
+        ),
+      );
+
+      if (!ok) {
+        final fallback = 'post_upload_photo_failed'.tr;
+        throw Exception(
+          controller.uploadError.value.isEmpty
+              ? fallback
+              : controller.uploadError.value,
+        );
+      }
+    }
+
+    if (controller.isUploadCancelled.value) {
+      throw _Cancelled();
+    }
+  }
+
+  Future<void> _runWeightedPipeline(
+    PostController controller,
+    UploadTask task,
+  ) async {
+    final weights = _calculatePipelineWeights(task);
+    final steps = _createPipelineSteps(controller, task, weights);
 
     // Store weights on task for continuous overall calculation during media phase
-    task.weightCreate = wCreate;
-    task.weightMedia = wMedia;
-    task.weightFinalize = wFinalize;
+    task.weightCreate = weights.create;
+    task.weightMedia = weights.media;
+    task.weightFinalize = weights.finalize;
 
     double progressed = 0.0;
     for (final step in steps) {
@@ -844,58 +867,9 @@ class UploadManager extends GetxService {
     } catch (_) {}
   }
 
-  // ---------------- Persistence -----------------
-  void _persist(UploadTask task) {
-    try {
-      final map = {
-        'id': task.id,
-        'createdAt': task.createdAt.toIso8601String(),
-        'snapshot': task.snapshot.toMap(),
-        'phase': task.phase.value.index,
-        'overall': task.overallProgress.value,
-        'video': task.videoProgress.value,
-        'photos': task.photosProgress.value,
-        'status': task.status.value,
-        'isCompleted': task.isCompleted.value,
-        'isFailed': task.isFailed.value,
-        'isCancelled': task.isCancelled.value,
-        'error': task.error.value,
-        'failureType': task.failureType.value.index,
-      };
-      _box.write(_persistKey, map);
-    } catch (_) {}
-  }
-
-  void _clearPersisted() {
-    _box.remove(_persistKey);
-  }
-
-  void _recoverPersisted() {
-    try {
-      final raw = _box.read(_persistKey);
-      if (raw is Map) {
-        final snapRaw = raw['snapshot'];
-        if (snapRaw is Map) {
-          final snap = PostUploadSnapshot.fromMap(
-            Map<String, dynamic>.from(snapRaw),
-          );
-          final task = UploadTask(id: raw['id'] ?? _uuid.v4(), snapshot: snap);
-          currentTask.value = task;
-          // Mark as failed needing retry (cannot resume mid-flight)
-          task.isFailed.value = true;
-          task.error.value = 'App restarted. Tap to retry.';
-          task.status.value = 'Needs retry';
-          task.phase.value = UploadPhase.failed;
-          final ftIndex = raw['failureType'];
-          if (ftIndex is int &&
-              ftIndex >= 0 &&
-              ftIndex < UploadFailureType.values.length) {
-            task.failureType.value = UploadFailureType.values[ftIndex];
-          }
-        }
-      }
-    } catch (_) {}
-  }
+  // ---------------- Persistence (delegated to UploadPersistenceService) ----------------
+  void _persist(UploadTask task) => _persistence.persistTask(task);
+  void _clearPersisted() => _persistence.clearTask();
 
   // --------------- Retry -----------------
   Future<void> retryActive(PostController controller) async {
@@ -931,22 +905,12 @@ class UploadManager extends GetxService {
   void _hydrateController(PostController c, PostUploadSnapshot snap) {
     // Only populate if controller has no images loaded (avoid overwriting user edits)
     if (c.selectedImages.isEmpty && snap.photoBase64.isNotEmpty) {
-      try {
-        c.selectedImages.assignAll(
-          snap.photoBase64.map((b64) {
-            try {
-              return base64Decode(b64);
-            } catch (_) {
-              return Uint8List(0); // fallback empty
-            }
-          }).toList(),
-        );
-      } catch (_) {}
+      c.selectedImages.assignAll(_persistence.hydrateImages(snap));
     }
-    if (c.selectedVideo.value == null &&
-        snap.videoFile != null &&
-        snap.videoFile!.existsSync()) {
-      c.selectedVideo.value = snap.videoFile;
+    if (c.selectedVideo.value == null && _persistence.hasValidVideoFile(snap)) {
+      c.selectedVideo.value = snap.usedCompressedVideo && snap.compressedVideoFile != null
+          ? snap.compressedVideoFile
+          : snap.videoFile;
       c.usedCompressedVideo.value = snap.usedCompressedVideo;
       if (snap.usedCompressedVideo &&
           snap.compressedVideoFile != null &&

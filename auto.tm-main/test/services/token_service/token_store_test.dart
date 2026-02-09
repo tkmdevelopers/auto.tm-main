@@ -82,5 +82,65 @@ void main() {
       // Assert
       expect(result, false);
     });
+
+    test('saveTokens should set isLoggedIn to true', () async {
+      // Arrange
+      expect(tokenStore.isLoggedIn.value, false);
+
+      // Act
+      await tokenStore.saveTokens(
+        accessToken: tAccess,
+        refreshToken: tRefresh,
+        phone: tPhone,
+      );
+
+      // Assert
+      expect(tokenStore.isLoggedIn.value, true);
+    });
+
+    test('clearAll should set isLoggedIn to false', () async {
+      // Arrange
+      await tokenStore.saveTokens(
+        accessToken: tAccess,
+        refreshToken: tRefresh,
+      );
+      expect(tokenStore.isLoggedIn.value, true);
+
+      // Act
+      await tokenStore.clearAll();
+
+      // Assert
+      expect(tokenStore.isLoggedIn.value, false);
+    });
+
+    test('init should hydrate isLoggedIn from storage', () async {
+      // Arrange
+      when(mockStorage.read(key: 'ACCESS_TOKEN'))
+          .thenAnswer((_) async => tAccess);
+
+      // Act
+      await tokenStore.init();
+
+      // Assert
+      expect(tokenStore.isLoggedIn.value, true);
+    });
+
+    test('updateAccessToken should write new access token', () async {
+      // Act
+      await tokenStore.updateAccessToken('new_access_token');
+
+      // Assert
+      verify(mockStorage.write(key: 'ACCESS_TOKEN', value: 'new_access_token'))
+          .called(1);
+    });
+
+    test('updateRefreshToken should write new refresh token', () async {
+      // Act
+      await tokenStore.updateRefreshToken('new_refresh_token');
+
+      // Assert
+      verify(mockStorage.write(key: 'REFRESH_TOKEN', value: 'new_refresh_token'))
+          .called(1);
+    });
   });
 }

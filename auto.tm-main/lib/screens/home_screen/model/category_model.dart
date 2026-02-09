@@ -1,5 +1,6 @@
 
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
+import 'package:auto_tm/models/post_dtos.dart';
 
 class Category {
   final String uuid;
@@ -28,7 +29,7 @@ class Category {
       // photo: '',
       // products: List<Product>.from(json['products'].map((x) => Product.fromJson(x))),
       posts: (json['posts'] as List)
-          .map((productJson) => Post.fromJson(productJson))
+          .map((productJson) => PostLegacyExtension.fromJson(productJson))
           .toList(),
     );
     

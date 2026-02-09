@@ -46,18 +46,18 @@ class ResultBrandModelComponent extends StatelessWidget {
                     Text(
                       'Brand'.tr,
                       style: TextStyle(
-                        fontSize: controller.selectedBrand.value != '' ? 12 : 14,
-                        fontWeight: controller.selectedBrand.value != ''
+                        fontSize: controller.selectedBrandName.value != '' ? 12 : 14,
+                        fontWeight: controller.selectedBrandName.value != ''
                             ? FontWeight.w400
                             : FontWeight.w500,
-            color: controller.selectedBrand.value != ''
+            color: controller.selectedBrandName.value != ''
               ? AppColors.textTertiaryColor
               : theme.colorScheme.onSurface,
                       ),
                     ),
-                    if (controller.selectedBrand.value != '')
+                    if (controller.selectedBrandName.value != '')
                       Text(
-                        controller.selectedBrand.value,
+                        controller.selectedBrandName.value,
                         style: TextStyle(
                           color: theme.colorScheme.onSurface,
                           fontSize: 14,
@@ -66,12 +66,12 @@ class ResultBrandModelComponent extends StatelessWidget {
                       )
                   ],
                 ),
-                if (controller.selectedBrand.value != '')
+                if (controller.selectedBrandName.value != '')
                   IconButton(
                     onPressed: () {
-                      controller.selectedBrand.value = '';
+                      controller.selectedBrandName.value = '';
                       controller.selectedBrandUuid.value = '';
-                      controller.selectedModel.value = '';
+                      controller.selectedModelName.value = '';
                       controller.selectedModelUuid.value = '';
                       controller.searchProducts();
                     },
@@ -108,7 +108,7 @@ class ResultBrandModelComponent extends StatelessWidget {
                 controller.hasViewedResults.value = controller.hasViewedResults.value || isResults;
                 Get.to(() => ModelSelection(
                       brandUuid: controller.selectedBrandUuid.value,
-                      brandName: controller.selectedBrand.value,
+                      brandName: controller.selectedBrandName.value,
                       origin: isResults ? 'results' : (controller.hasViewedResults.value ? 'filter' : 'initial'),
                     ));
               } else {
@@ -127,18 +127,18 @@ class ResultBrandModelComponent extends StatelessWidget {
                     Text(
                       'Model'.tr,
                       style: TextStyle(
-                        fontSize: controller.selectedModel.value != '' ? 12 : 14,
-                        fontWeight: controller.selectedModel.value != ''
+                        fontSize: controller.selectedModelName.value != '' ? 12 : 14,
+                        fontWeight: controller.selectedModelName.value != ''
                             ? FontWeight.w400
                             : FontWeight.w500,
-            color: controller.selectedModel.value != ''
+            color: controller.selectedModelName.value != ''
               ? AppColors.textTertiaryColor
               : theme.colorScheme.onSurface,
                       ),
                     ),
-                    if (controller.selectedModel.value != '')
+                    if (controller.selectedModelName.value != '')
                       Text(
-                        controller.selectedModel.value,
+                        controller.selectedModelName.value,
                         style: TextStyle(
                           color: theme.colorScheme.onSurface,
                           fontSize: 14,
@@ -147,10 +147,10 @@ class ResultBrandModelComponent extends StatelessWidget {
                       )
                   ],
                 ),
-                if (controller.selectedModel.value != '')
+                if (controller.selectedModelName.value != '')
                   IconButton(
                     onPressed: () {
-                      controller.selectedModel.value = '';
+                      controller.selectedModelName.value = '';
                       controller.selectedModelUuid.value = '';
                       controller.searchProducts();
                     },

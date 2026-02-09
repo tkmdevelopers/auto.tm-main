@@ -21,7 +21,11 @@ export class CategoriesService {
     @Inject("POSTS_REPOSITORY") private posts: typeof Posts,
   ) {}
 
-  async findAll(query: findAllCategories, req: AuthenticatedRequest, res: Response) {
+  async findAll(
+    query: findAllCategories,
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       const { limit, offset, post, search, sort, photo } = query;
       const includePayload: {}[] = [];
@@ -48,7 +52,11 @@ export class CategoriesService {
     }
   }
 
-  async create(body: createCategories, req: AuthenticatedRequest, res: Response) {
+  async create(
+    body: createCategories,
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       const uuid = uuidv4();
       const creator = await User.findOne({

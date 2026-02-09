@@ -590,6 +590,8 @@ class ProfileController extends GetxController {
               avatar: chosen,
               createdAt: current.createdAt,
               brandUuid: current.brandUuid,
+              role: current.role,
+              access: current.access,
             );
           }
         }
@@ -730,6 +732,8 @@ class ProfileController extends GetxController {
         avatar: null,
         createdAt: DateTime.now(),
         brandUuid: const [],
+        role: UserRole.user,
+        access: const [],
       );
     } else {
       profile.value = ProfileModel(
@@ -743,6 +747,8 @@ class ProfileController extends GetxController {
         avatar: current.avatar,
         createdAt: current.createdAt,
         brandUuid: current.brandUuid,
+        role: current.role,
+        access: current.access,
       );
     }
     name.value = preservedName;

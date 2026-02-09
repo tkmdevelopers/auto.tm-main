@@ -98,16 +98,17 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildSliverContent(ThemeData theme) {
     return Obx(() {
-      if (controller.initialLoad.value && controller.posts.isEmpty) {
-        return _buildSliverShimmerView(theme);
+      switch (controller.status.value) {
+        case HomeStatus.initial:
+        case HomeStatus.loading:
+          return _buildSliverShimmerView(theme);
+        case HomeStatus.error:
+          return _buildSliverErrorView(theme);
+        case HomeStatus.empty:
+          return _buildSliverEmptyView(theme);
+        case HomeStatus.success:
+          return _buildSliverDataView(theme);
       }
-      if (controller.isError.value && controller.posts.isEmpty) {
-        return _buildSliverErrorView(theme);
-      }
-      if (controller.posts.isEmpty) {
-        return _buildSliverEmptyView(theme);
-      }
-      return _buildSliverDataView(theme);
     });
   }
 
@@ -180,7 +181,7 @@ class HomeScreen extends StatelessWidget {
 
             if (postIndex >= controller.posts.length) {
               return Obx(
-                () => controller.isLoading.value
+                () => controller.isPaginating.value
                     ? const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16.0),
                         child: PostItemShimmer(),

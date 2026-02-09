@@ -38,6 +38,16 @@ export class BrandsController {
   ) {
     return this.brandsService.listOfBrands(req, res, body);
   }
+
+  @Post("history")
+  historyOfBrands(
+    @Req() req: any,
+    @Res() res: Response,
+    @Body() body: listBrands,
+  ) {
+    return this.brandsService.listOfBrands(req, res, body);
+  }
+
   @Get()
   async findAll(
     @Query() query: FindALlBrands,

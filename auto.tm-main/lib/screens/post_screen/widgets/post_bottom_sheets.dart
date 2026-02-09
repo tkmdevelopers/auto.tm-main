@@ -465,3 +465,127 @@ Future<void> showYearBottomSheet(
     isScrollControlled: true,
   );
 }
+
+/// Shows a bottom sheet for selecting a car color.
+Future<void> showColorBottomSheet(
+  BuildContext context, {
+  required PostController postController,
+  required VoidCallback onClose,
+}) async {
+  final theme = Theme.of(context);
+  final allColors = [
+    'White',
+    'Black',
+    'Red',
+    'Yellow',
+    'Green',
+    'Grey',
+    'Silver',
+    'Blue',
+    'Orange',
+    'Metallic',
+    'Matte',
+    'Pink',
+    'Brown',
+    'Transparent',
+  ];
+
+  return Get.bottomSheet(
+    Container(
+      height: MediaQuery.of(context).size.height * 0.6,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              "Select Color".tr,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.builder(
+              itemCount: allColors.length,
+              itemBuilder: (context, index) {
+                final color = allColors[index];
+                final isSelected = postController.selectedColor.value == color;
+                return ListTile(
+                  leading: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: _getColor(color),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  title: Text(
+                    color.tr,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? Icon(
+                          Icons.check_circle_rounded,
+                          color: theme.colorScheme.onSurface,
+                        )
+                      : null,
+                  onTap: () {
+                    if (!NavigationUtils.throttle('color_select')) return;
+                    postController.selectedColor.value = color;
+                    postController.markFieldChanged();
+                    onClose();
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+    isScrollControlled: true,
+  );
+}
+
+Color _getColor(String colorName) {
+  switch (colorName.toLowerCase()) {
+    case 'white':
+      return Colors.white;
+    case 'black':
+      return Colors.black;
+    case 'red':
+      return Colors.red;
+    case 'yellow':
+      return Colors.yellow;
+    case 'green':
+      return Colors.green;
+    case 'grey':
+      return Colors.grey;
+    case 'silver':
+      return Colors.grey[400]!;
+    case 'blue':
+      return Colors.blue;
+    case 'orange':
+      return Colors.orange;
+    case 'metallic':
+      return Colors.grey[300]!;
+    case 'matte':
+      return Colors.black87;
+    case 'pink':
+      return Colors.pink;
+    case 'brown':
+      return Colors.brown;
+    default:
+      return Colors.transparent;
+  }
+}

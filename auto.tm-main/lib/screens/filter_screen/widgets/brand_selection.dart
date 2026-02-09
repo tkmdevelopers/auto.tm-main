@@ -115,7 +115,7 @@ class _BrandSelectionState extends State<BrandSelection> {
             ),
           ),
         ),
-        style: AppStyles.f14w4.copyWith(color: theme.colorScheme.onSurface),
+        style: AppStyles.f14w4Th(context).copyWith(color: theme.colorScheme.onSurface),
         cursorColor: theme.colorScheme.onSurface,
       ),
     );
@@ -125,7 +125,7 @@ class _BrandSelectionState extends State<BrandSelection> {
   Widget _buildBrandHistory(BuildContext context) {
     final theme = Theme.of(context);
     return Obx(() {
-      if (brandController.isLodaing.value) {
+      if (brandController.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
       }
       if (brandController.brands.isEmpty) {
@@ -231,9 +231,9 @@ class _BrandSelectionState extends State<BrandSelection> {
                 onTap: () {
                   // Clear brand/model filters
                   controller.selectedBrandUuid.value = '';
-                  controller.selectedBrand.value = '';
+                  controller.selectedBrandName.value = '';
                   controller.selectedModelUuid.value = '';
-                  controller.selectedModel.value = '';
+                  controller.selectedModelName.value = '';
                   if (widget.origin == 'results') {
                     controller.searchProducts();
                     Get.back();
@@ -252,8 +252,8 @@ class _BrandSelectionState extends State<BrandSelection> {
             // Adjust index for the brand list
             final brandIndex = index - 2;
             final brand = controller.filteredBrands[brandIndex];
-            final String logoUrl = brand['photo']?['originalPath'] ?? '';
-            final String brandName = brand['name'] ?? '';
+            final String logoUrl = brand.photo?.originalPath ?? '';
+            final String brandName = brand.name;
 
             // Use ListTile for a clean, consistent, and semantic row item
             return ListTile(
@@ -276,10 +276,10 @@ class _BrandSelectionState extends State<BrandSelection> {
                 color: Colors.grey,
               ),
               onTap: () {
-                controller.fetchModels(brand['uuid']);
-                brandController.addToHistory(brand['uuid']);
+                controller.fetchModels(brand.uuid);
+                brandController.addToHistory(brand.uuid);
                 Get.to(() => ModelSelection(
-                      brandUuid: brand['uuid'],
+                      brandUuid: brand.uuid,
                       brandName: brandName,
                       origin: widget.origin,
                     ));

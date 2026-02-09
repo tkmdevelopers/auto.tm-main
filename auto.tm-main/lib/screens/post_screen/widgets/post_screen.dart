@@ -605,6 +605,22 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                               isRequired: false, // now optional
                             ),
                           ),
+                          Obx(
+                            () => PostSelectableField(
+                              label: 'Color'.tr,
+                              value: postController.selectedColor.value,
+                              hint: 'Select color'.tr,
+                              onTap: () => _openSelection(() async {
+                                await showColorBottomSheet(
+                                  context,
+                                  postController: postController,
+                                  onClose: _safeCloseOverlay,
+                                );
+                              }),
+                              isRequired: false,
+                              icon: Icons.color_lens_outlined,
+                            ),
+                          ),
                           // Engine Power now selection-only (no free text)
                           PostSelectableField(
                             label: 'post_engine_power_l_label'.tr,

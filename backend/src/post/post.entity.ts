@@ -29,7 +29,11 @@ enum UserRole {
 @Table({ tableName: "posts" })
 export class Posts extends Model {
   @ApiProperty()
-  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
+  @Column({
+    primaryKey: true,
+    type: DataType.UUID,
+    defaultValue: DataType.UUIDV4,
+  })
   uuid: string;
   @ForeignKey(() => Brands)
   @Column({ type: DataType.UUID, allowNull: true })
@@ -74,6 +78,8 @@ export class Posts extends Model {
   description: string;
   @Column({ allowNull: true })
   location: string;
+  @Column({ allowNull: true })
+  color: string;
   @ForeignKey(() => User)
   @Column({ type: DataType.UUID, allowNull: true })
   userId: string;

@@ -136,20 +136,10 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
                       const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final post = controller.posts[index];
-                    final resolvedBrand = controller.resolveBrandName(
-                      post.brand,
-                    );
-                    // Attempt model resolution with brand context
-                    final resolvedModel = controller.resolveModelWithBrand(
-                      post.modelId.isNotEmpty ? post.modelId : post.model,
-                      post.brandId.isNotEmpty ? post.brandId : post.brand,
-                    );
                     return PostedPostItem(
                       uuid: post.uuid,
-                      brand: resolvedBrand,
-                      model: resolvedModel,
-                      brandId: post.brandId,
-                      modelId: post.modelId,
+                      brand: post.brand,
+                      model: post.model,
                       price: post.price,
                       photoPath: post.photoPath,
                       year: post.year,

@@ -1,10 +1,10 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { BrandsService } from "./brands.service";
-import { Brands } from './brands.entity'; // Import Brands entity
-import { Models } from '../models/models.entity'; // Import Models entity
-import { Posts } from '../post/post.entity'; // Import Posts entity
-import { User } from '../auth/auth.entity'; // Import User entity
-import { Photo } from '../photo/photo.entity'; // Import Photo entity
+import { Brands } from "./brands.entity"; // Import Brands entity
+import { Models } from "../models/models.entity"; // Import Models entity
+import { Posts } from "../post/post.entity"; // Import Posts entity
+import { User } from "../auth/auth.entity"; // Import User entity
+import { Photo } from "../photo/photo.entity"; // Import Photo entity
 
 describe("BrandsService", () => {
   let service: BrandsService;

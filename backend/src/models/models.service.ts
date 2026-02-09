@@ -33,7 +33,11 @@ export class ModelsService {
     @Inject("PHOTO_REPOSITORY") private photo: typeof Photo,
   ) {}
 
-  async findAll(query: FindAllModels, req: AuthenticatedRequest, res: Response) {
+  async findAll(
+    query: FindAllModels,
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       const { limit, brand, offset, post, search, sortAs, filter } = query;
       const includePayload: {}[] = [];
@@ -265,7 +269,11 @@ export class ModelsService {
     }
   }
 
-  async deletePhoto(param: ModelUUID, req: AuthenticatedRequest, res: Response) {
+  async deletePhoto(
+    param: ModelUUID,
+    req: AuthenticatedRequest,
+    res: Response,
+  ) {
     try {
       const { uuid } = param;
 

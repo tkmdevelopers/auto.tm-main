@@ -1,7 +1,5 @@
-import 'dart:isolate';
-
-import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/services/network/api_client.dart';
+import 'package:auto_tm/domain/models/post.dart';
+import 'package:auto_tm/services/post_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
@@ -9,21 +7,20 @@ import 'package:get/get.dart';
 /// Page size for home feed; used for limit and offset increment.
 const int kHomePageSize = 20;
 
+enum HomeStatus { initial, loading, success, error, empty }
+
 class HomeController extends GetxController {
   final ScrollController scrollController = ScrollController();
 
   /// Threshold in pixels before maxScrollExtent to trigger pagination (load earlier).
   static const double _paginationThreshold = 200;
 
-  var posts = <Post>[].obs;
-  var isLoading = false.obs;
-  var initialLoad = true.obs;
-  var hasMore = true.obs;
-  var offset = 0;
-
-  /// Error state: when true, show error UI with retry.
-  var isError = false.obs;
-  var errorMessage = ''.obs;
+  final posts = <Post>[].obs;
+  final status = HomeStatus.initial.obs;
+  final isPaginating = false.obs;
+  final hasMore = true.obs;
+  final errorMessage = ''.obs;
+  int offset = 0;
 
   @override
   void onInit() {
@@ -33,10 +30,10 @@ class HomeController extends GetxController {
   }
 
   void _onScroll() {
-    if (!scrollController.hasClients) return;
+    if (!scrollController.hasClients || isPaginating.value || !hasMore.value) return;
     final pos = scrollController.position;
     if (pos.pixels >= pos.maxScrollExtent - _paginationThreshold) {
-      fetchPosts();
+      fetchPosts(isPagination: true);
     }
   }
 
@@ -46,7 +43,6 @@ class HomeController extends GetxController {
     super.onClose();
   }
 
-  // --- FIX: Added this method back ---
   /// Scrolls the home screen list back to the top.
   void scrollToTop() {
     if (scrollController.hasClients) {
@@ -59,21 +55,17 @@ class HomeController extends GetxController {
   }
 
   Future<void> fetchInitialData() async {
-    initialLoad.value = true;
-    isError.value = false;
+    status.value = HomeStatus.loading;
     errorMessage.value = '';
     try {
       await fetchPosts();
     } catch (e) {
       debugPrint('Error fetching initial data: $e');
-      isError.value = true;
+      status.value = HomeStatus.error;
       errorMessage.value = e.toString();
+      _showErrorSnackbar();
     } finally {
       FlutterNativeSplash.remove();
-      initialLoad.value = false;
-      if (isError.value) {
-        _showErrorSnackbar();
-      }
     }
   }
 
@@ -86,90 +78,59 @@ class HomeController extends GetxController {
     );
   }
 
-  Future<void> fetchPosts() async {
-    isLoading.value = true;
-    if (!hasMore.value) {
-      isLoading.value = false;
-      return;
+  Future<void> fetchPosts({bool isPagination = false}) async {
+    if (isPagination) {
+      isPaginating.value = true;
     }
 
     try {
-      final response = await ApiClient.to.dio.get(
-        'posts',
-        queryParameters: {
-          'offset': offset,
-          'limit': kHomePageSize,
-          'brand': true,
-          'model': true,
-          'photo': true,
-          'subscription': true,
-          'status': true,
-        },
+      final newPosts = await PostService.to.fetchFeedPosts(
+        offset: offset,
+        limit: kHomePageSize,
       );
 
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data;
-        if (data is! List) {
-          isError.value = true;
-          errorMessage.value = 'Invalid response format';
-          return;
-        }
-        final newPosts = await Isolate.run(() {
-          return (data as List)
-              .map((e) => Post.fromJson(e as Map<String, dynamic>))
-              .toList();
-        });
-
-        if (newPosts.isNotEmpty) {
-          posts.addAll(newPosts);
-          offset += kHomePageSize;
-        } else {
-          hasMore.value = false;
+      if (newPosts.isNotEmpty) {
+        posts.addAll(newPosts);
+        offset += kHomePageSize;
+        if (!isPagination) {
+          status.value = HomeStatus.success;
         }
       } else {
-        isError.value = true;
-        final body = response.data;
-        if (body is Map && body['message'] != null) {
-          errorMessage.value = body['message'].toString();
-        } else {
-          final code = response.statusCode;
-          errorMessage.value =
-              code != null ? 'Request failed ($code)' : 'Request failed';
+        if (!isPagination && posts.isEmpty) {
+          status.value = HomeStatus.empty;
         }
+        hasMore.value = false;
       }
     } catch (e) {
-      debugPrint('Error fetching posts: $e');
-      isError.value = true;
-      errorMessage.value = e.toString();
+      if (isPagination) {
+        Get.snackbar('Error', 'Failed to load more posts');
+      } else {
+        status.value = HomeStatus.error;
+        errorMessage.value = e.toString();
+      }
     } finally {
-      isLoading.value = false;
+      isPaginating.value = false;
+      // If we were loading the first page and didn't fail, ensure we are in a final state
+      if (status.value == HomeStatus.loading) {
+        status.value = posts.isEmpty ? HomeStatus.empty : HomeStatus.success;
+      }
     }
   }
 
   /// Retry after error: clear error state and fetch from start.
   Future<void> retry() async {
-    isError.value = false;
-    errorMessage.value = '';
     hasMore.value = true;
     offset = 0;
     posts.clear();
     await fetchInitialData();
   }
 
-  /// Pull-to-refresh: reset and reload. Future always completes so RefreshIndicator stops.
+  /// Pull-to-refresh: reset and reload. 
   Future<void> refreshData() async {
-    isLoading.value = false;
     hasMore.value = true;
     offset = 0;
-    isError.value = false;
     errorMessage.value = '';
     posts.clear();
-    try {
-      await fetchInitialData();
-    } catch (e) {
-      debugPrint('Error refreshing data: $e');
-      // Future still completes; error state already set in fetchInitialData
-    }
+    await fetchInitialData();
   }
-
 }

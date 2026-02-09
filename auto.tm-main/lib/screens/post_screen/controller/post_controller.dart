@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:auto_tm/domain/validators/post_validator.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
 
 import 'package:auto_tm/utils/key.dart';
@@ -12,7 +13,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
-import 'package:auto_tm/services/network/api_client.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:auto_tm/services/post_service.dart';
 import 'package:auto_tm/services/brand_model_service.dart';
@@ -26,6 +26,7 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 
 import 'upload_manager.dart';
 import 'package:auto_tm/models/post_dtos.dart';
+import 'package:auto_tm/domain/models/post.dart' as domain;
 
 /// Lightweight image signature for dirty tracking
 class _ImageSig {
@@ -81,6 +82,7 @@ class PostController extends GetxController {
   final RxString selectedCondition = ''.obs;
   final RxString selectedTransmission = ''.obs;
   final RxString selectedEngineType = ''.obs;
+  final RxString selectedColor = ''.obs;
   final Rx<DateTime> selectedDate = DateTime.now().obs;
   final RxString selectedCurrency = 'TMT'.obs;
   final RxString selectedLocation = ''.obs;
@@ -152,7 +154,7 @@ class PostController extends GetxController {
   // Additional UI state properties
   final RxString selectedYear = ''.obs;
   // Posts management
-  final RxList<PostDto> posts = <PostDto>[].obs;
+  final RxList<domain.Post> posts = <domain.Post>[].obs;
   final RxBool isLoadingP = false.obs;
   final RxBool showShimmer = false.obs;
   Timer? _shimmerDelayTimer;
@@ -309,91 +311,85 @@ class PostController extends GetxController {
       return null;
     }
 
-    // ===== CLIENT-SIDE VALIDATION =====
-    // Validate price
-    final priceValue = double.tryParse(price.text);
-    if (priceValue == null || priceValue.isNaN || priceValue < 0) {
-      Get.snackbar('Error', 'Please enter a valid price'.tr);
+    // ===== CLIENT-SIDE VALIDATION USING DOMAIN VALIDATOR =====
+    final priceErr = PostValidator.validatePrice(price.text);
+    if (priceErr != null) {
+      Get.snackbar('Error', priceErr.tr);
       return null;
     }
 
-    // Validate brand selection
-    if (selectedBrandUuid.value.isEmpty) {
-      Get.snackbar('Error', 'Please select a brand'.tr);
+    final brandErr = PostValidator.validateBrand(selectedBrandUuid.value);
+    if (brandErr != null) {
+      Get.snackbar('Error', brandErr.tr);
       return null;
     }
 
-    // Validate model selection
-    if (selectedModelUuid.value.isEmpty) {
-      Get.snackbar('Error', 'Please select a model'.tr);
+    final modelErr = PostValidator.validateModel(selectedModelUuid.value);
+    if (modelErr != null) {
+      Get.snackbar('Error', modelErr.tr);
       return null;
     }
 
     try {
+      final priceValue = double.tryParse(price.text)!;
       final fullPhone = _phoneCtrl.fullPhoneNumber;
-      final response = await ApiClient.to.dio.post(
-        'posts',
-        data: {
-          'brandsId': selectedBrandUuid.value.isNotEmpty
-              ? selectedBrandUuid.value
-              : null,
-          'modelsId': selectedModelUuid.value.isNotEmpty
-              ? selectedModelUuid.value
-              : null,
-          'condition': selectedCondition.value,
-          'transmission': selectedTransmission.value,
-          'engineType': selectedEngineType.value,
-          'enginePower': double.tryParse(enginePower.text) ?? 0,
-          'year':
-              int.tryParse(
-                selectedYear.value.isNotEmpty
-                    ? selectedYear.value
-                    : selectedDate.value.year.toString(),
-              ) ??
-              selectedDate.value.year,
-          'credit': credit.value,
-          'exchange': exchange.value,
-          'milleage': double.tryParse(milleage.text) ?? 0,
-          'vin': vinCode.text,
-          'price': priceValue,
-          'currency': selectedCurrency.value.isNotEmpty
-              ? selectedCurrency.value
-              : 'TMT',
+      final postData = {
+        'brandsId': selectedBrandUuid.value.isNotEmpty
+            ? selectedBrandUuid.value
+            : null,
+        'modelsId': selectedModelUuid.value.isNotEmpty
+            ? selectedModelUuid.value
+            : null,
+        'condition': selectedCondition.value,
+        'transmission': selectedTransmission.value,
+        'engineType': selectedEngineType.value,
+        'color': selectedColor.value.isNotEmpty ? selectedColor.value : null,
+        'enginePower': double.tryParse(enginePower.text) ?? 0,
+        'year':
+            int.tryParse(
+              selectedYear.value.isNotEmpty
+                  ? selectedYear.value
+                  : selectedDate.value.year.toString(),
+            ) ??
+            selectedDate.value.year,
+        'credit': credit.value,
+        'exchange': exchange.value,
+        'milleage': double.tryParse(milleage.text) ?? 0,
+        'vin': vinCode.text,
+        'price': priceValue,
+        'currency': selectedCurrency.value.isNotEmpty
+            ? selectedCurrency.value
+            : 'TMT',
+        'location': selectedLocation.value,
+        'phone': fullPhone,
+        'description': description.text,
+        'personalInfo': {
+          'name': Get.isRegistered<ProfileController>()
+              ? Get.find<ProfileController>().name.value
+              : '',
           'location': selectedLocation.value,
           'phone': fullPhone,
-          'description': description.text,
-          'personalInfo': {
-            'name': Get.isRegistered<ProfileController>()
-                ? Get.find<ProfileController>().name.value
-                : '',
-            'location': selectedLocation.value,
-            'phone': fullPhone,
-            'region': 'Local',
-          },
+          'region': 'Local',
         },
-      );
+      };
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = response.data;
-        if (data is Map) return data['uuid']?.toString();
+      final uuid = await PostService.to.createPostDetails(postData);
+      if (uuid == null) {
+        uploadError.value = 'Unknown error'.tr;
         return null;
-      } else {
-        final errorData = response.data is Map
-            ? response.data as Map
-            : <String, dynamic>{};
-        final errorMsg =
-            (errorData['error'] ?? errorData['message'] ?? 'Unknown error')
-                .toString();
-        debugPrint('Post creation failed (${response.statusCode}): $errorMsg');
-        uploadError.value = errorMsg;
-        Get.snackbar(
-          'error'.tr,
-          errorMsg,
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Get.theme.colorScheme.error,
-          colorText: Get.theme.colorScheme.onError,
-        );
       }
+      return uuid;
+    } on Failure catch (e) {
+      final msg = e.message ?? e.toString();
+      debugPrint('Post creation failed: $msg');
+      uploadError.value = msg;
+      Get.snackbar(
+        'error'.tr,
+        msg,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Get.theme.colorScheme.error,
+        colorText: Get.theme.colorScheme.onError,
+      );
       return null;
     } catch (e) {
       debugPrint('Post creation error: $e');
@@ -415,8 +411,9 @@ class PostController extends GetxController {
     });
 
     try {
-      final postDtos = await PostService.to.fetchMyPosts();
-      posts.assignAll(postDtos);
+      // fetchMyPosts now returns List<domain.Post> via PostService refactor
+      final myPosts = await PostService.to.fetchMyPosts();
+      posts.assignAll(myPosts);
     } on Failure catch (e) {
       debugPrint('Fetch my posts error: $e');
       Get.snackbar('Error', e.message ?? 'Failed to load posts'.tr);
@@ -514,23 +511,11 @@ class PostController extends GetxController {
       _activeCancelToken = dio.CancelToken();
       int lastSent = 0;
 
-      final form = dio.FormData.fromMap({
-        'postId': postUuid,
-        'uuid': postUuid,
-        'file': await dio.MultipartFile.fromFile(
-          file.path,
-          filename: 'video_${DateTime.now().millisecondsSinceEpoch}.mp4',
-        ),
-      });
-
-      final resp = await ApiClient.to.dio.post(
-        'video/upload',
-        data: form,
+      final ok = await PostService.to.uploadVideo(
+        postUuid,
+        file,
+        snap.usedCompressedVideo,
         cancelToken: _activeCancelToken,
-        options: dio.Options(
-          sendTimeout: const Duration(seconds: 300),
-          receiveTimeout: const Duration(minutes: 2),
-        ),
         onSendProgress: (sent, total) {
           final delta = sent - lastSent;
           lastSent = sent;
@@ -543,22 +528,9 @@ class PostController extends GetxController {
           if (delta > 0) onBytes?.call(delta);
         },
       );
-
-      if (resp.statusCode != null && resp.statusCode! >= 300) {
-        uploadError.value =
-            'common_error'.tr + ' (video ${resp.statusCode}): ${resp.data}';
-        return false;
-      }
-      return true;
-    } on dio.DioException catch (e) {
-      if (dio.CancelToken.isCancel(e)) {
-        uploadError.value = 'post_upload_cancelled_hint'.tr;
-      } else {
-        final status = e.response?.statusCode;
-        final body = e.response?.data;
-        uploadError.value =
-            'Video upload error${status != null ? ' ($status)' : ''}: ${body ?? e.message}';
-      }
+      return ok;
+    } on Failure catch (e) {
+      uploadError.value = e.message ?? e.toString();
       return false;
     } catch (e) {
       uploadError.value = 'Video upload exception: $e';
@@ -579,21 +551,11 @@ class PostController extends GetxController {
       _activeCancelToken = dio.CancelToken();
       int lastSent = 0;
 
-      await ApiClient.to.dio.post(
-        'photo/posts',
-        data: dio.FormData.fromMap({
-          'uuid': postUuid,
-          'file': dio.MultipartFile.fromBytes(
-            bytes,
-            filename:
-                'photo_${index + 1}_${DateTime.now().millisecondsSinceEpoch}.jpg',
-          ),
-        }),
+      final ok = await PostService.to.uploadPhoto(
+        postUuid,
+        bytes,
+        index,
         cancelToken: _activeCancelToken,
-        options: dio.Options(
-          sendTimeout: const Duration(seconds: 60),
-          receiveTimeout: const Duration(seconds: 60),
-        ),
         onSendProgress: (sent, total) {
           final delta = sent - lastSent;
           lastSent = sent;
@@ -606,7 +568,10 @@ class PostController extends GetxController {
           if (delta > 0) onBytes?.call(delta);
         },
       );
-      return true;
+      return ok;
+    } on Failure catch (e) {
+      uploadError.value = e.message ?? e.toString();
+      return false;
     } catch (e) {
       return false;
     }
@@ -864,6 +829,7 @@ class PostController extends GetxController {
     selectedCondition.value = '';
     selectedTransmission.value = '';
     selectedEngineType.value = '';
+    selectedColor.value = '';
     selectedDate.value = DateTime.now();
     selectedCurrency.value = 'TMT';
     selectedLocation.value = '';
@@ -914,6 +880,7 @@ class PostController extends GetxController {
         'condition': selectedCondition.value,
         'transmission': selectedTransmission.value,
         'engineType': selectedEngineType.value,
+        'color': selectedColor.value,
         'year': selectedYear.value.isNotEmpty
             ? selectedYear.value
             : selectedDate.value.year.toString(),
@@ -965,6 +932,7 @@ class PostController extends GetxController {
       selectedCondition.value = (raw['condition'] ?? '') as String;
       selectedTransmission.value = (raw['transmission'] ?? '') as String;
       selectedEngineType.value = (raw['engineType'] ?? '') as String;
+      selectedColor.value = (raw['color'] ?? '') as String;
 
       final dateStr = raw['date'] as String?;
       final yearStr = raw['year'] as String?;
@@ -1097,6 +1065,7 @@ class PostController extends GetxController {
     'condition': selectedCondition.value,
     'transmission': selectedTransmission.value,
     'engineType': selectedEngineType.value,
+    'color': selectedColor.value,
     'year': selectedYear.value.isNotEmpty
         ? selectedYear.value
         : selectedDate.value.year.toString(),
@@ -1156,6 +1125,7 @@ class PostController extends GetxController {
       selectedCondition.value = (raw['condition'] ?? '') as String;
       selectedTransmission.value = (raw['transmission'] ?? '') as String;
       selectedEngineType.value = (raw['engineType'] ?? '') as String;
+      selectedColor.value = (raw['color'] ?? '') as String;
 
       final dateStr = raw['date'] as String?;
       final yearStr2 = raw['year'] as String?;

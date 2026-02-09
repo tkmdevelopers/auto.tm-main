@@ -1,7 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { BannersService } from "./banners.service";
-import { Photo } from '../photo/photo.entity'; // Import Photo entity
-import { Banners } from './banners.entity'; // Import Banners entity
+import { Photo } from "../photo/photo.entity"; // Import Photo entity
+import { Banners } from "./banners.entity"; // Import Banners entity
 
 describe("BannersService", () => {
   let service: BannersService;

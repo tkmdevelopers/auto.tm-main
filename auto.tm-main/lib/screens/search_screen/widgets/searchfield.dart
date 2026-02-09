@@ -68,21 +68,6 @@ class SearchField extends StatelessWidget {
             fontWeight: FontWeight.w400,
           ),
         ),
-        // decoration: InputDecoration(
-        //   contentPadding:
-        //       const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        //   border: OutlineInputBorder(
-        //       borderSide: BorderSide.none,
-        //       borderRadius: BorderRadius.circular(8)),
-        //   fillColor: AppColors.whiteColor,
-        //   filled: filled,
-        //   suffixIcon: Padding(
-        //     padding: const EdgeInsets.symmetric(vertical: 12),
-        //     child: IconButton(icon: Icon(Icons.search), onPressed: () => onSearch(),),
-        //   ),
-        //   hintText: hintText,
-        //   hintStyle: AppStyles.f14w4,
-        // ),
   style: TextStyle(fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface),
         obscureText: false,
         controller: controller,

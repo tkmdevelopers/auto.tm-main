@@ -3,7 +3,7 @@ import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AuthGuard } from "./guards/auth.guard"; // Import AuthGuard
 import { JwtService } from "@nestjs/jwt"; // Import JwtService
-import { User } from './auth/auth.entity'; // Import User entity
+import { User } from "./auth/auth.entity"; // Import User entity
 
 describe("AppController", () => {
   let appController: AppController;

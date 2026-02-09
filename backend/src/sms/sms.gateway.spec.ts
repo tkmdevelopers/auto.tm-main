@@ -55,7 +55,7 @@ describe("SmsGateway", () => {
 
     it("should fail registration with invalid auth token (if configured)", () => {
       process.env.SMS_DEVICE_AUTH_TOKEN = "secret_token";
-      
+
       const payload = { authToken: "wrong_token" };
       const result = gateway.handleRegister(mockSocket, payload);
 
@@ -77,7 +77,7 @@ describe("SmsGateway", () => {
         correlationId: "req_1",
         phone: "+99365000000",
         text: "Your code is 12345",
-        region: "tm"
+        region: "tm",
       };
 
       const result = await gateway.sendSms(request);
@@ -86,10 +86,13 @@ describe("SmsGateway", () => {
       expect(result).toBe(true);
       // Expect server to emit to specific socket
       expect(mockServer.to).toHaveBeenCalledWith("socket_123");
-      expect(mockServer.emit).toHaveBeenCalledWith("sms:send", expect.objectContaining({
-        correlationId: "req_1",
-        phone: "+99365000000"
-      }));
+      expect(mockServer.emit).toHaveBeenCalledWith(
+        "sms:send",
+        expect.objectContaining({
+          correlationId: "req_1",
+          phone: "+99365000000",
+        }),
+      );
     });
 
     it("should fail if no device is connected for region", async () => {
@@ -97,17 +100,20 @@ describe("SmsGateway", () => {
         correlationId: "req_2",
         phone: "+99365000000",
         text: "Hello",
-        region: "tm"
+        region: "tm",
       };
 
       const result = await gateway.sendSms(request);
 
       expect(result).toBe(false);
       // Should emit failure event internally
-      expect(eventEmitter.emit).toHaveBeenCalledWith("sms.ack", expect.objectContaining({
-        status: "failed",
-        error: expect.stringContaining("No SMS device available")
-      }));
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        "sms.ack",
+        expect.objectContaining({
+          status: "failed",
+          error: expect.stringContaining("No SMS device available"),
+        }),
+      );
     });
   });
 
@@ -115,7 +121,12 @@ describe("SmsGateway", () => {
     it("should process success ack and clean up pending request", async () => {
       // Setup: register and queue request
       gateway.handleRegister(mockSocket, { region: "tm" });
-      const request = { correlationId: "req_1", phone: "123", text: "msg", otpRequestId: "otp_1" };
+      const request = {
+        correlationId: "req_1",
+        phone: "123",
+        text: "msg",
+        otpRequestId: "otp_1",
+      };
       await gateway.sendSms(request);
 
       // Verify pending request exists
@@ -124,16 +135,19 @@ describe("SmsGateway", () => {
       // Act: Receive ACK
       gateway.handleAck(mockSocket, {
         correlationId: "req_1",
-        status: "sent"
+        status: "sent",
       });
 
       // Assert
       expect((gateway as any).pendingRequests.has("req_1")).toBe(false);
-      expect(eventEmitter.emit).toHaveBeenCalledWith("sms.ack", expect.objectContaining({
-        correlationId: "req_1",
-        status: "sent",
-        otpRequestId: "otp_1"
-      }));
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        "sms.ack",
+        expect.objectContaining({
+          correlationId: "req_1",
+          status: "sent",
+          otpRequestId: "otp_1",
+        }),
+      );
     });
   });
 });

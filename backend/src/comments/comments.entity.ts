@@ -19,7 +19,11 @@ import { Posts } from "src/post/post.entity";
 @Table({ tableName: "comments" })
 export class Comments extends Model {
   @ApiProperty()
-  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
+  @Column({
+    primaryKey: true,
+    type: DataType.UUID,
+    defaultValue: DataType.UUIDV4,
+  })
   uuid: string;
   @ApiProperty()
   @Column({ allowNull: false })

@@ -96,7 +96,7 @@ class BottomSheetLang extends StatelessWidget {
             ),
             title: Text(
               language['name'],
-              style: AppStyles.f14w4.copyWith(
+              style: AppStyles.f14w4Th(context).copyWith(
                 color: theme.colorScheme.onSurface,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),

@@ -32,12 +32,19 @@ export class OtpController {
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
     description: "Invalid phone number",
-    schema: { example: { code: "OTP_INVALID_PHONE", message: "Phone number is required" } },
+    schema: {
+      example: {
+        code: "OTP_INVALID_PHONE",
+        message: "Phone number is required",
+      },
+    },
   })
   @ApiResponse({
     status: HttpStatus.TOO_MANY_REQUESTS,
     description: "Rate limit exceeded",
-    schema: { example: { code: "OTP_RATE_LIMIT", message: "Too many OTP requests" } },
+    schema: {
+      example: { code: "OTP_RATE_LIMIT", message: "Too many OTP requests" },
+    },
   })
   async sendOtp(
     @Body() body: SendOtp,
@@ -78,10 +85,7 @@ export class OtpController {
       },
     },
   })
-  async verifyOtp(
-    @Body() body: GetTime,
-    @Res() res: Response,
-  ): Promise<any> {
+  async verifyOtp(@Body() body: GetTime, @Res() res: Response): Promise<any> {
     return this.otpService.checkOtp(body, res);
   }
 }

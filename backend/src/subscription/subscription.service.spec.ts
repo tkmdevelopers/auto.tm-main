@@ -1,7 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { SubscriptionService } from "./subscription.service";
-import { Subscriptions } from './subscription.entity'; // Import Subscriptions entity
-import { Photo } from '../photo/photo.entity'; // Import Photo entity
+import { Subscriptions } from "./subscription.entity"; // Import Subscriptions entity
+import { Photo } from "../photo/photo.entity"; // Import Photo entity
 
 describe("SubscriptionService", () => {
   let service: SubscriptionService;

@@ -98,7 +98,7 @@ class _ModelSelectionState extends State<ModelSelection> {
             ),
           ),
         ),
-        style: AppStyles.f14w4.copyWith(color: theme.colorScheme.onSurface),
+        style: AppStyles.f14w4Th(context).copyWith(color: theme.colorScheme.onSurface),
         cursorColor: theme.colorScheme.onSurface,
       ),
     );
@@ -132,8 +132,8 @@ class _ModelSelectionState extends State<ModelSelection> {
                 ),
                 onTap: () {
                   controller.selectedBrandUuid.value = widget.brandUuid;
-                  controller.selectedBrand.value = widget.brandName;
-                  controller.selectedModel.value = '';
+                  controller.selectedBrandName.value = widget.brandName;
+                  controller.selectedModelName.value = '';
                   controller.selectedModelUuid.value = '';
                   if (widget.origin == 'results') { // only run search when coming from results screen
                     controller.searchProducts();
@@ -155,7 +155,7 @@ class _ModelSelectionState extends State<ModelSelection> {
             final modelIndex = index - 1;
             final model = controller.filteredModels[modelIndex];
             final bool isSelected =
-                controller.selectedModelUuid.value == model['uuid'];
+                controller.selectedModelUuid.value == model.uuid;
 
             return ListTile(
               leading: Icon(
@@ -163,7 +163,7 @@ class _ModelSelectionState extends State<ModelSelection> {
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
               title: Text(
-                model['name'],
+                model.name,
                 style: TextStyle(
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
@@ -178,9 +178,9 @@ class _ModelSelectionState extends State<ModelSelection> {
               ),
                 onTap: () {
                 controller.selectedBrandUuid.value = widget.brandUuid;
-                controller.selectedModelUuid.value = model['uuid'];
-                controller.selectedBrand.value = widget.brandName;
-                controller.selectedModel.value = model['name'];
+                controller.selectedModelUuid.value = model.uuid;
+                controller.selectedBrandName.value = widget.brandName;
+                controller.selectedModelName.value = model.name;
                 if (widget.origin == 'results') { // live update results
                   controller.searchProducts();
                   Get.close(2);

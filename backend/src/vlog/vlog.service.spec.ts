@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { VlogService } from "./vlog.service";
-import { Vlogs } from './vlog.entity'; // Import Vlogs entity
+import { Vlogs } from "./vlog.entity"; // Import Vlogs entity
 
 describe("VlogService", () => {
   let service: VlogService;

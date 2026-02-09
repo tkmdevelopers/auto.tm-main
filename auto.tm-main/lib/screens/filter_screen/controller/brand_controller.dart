@@ -6,7 +6,7 @@ class BrandController extends GetxController {
   final box = GetStorage();
   final lastBrands = <String>[].obs;
   var brands = <Map<String, dynamic>>[].obs;
-  var isLodaing = false.obs;
+  var isLoading = false.obs;
   
   BrandHistoryService get _brandHistoryService => Get.find<BrandHistoryService>();
 
@@ -28,10 +28,10 @@ class BrandController extends GetxController {
   }
 
   Future<void> fetchBrandHistory() async {
-    isLodaing.value = true;
+    isLoading.value = true;
     if (lastBrands.isEmpty) {
       brands.clear();
-      isLodaing.value = false;
+      isLoading.value = false;
       return;
     }
 
@@ -41,7 +41,7 @@ class BrandController extends GetxController {
     } catch (e) {
       // Error already logged in service
     } finally {
-      isLodaing.value = false;
+      isLoading.value = false;
     }
   }
 

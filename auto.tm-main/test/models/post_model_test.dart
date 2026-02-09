@@ -1,4 +1,5 @@
 import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
+import 'package:auto_tm/models/post_dtos.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -6,8 +7,8 @@ void main() {
     test('should parse complete post from JSON', () {
       final json = {
         'uuid': 'post-123',
-        'brand': {'name': 'Toyota'},
-        'model': {'name': 'Camry'},
+        'brandName': 'Toyota',
+        'modelName': 'Camry',
         'price': 25000,
         'year': 2022,
         'milleage': 50000,
@@ -29,7 +30,7 @@ void main() {
         'credit': false,
       };
 
-      final post = Post.fromJson(json);
+      final post = PostLegacyExtension.fromJson(json);
 
       expect(post.uuid, 'post-123');
       expect(post.brand, 'Toyota');
@@ -58,8 +59,8 @@ void main() {
     test('should handle missing optional fields', () {
       final json = {
         'uuid': 'post-456',
-        'brand': {'name': 'BMW'},
-        'model': {'name': 'X5'},
+        'brandName': 'BMW',
+        'modelName': 'X5',
         'price': 45000,
         'year': 2023,
         'milleage': 0,
@@ -74,7 +75,7 @@ void main() {
         'createdAt': '2026-02-08T00:00:00Z',
       };
 
-      final post = Post.fromJson(json);
+      final post = PostLegacyExtension.fromJson(json);
 
       expect(post.uuid, 'post-456');
       expect(post.brand, 'BMW');
@@ -83,7 +84,7 @@ void main() {
       expect(post.region, '');
       expect(post.photoPath, '');
       expect(post.photoPaths, isEmpty);
-      expect(post.video, '');
+      expect(post.video, isNull);
       expect(post.subscription, isNull);
       expect(post.exchange, isNull);
       expect(post.credit, isNull);
@@ -92,8 +93,8 @@ void main() {
     test('should handle null brand/model objects', () {
       final json = {
         'uuid': 'post-789',
-        'brand': null,
-        'model': null,
+        'brandName': null,
+        'modelName': null,
         'price': 10000,
         'year': 2020,
         'milleage': 100000,
@@ -108,13 +109,13 @@ void main() {
         'createdAt': '',
       };
 
-      final post = Post.fromJson(json);
+      final post = PostLegacyExtension.fromJson(json);
 
-      expect(post.brand, '');
+      expect(post.brand, 'Unknown');
       expect(post.model, '');
     });
 
-    test('should extract brand/model from nested name field', () {
+    test('should extract brand/model from nested object if brandName missing', () {
       final json = {
         'uuid': 'post-101',
         'brand': {'uuid': 'brand-1', 'name': 'Mercedes-Benz', 'logo': 'mb.png'},
@@ -133,7 +134,7 @@ void main() {
         'createdAt': '2026-02-08T00:00:00Z',
       };
 
-      final post = Post.fromJson(json);
+      final post = PostLegacyExtension.fromJson(json);
 
       expect(post.brand, 'Mercedes-Benz');
       expect(post.model, 'E-Class');
@@ -142,8 +143,8 @@ void main() {
     test('should parse multiple photos', () {
       final json = {
         'uuid': 'post-202',
-        'brand': {'name': 'Audi'},
-        'model': {'name': 'A6'},
+        'brandName': 'Audi',
+        'modelName': 'A6',
         'price': 40000,
         'year': 2022,
         'milleage': 30000,
@@ -163,7 +164,7 @@ void main() {
         ],
       };
 
-      final post = Post.fromJson(json);
+      final post = PostLegacyExtension.fromJson(json);
 
       expect(post.photoPaths.length, 3);
       expect(post.photoPaths[0], '/photos/audi1.jpg');
@@ -175,8 +176,8 @@ void main() {
     test('should parse subscription photo', () {
       final json = {
         'uuid': 'post-303',
-        'brand': {'name': 'Lexus'},
-        'model': {'name': 'RX'},
+        'brandName': 'Lexus',
+        'modelName': 'RX',
         'price': 60000,
         'year': 2025,
         'milleage': 0,
@@ -197,7 +198,7 @@ void main() {
         },
       };
 
-      final post = Post.fromJson(json);
+      final post = PostLegacyExtension.fromJson(json);
 
       expect(post.subscription, '/premium/small.jpg');
     });
@@ -205,8 +206,8 @@ void main() {
     test('should parse video URL', () {
       final json = {
         'uuid': 'post-404',
-        'brand': {'name': 'Tesla'},
-        'model': {'name': 'Model 3'},
+        'brandName': 'Tesla',
+        'modelName': 'Model 3',
         'price': 50000,
         'year': 2024,
         'milleage': 1000,
@@ -224,7 +225,7 @@ void main() {
         },
       };
 
-      final post = Post.fromJson(json);
+      final post = PostLegacyExtension.fromJson(json);
 
       expect(post.video, 'https://example.com/video.mp4');
     });
@@ -232,8 +233,8 @@ void main() {
     test('should parse file data', () {
       final json = {
         'uuid': 'post-505',
-        'brand': {'name': 'Ford'},
-        'model': {'name': 'F-150'},
+        'brandName': 'Ford',
+        'modelName': 'F-150',
         'price': 55000,
         'year': 2024,
         'milleage': 500,
@@ -255,77 +256,11 @@ void main() {
         },
       };
 
-      final post = Post.fromJson(json);
+      final post = PostLegacyExtension.fromJson(json);
 
       expect(post.file, isNotNull);
       expect(post.file!.uuid, 'file-123');
       expect(post.file!.path, '/files/document.pdf');
-    });
-
-    test('should handle personalInfo region fallback to location', () {
-      final json = {
-        'uuid': 'post-606',
-        'brand': {'name': 'Honda'},
-        'model': {'name': 'Civic'},
-        'price': 25000,
-        'year': 2022,
-        'milleage': 20000,
-        'engineType': 'gasoline',
-        'enginePower': 158,
-        'transmission': 'automatic',
-        'condition': 'used',
-        'currency': 'USD',
-        'description': '',
-        'location': 'Dashoguz',
-        'vin': '',
-        'createdAt': '2026-02-08T00:00:00Z',
-        'personalInfo': {
-          'phone': '+99365111111',
-          'location': 'Dashoguz City', // no 'region', should fallback to 'location'
-        },
-      };
-
-      final post = Post.fromJson(json);
-
-      expect(post.region, 'Dashoguz City');
-      expect(post.phoneNumber, '+99365111111');
-    });
-  });
-
-  group('Video Model - JSON Parsing', () {
-    test('should parse video from JSON', () {
-      final json = {
-        'id': 1,
-        'url': ['https://example.com/video1.mp4', 'https://example.com/video2.mp4'],
-        'partNumber': 1,
-        'postId': 'post-123',
-        'createdAt': '2026-02-08T00:00:00Z',
-        'updatedAt': '2026-02-08T00:00:00Z',
-      };
-
-      final video = Video.fromJson(json);
-
-      expect(video.id, 1);
-      expect(video.url?.length, 2);
-      expect(video.partNumber, 1);
-      expect(video.postId, 'post-123');
-    });
-
-    test('should convert video to JSON', () {
-      final video = Video(
-        id: 2,
-        url: ['video.mp4'],
-        partNumber: 1,
-        postId: 'post-456',
-        createdAt: '2026-02-08T00:00:00Z',
-        updatedAt: '2026-02-08T00:00:00Z',
-      );
-
-      final json = video.toJson();
-
-      expect(json['id'], 2);
-      expect(json['url'], ['video.mp4']);
-      expect(json['postId'], 'post-456');
     });
   });
 

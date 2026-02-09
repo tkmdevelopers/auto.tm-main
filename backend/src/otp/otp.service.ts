@@ -134,17 +134,18 @@ export class OtpService {
     );
 
     this.isProd =
-      (this.configService.get("NODE_ENV") || "").toLowerCase() ===
-      "production";
+      (this.configService.get("NODE_ENV") || "").toLowerCase() === "production";
     this.testModeEnabled =
       (this.configService.get("OTP_TEST_MODE") || "false").toLowerCase() ===
       "true";
     this.allowTestInProd =
-      (this.configService.get("OTP_TEST_ALLOW_IN_PROD") || "false")
-        .toLowerCase() === "true";
+      (
+        this.configService.get("OTP_TEST_ALLOW_IN_PROD") || "false"
+      ).toLowerCase() === "true";
     this.exposeTestCode =
-      (this.configService.get("OTP_TEST_CODE_RESPONSE") || "false")
-        .toLowerCase() === "true";
+      (
+        this.configService.get("OTP_TEST_CODE_RESPONSE") || "false"
+      ).toLowerCase() === "true";
 
     // Initialize test numbers from environment
     const envListRaw = this.configService.get("TEST_OTP_NUMBERS") || "";
@@ -207,11 +208,14 @@ export class OtpService {
       if (this.testNumbersProd.size > 0) {
         return this.testNumbersProd.has(digits);
       }
-      return this.testNumbers.has(digits) ||
-          digits.startsWith(this.testOtpPrefix);
+      return (
+        this.testNumbers.has(digits) || digits.startsWith(this.testOtpPrefix)
+      );
     }
 
-    return this.testNumbers.has(digits) || digits.startsWith(this.testOtpPrefix);
+    return (
+      this.testNumbers.has(digits) || digits.startsWith(this.testOtpPrefix)
+    );
   }
 
   /**
@@ -262,9 +266,7 @@ export class OtpService {
 
     // Per-phone rate limit (independent of IP throttling)
     if (!isTestNumber) {
-      const windowStart = new Date(
-        Date.now() - this.phoneRateLimitWindowMs,
-      );
+      const windowStart = new Date(Date.now() - this.phoneRateLimitWindowMs);
       const recentCount = await this.otpCodeRepository.count({
         where: {
           phone,
@@ -569,12 +571,10 @@ export class OtpService {
       });
     } catch (error) {
       const status = error?.status || HttpStatus.INTERNAL_SERVER_ERROR;
-      return res
-        .status(status)
-        .json({
-          code: error?.response?.code,
-          message: error?.message || "OTP send failed",
-        });
+      return res.status(status).json({
+        code: error?.response?.code,
+        message: error?.message || "OTP send failed",
+      });
     }
   }
 
@@ -609,12 +609,10 @@ export class OtpService {
       });
     } catch (error) {
       const status = error?.status || HttpStatus.INTERNAL_SERVER_ERROR;
-      return res
-        .status(status)
-        .json({
-          code: error?.response?.code,
-          message: error?.message || "OTP verification failed",
-        });
+      return res.status(status).json({
+        code: error?.response?.code,
+        message: error?.message || "OTP verification failed",
+      });
     }
   }
 
@@ -648,12 +646,10 @@ export class OtpService {
       });
     } catch (error) {
       const status = error?.status || HttpStatus.INTERNAL_SERVER_ERROR;
-      return res
-        .status(status)
-        .json({
-          code: error?.response?.code,
-          message: error?.message || "Verification failed",
-        });
+      return res.status(status).json({
+        code: error?.response?.code,
+        message: error?.message || "Verification failed",
+      });
     }
   }
 }

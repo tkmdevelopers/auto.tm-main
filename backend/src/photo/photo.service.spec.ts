@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { PhotoService } from "./photo.service";
-import { Photo } from './photo.entity'; // Import Photo entity
+import { Photo } from "./photo.entity"; // Import Photo entity
 
 describe("PhotoService", () => {
   let service: PhotoService;

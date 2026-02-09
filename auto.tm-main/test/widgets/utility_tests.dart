@@ -1,7 +1,6 @@
 // Widget tests for UI components that don't require platform channels
 // For screens with GetStorage/platform dependencies, use integration tests
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -9,7 +8,6 @@ void main() {
     test('should format price with currency correctly', () {
       // Test formatting logic
       const price = 25000.0;
-      const currency = 'USD';
       final formatted = '\$${price.toStringAsFixed(0)}';
       
       expect(formatted, '\$25000');

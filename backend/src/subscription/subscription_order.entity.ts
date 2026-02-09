@@ -17,7 +17,11 @@ import { Subscriptions } from "./subscription.entity";
 @Table({ tableName: "subscription_order" })
 export class SubscriptionOrder extends Model {
   @ApiProperty()
-  @Column({ primaryKey: true, type: DataType.UUID, defaultValue: DataType.UUIDV4 })
+  @Column({
+    primaryKey: true,
+    type: DataType.UUID,
+    defaultValue: DataType.UUIDV4,
+  })
   uuid: string;
   @ApiProperty()
   @Column

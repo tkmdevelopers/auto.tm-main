@@ -1,10 +1,10 @@
-jest.mock('firebase-admin'); // Mock firebase-admin
+jest.mock("firebase-admin"); // Mock firebase-admin
 
 import { Test, TestingModule } from "@nestjs/testing";
 import { NotificationService } from "./notification.service";
-import { User } from '../../src/auth/auth.entity'; // Import User entity
-import { Brands } from '../../src/brands/brands.entity'; // Import Brands entity
-import { NotificationHistory } from './notification.entity'; // Import NotificationHistory entity
+import { User } from "../../src/auth/auth.entity"; // Import User entity
+import { Brands } from "../../src/brands/brands.entity"; // Import Brands entity
+import { NotificationHistory } from "./notification.entity"; // Import NotificationHistory entity
 
 describe("NotificationService", () => {
   let service: NotificationService;

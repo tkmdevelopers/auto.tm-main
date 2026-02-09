@@ -1,6 +1,5 @@
 // blog_editor_controller.dart
 import 'dart:io';
-import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/services/blog_service.dart'; // Added BlogService import
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
