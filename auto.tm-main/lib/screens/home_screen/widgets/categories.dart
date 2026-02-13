@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/screens/home_screen/controller/category_controller.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/ui_components/images.dart';
@@ -5,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class Categories extends StatelessWidget {
-  Categories({super.key});
+  const Categories({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +39,7 @@ class Categories extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: theme
-                                            .colorScheme
-                                            .onSurface,  // Red for accent
+                    color: theme.colorScheme.onSurface, // Red for accent
                   ),
                 ),
               ),
@@ -108,7 +107,7 @@ class Categories extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: Colors.white.opacityCompat(0.9),
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -118,7 +117,7 @@ class Categories extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w400,
-                                    color: Colors.white.withOpacity(0.8),
+                                    color: Colors.white.opacityCompat(0.8),
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -132,10 +131,10 @@ class Categories extends StatelessWidget {
                                 width: 40,
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.white.opacityCompat(0.2),
                                   borderRadius: BorderRadius.circular(8),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
+                                    color: Colors.white.opacityCompat(0.3),
                                     width: 1,
                                   ),
                                 ),
@@ -148,9 +147,8 @@ class Categories extends StatelessWidget {
                                         (context, error, stackTrace) =>
                                             Container(
                                               decoration: BoxDecoration(
-                                                color: Colors.white.withOpacity(
-                                                  0.1,
-                                                ),
+                                                color: Colors.white
+                                                    .opacityCompat(0.1),
                                                 borderRadius:
                                                     BorderRadius.circular(8),
                                               ),
@@ -179,7 +177,7 @@ class Categories extends StatelessWidget {
                   color: theme.colorScheme.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: theme.colorScheme.outline.withOpacity(0.1),
+                    color: theme.colorScheme.outline.opacityCompat(0.1),
                     width: 1,
                   ),
                 ),
@@ -199,7 +197,7 @@ class Categories extends StatelessWidget {
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: AppColors.brandColor.withOpacity(0.1),
+                            color: AppColors.brandColor.opacityCompat(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
@@ -226,7 +224,9 @@ class Categories extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
-                            color: theme.colorScheme.onSurface.withOpacity(0.6),
+                            color: theme.colorScheme.onSurface.opacityCompat(
+                              0.6,
+                            ),
                           ),
                         ),
                       ],

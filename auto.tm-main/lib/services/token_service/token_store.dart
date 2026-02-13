@@ -17,10 +17,11 @@ class TokenStore extends GetxService {
   final RxBool isLoggedIn = false.obs;
 
   TokenStore({FlutterSecureStorage? storage})
-      : _storage = storage ??
-            const FlutterSecureStorage(
-              aOptions: AndroidOptions(encryptedSharedPreferences: true),
-            );
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            aOptions: AndroidOptions(encryptedSharedPreferences: true),
+          );
 
   static TokenStore get to => Get.find<TokenStore>();
 

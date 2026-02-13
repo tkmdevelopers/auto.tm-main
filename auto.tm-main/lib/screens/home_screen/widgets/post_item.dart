@@ -1,3 +1,6 @@
+import 'package:auto_tm/domain/models/post_extensions.dart';
+import 'package:auto_tm/domain/models/post.dart' as domain;
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/screens/favorites_screen/controller/favorites_controller.dart';
 import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
 import 'package:auto_tm/ui_components/colors.dart';
@@ -10,53 +13,33 @@ import 'package:get/get.dart';
 import 'package:shimmer/shimmer.dart';
 
 class PostItem extends StatelessWidget {
-  final String uuid;
-  final String model;
-  final String brand;
-  final double price;
-  final String photoPath;
-  final String? subscription;
-  final String location;
-  final String region;
-  final double year;
-  final double milleage;
-  final String currency;
-  final String createdAt;
+  final domain.Post post;
+
   /// Passed from parent so one Obx at list level drives updates (fewer rebuilds).
   final bool isFav;
 
-  PostItem({
+  const PostItem({
     super.key,
-    required this.uuid,
-    required this.model,
-    required this.brand,
-    required this.price,
-    required this.photoPath,
-    this.subscription,
-    required this.year,
-    required this.milleage,
-    required this.currency,
-    required this.createdAt,
-    required this.location,
-    this.region = 'Local',
+    required this.post,
     this.isFav = false,
   });
 
-  FavoritesController get _favoritesController => Get.find<FavoritesController>();
+  FavoritesController get _favoritesController =>
+      Get.find<FavoritesController>();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return GestureDetector(
-      onTap: () => Get.to(() => PostDetailsScreen(), arguments: uuid),
+      onTap: () => Get.to(() => PostDetailsScreen(), arguments: post.uuid),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: theme.colorScheme.outline.withOpacity(0.1),
+            color: theme.colorScheme.outline.opacityCompat(0.1),
             width: 1,
           ),
         ),
@@ -96,8 +79,8 @@ class PostItem extends StatelessWidget {
             topRight: Radius.circular(16),
           ),
           child: CachedNetworkImage(
-            imageUrl: photoPath.isNotEmpty
-                ? '${ApiKey.ip}$photoPath'
+            imageUrl: post.photoPath.isNotEmpty
+                ? '${ApiKey.ip}${post.photoPath}'
                 : 'https://placehold.co/400x250',
             height: 200,
             width: double.infinity,
@@ -105,13 +88,17 @@ class PostItem extends StatelessWidget {
             fadeInDuration: const Duration(milliseconds: 200),
             fadeInCurve: Curves.easeOut,
             placeholder: (context, url) => Shimmer.fromColors(
-              baseColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
+              baseColor: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.5,
+              ),
               highlightColor: theme.colorScheme.surface,
               child: Container(
                 height: 200,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.6),
+                  color: theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.6,
+                  ),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
@@ -122,7 +109,9 @@ class PostItem extends StatelessWidget {
             errorWidget: (context, url, error) => Container(
               height: 200,
               width: double.infinity,
-              color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
+              color: theme.colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.5,
+              ),
               child: Center(
                 child: SvgPicture.asset(
                   AppImages.defaultImageSvg,
@@ -139,7 +128,7 @@ class PostItem extends StatelessWidget {
         ),
 
         // Premium Badge
-        if (subscription != null)
+        if (post.subscription != null)
           Positioned(
             top: 12,
             left: 12,
@@ -172,7 +161,7 @@ class PostItem extends StatelessWidget {
           top: 12,
           right: 12,
           child: GestureDetector(
-            onTap: () => _favoritesController.toggleFavorite(uuid),
+            onTap: () => _favoritesController.toggleFavorite(post.uuid),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
@@ -182,13 +171,13 @@ class PostItem extends StatelessWidget {
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: theme.colorScheme.outline.withOpacity(0.1),
+                  color: theme.colorScheme.outline.opacityCompat(0.1),
                   width: 1.2,
                 ),
                 boxShadow: isFav
                     ? [
                         BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.2),
+                          color: theme.colorScheme.primary.opacityCompat(0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
@@ -205,7 +194,7 @@ class PostItem extends StatelessWidget {
                     key: ValueKey<bool>(isFav),
                     color: isFav
                         ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurface.withOpacity(0.7),
+                        : theme.colorScheme.onSurface.opacityCompat(0.7),
                     size: 20,
                   ),
                 ),
@@ -222,7 +211,7 @@ class PostItem extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            '$brand $model',
+            '${post.brand} ${post.model}',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -235,11 +224,11 @@ class PostItem extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: theme.colorScheme.onSurface.withOpacity(0.1),
+            color: theme.colorScheme.onSurface.opacityCompat(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
-            year.toInt().toString(),
+            post.yearString,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -252,18 +241,14 @@ class PostItem extends StatelessWidget {
   }
 
   Widget _buildPriceLocationRow(ThemeData theme) {
-    // Unified logic with details screen:
-    // If region == Local -> show location (city) if non-empty.
-    // If region == UAE or China -> show region label.
-    // Otherwise hide location/region info.
-    String regionTrim = region.trim();
-    String locTrim = location.trim();
+    String regionTrim = post.region.trim();
+    String locTrim = post.location.trim();
     final lower = regionTrim.toLowerCase();
     String? displayLocation;
     if (lower == 'local') {
       if (locTrim.isNotEmpty) displayLocation = locTrim;
     } else if (lower == 'uae' || lower == 'china') {
-      displayLocation = regionTrim; // already correct
+      displayLocation = regionTrim;
     }
 
     return Row(
@@ -271,7 +256,7 @@ class PostItem extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            '${price.toStringAsFixed(0)} $currency',
+            post.priceWithCurrency,
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
@@ -286,7 +271,7 @@ class PostItem extends StatelessWidget {
               Icon(
                 lower == 'local' ? Icons.location_on_outlined : Icons.public,
                 size: 14,
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.opacityCompat(0.6),
               ),
               const SizedBox(width: 4),
               Text(
@@ -294,7 +279,7 @@ class PostItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  color: theme.colorScheme.onSurface.opacityCompat(0.6),
                 ),
               ),
             ],
@@ -303,20 +288,16 @@ class PostItem extends StatelessWidget {
     );
   }
 
-  // _shouldShowRegion removed: region is displayed only for non-local posts now.
-
-  // Removed standalone region row; region now integrated into price/location area (only when non-local).
-
   Widget _buildDetailsRow(ThemeData theme) {
     return Row(
       children: [
         _buildDetailItem(
           theme,
           Icons.speed,
-          '${milleage.toStringAsFixed(0)} km',
+          post.formattedMilleage,
         ),
         const SizedBox(width: 16),
-        _buildDetailItem(theme, Icons.access_time, _formatDate(createdAt)),
+        _buildDetailItem(theme, Icons.access_time, _formatDate(post.createdAt)),
       ],
     );
   }
@@ -327,7 +308,7 @@ class PostItem extends StatelessWidget {
         Icon(
           icon,
           size: 14,
-          color: theme.colorScheme.onSurface.withOpacity(0.5),
+          color: theme.colorScheme.onSurface.opacityCompat(0.5),
         ),
         const SizedBox(width: 4),
         Text(
@@ -335,7 +316,7 @@ class PostItem extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: theme.colorScheme.onSurface.withOpacity(0.7),
+            color: theme.colorScheme.onSurface.opacityCompat(0.7),
           ),
         ),
       ],

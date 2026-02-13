@@ -71,6 +71,14 @@ export class PostController {
     return this.postService.create(body, req);
   }
 
+  @ApiSecurity("token")
+  @UseGuards(AuthGuard)
+  @Get("count")
+  @ApiOperation({ summary: "Get total post count" })
+  async count() {
+    return this.postService.count();
+  }
+
   @Get("/:uuid")
   @ApiOperation({ summary: "Get post details by UUID" })
   @ApiResponse({ status: HttpStatus.OK, type: Posts })
@@ -107,13 +115,5 @@ export class PostController {
   @ApiOperation({ summary: "Delete a post" })
   async delete(@Param() param: FindOneUUID) {
     return this.postService.delete(param);
-  }
-
-  @ApiSecurity("token")
-  @UseGuards(AuthGuard)
-  @Get("count")
-  @ApiOperation({ summary: "Get total post count" })
-  async count() {
-    return this.postService.count();
   }
 }

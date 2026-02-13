@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/global_widgets/refresh_indicator.dart';
 import 'package:auto_tm/screens/post_screen/controller/post_controller.dart';
 import 'package:auto_tm/screens/post_screen/widgets/post_screen.dart';
@@ -8,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class PostedPostsScreen extends StatefulWidget {
-  PostedPostsScreen({super.key, this.initialTabIndex = 0});
+  const PostedPostsScreen({super.key, this.initialTabIndex = 0});
 
   /// Only one tab (Published) now; legacy param kept for backward route compatibility.
   final int initialTabIndex;
@@ -53,11 +54,14 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // Adopt HomeScreen SliverAppBar concept
-            SliverAppBar(
-              backgroundColor: theme.colorScheme.surface.withOpacity(0.85),
+        child: SRefreshIndicator(
+          onRefresh: controller.refreshData,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // Adopt HomeScreen SliverAppBar concept
+              SliverAppBar(
+              backgroundColor: theme.colorScheme.surface.opacityCompat(0.85),
               surfaceTintColor: Colors.transparent,
               pinned: true,
               floating: true,
@@ -152,57 +156,65 @@ class _PostedPostsScreenState extends State<PostedPostsScreen> {
                 ),
               );
             }),
-            // Removed bottom spacer (no floating button now)
-          ],
-        ),
-      ),
-    );
-  }
-
+                        // Removed bottom spacer (no floating button now)
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
   // REFACTORED: Extracted empty state widget for clarity
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
-    return SRefreshIndicator(
-      onRefresh: controller.refreshData,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  Icons.car_rental_outlined,
-                  size: 48,
-                  color: theme.colorScheme.primary,
-                ),
+    final isUploading = Get.isRegistered<UploadManager>() &&
+        Get.find<UploadManager>().hasActive;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
               ),
-              const SizedBox(height: 24),
-              Text(
-                'post_no_published'.tr,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
-                ),
+              child: isUploading
+                  ? const SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: CircularProgressIndicator(strokeWidth: 3),
+                  )
+                  : Icon(
+                    Icons.car_rental_outlined,
+                    size: 48,
+                    color: theme.colorScheme.primary,
+                  ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              isUploading ? 'post_uploading'.tr : 'post_no_published'.tr,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
               ),
-              const SizedBox(height: 12),
-              Text(
-                'post_create_first_tip'.tr,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isUploading
+                  ? 'post_uploading_tip'.tr
+                  : 'post_create_first_tip'.tr,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

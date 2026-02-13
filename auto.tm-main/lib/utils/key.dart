@@ -14,7 +14,8 @@ class ApiKey {
   static final String refreshTokenKey = "${apiKey}auth/refresh"; // POST
   static final String logoutKey = "${apiKey}auth/logout"; // POST
   static final String sendOtpKey = "${apiKey}otp/send"; // POST body: {phone}
-  static final String checkOtpKey = "${apiKey}otp/verify"; // POST body: {phone, otp}
+  static final String checkOtpKey =
+      "${apiKey}otp/verify"; // POST body: {phone, otp}
 
   static final String getProfileKey = "${apiKey}auth/me";
   static final String getPostsKey = "${apiKey}posts";

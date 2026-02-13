@@ -2,10 +2,12 @@ import 'package:auto_tm/ui_components/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controller/create_blog_controller.dart';
-import 'package:auto_tm/services/blog_service.dart';
+import 'package:auto_tm/domain/repositories/common_repository.dart';
 
 class CreateBlogScreen extends StatelessWidget {
-  final CreateBlogController controller = Get.put(CreateBlogController(Get.find<BlogService>()));
+  final CreateBlogController controller = Get.put(
+    CreateBlogController(Get.find<CommonRepository>()),
+  );
   final _formKey = GlobalKey<FormState>();
 
   CreateBlogScreen({super.key});

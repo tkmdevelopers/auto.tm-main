@@ -9,7 +9,9 @@ class VideoPlayerPage extends StatelessWidget {
   VideoPlayerPage({super.key});
 
   // We intentionally do not eagerly create controller before we parse arguments.
-  final FullVideoPlayerController controller = Get.put(FullVideoPlayerController());
+  final FullVideoPlayerController controller = Get.put(
+    FullVideoPlayerController(),
+  );
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -53,7 +55,9 @@ class VideoPlayerPage extends StatelessWidget {
                       builder: (context, errorMessageValue, _) {
                         if (errorMessageValue != null) {
                           return Text(
-                            'post_video_play_error'.trParams({'error': errorMessageValue}),
+                            'post_video_play_error'.trParams({
+                              'error': errorMessageValue,
+                            }),
                           );
                         }
                         return ValueListenableBuilder<bool>(

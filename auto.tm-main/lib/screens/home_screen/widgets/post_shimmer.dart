@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -10,14 +11,14 @@ class PostItemShimmer extends StatelessWidget {
 
     // --- IMPROVEMENT: Shimmer now uses theme colors ---
     return Shimmer.fromColors(
-      baseColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+      baseColor: theme.colorScheme.surfaceContainerHighest.opacityCompat(0.5),
       highlightColor: theme.colorScheme.surface,
       child: Container(
         height: 140,
         margin: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           // Using a simple color box for the shimmer content
-          color: theme.colorScheme.surfaceVariant,
+          color: theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
         ),
       ),

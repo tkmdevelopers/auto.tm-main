@@ -75,7 +75,5 @@ class AppColors {
   static const Color primaryColorDarkMode = Color(
     0xFFE60000,
   ); // Red for dark mode
-  static const Color primaryColorLightMode = Color(
-    0xFFE60000,
-  );
+  static const Color primaryColorLightMode = Color(0xFFE60000);
 }

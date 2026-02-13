@@ -9,8 +9,9 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('App Launch Tests', () {
-    testWidgets('app should start and show splash screen',
-        (WidgetTester tester) async {
+    testWidgets('app should start and show splash screen', (
+      WidgetTester tester,
+    ) async {
       app.main();
       await tester.pumpAndSettle();
 
@@ -18,10 +19,11 @@ void main() {
       expect(find.byType(MaterialApp), findsOneWidget);
     });
 
-    testWidgets('app should show home screen after loading',
-        (WidgetTester tester) async {
+    testWidgets('app should show home screen after loading', (
+      WidgetTester tester,
+    ) async {
       app.main();
-      
+
       // Wait for splash screen animation
       await tester.pump(const Duration(seconds: 3));
       await tester.pumpAndSettle();
@@ -32,8 +34,9 @@ void main() {
   });
 
   group('Navigation Tests', () {
-    testWidgets('bottom navigation should have multiple tabs',
-        (WidgetTester tester) async {
+    testWidgets('bottom navigation should have multiple tabs', (
+      WidgetTester tester,
+    ) async {
       app.main();
       await tester.pump(const Duration(seconds: 3));
       await tester.pumpAndSettle();

@@ -16,7 +16,7 @@ class OtpScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final mediaQuery = MediaQuery.of(context);
     final height = mediaQuery.size.height;
-    
+
     final defaultPinTheme = AppStyles.defaultPinTheme(context);
     final focusedPinTheme = AppStyles.focusedPinTheme(context);
     final submittedPinTheme = AppStyles.submittedPinTheme(context);
@@ -69,13 +69,16 @@ class OtpScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     text: TextSpan(
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
                         height: 1.6,
                       ),
                       children: [
                         TextSpan(text: 'Enter the OTP code sent to '.tr),
                         TextSpan(
-                          text: controller.phoneVerifyController.fullPhoneNumber,
+                          text:
+                              controller.phoneVerifyController.fullPhoneNumber,
                           style: TextStyle(
                             color: theme.colorScheme.onSurface,
                             fontWeight: FontWeight.w600,
@@ -105,7 +108,8 @@ class OtpScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 40),
                 Obx(() {
-                  final countdown = controller.phoneVerifyController.countdown.value;
+                  final countdown =
+                      controller.phoneVerifyController.countdown.value;
                   final isLoading = controller.isLoading.value;
 
                   return AnimatedSwitcher(
@@ -114,29 +118,42 @@ class OtpScreen extends StatelessWidget {
                         ? Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.timer_outlined, 
-                                size: 16, 
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.4)
+                              Icon(
+                                Icons.timer_outlined,
+                                size: 16,
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.4,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'post_resend_code_in'.trParams({'seconds': countdown.toString()}),
+                                'post_resend_code_in'.trParams({
+                                  'seconds': countdown.toString(),
+                                }),
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.5,
+                                  ),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
                           )
                         : TextButton(
-                            onPressed: isLoading ? null : () => controller.requestOtp(),
+                            onPressed: isLoading
+                                ? null
+                                : () => controller.requestOtp(),
                             style: TextButton.styleFrom(
                               foregroundColor: theme.colorScheme.primary,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.05),
+                              backgroundColor: theme.colorScheme.primary
+                                  .withValues(alpha: 0.05),
                             ),
                             child: Text(
                               'Resend'.tr,
@@ -182,7 +199,9 @@ class OtpScreen extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  disabledBackgroundColor: theme.colorScheme.primary.withValues(alpha: 0.6),
+                  disabledBackgroundColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.6,
+                  ),
                 ),
                 child: controller.isLoading.value
                     ? SizedBox(

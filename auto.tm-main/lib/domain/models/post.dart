@@ -1,3 +1,5 @@
+import 'package:get/get.dart';
+
 class Post {
   final String uuid;
   final String model;
@@ -54,6 +56,27 @@ class Post {
   });
 }
 
+/// Tri-state status mapping for nullable boolean status.
+enum PostStatusTri { pending, active, inactive }
+
+extension PostStatusExt on Post {
+  PostStatusTri get triStatus {
+    if (status == null) return PostStatusTri.pending;
+    return status! ? PostStatusTri.active : PostStatusTri.inactive;
+  }
+
+  String statusLabel({String? pending, String? active, String? inactive}) {
+    switch (triStatus) {
+      case PostStatusTri.pending:
+        return pending ?? 'post_status_pending'.tr;
+      case PostStatusTri.active:
+        return active ?? 'post_status_active'.tr;
+      case PostStatusTri.inactive:
+        return inactive ?? 'post_status_declined'.tr;
+    }
+  }
+}
+
 class FileData {
   final String uuid;
   final String path;
@@ -68,14 +91,4 @@ class FileData {
     required this.createdAt,
     required this.updatedAt,
   });
-
-  factory FileData.fromJson(Map<String, dynamic> json) {
-    return FileData(
-      uuid: json['uuid']?.toString() ?? '',
-      path: json['path']?.toString() ?? '',
-      postId: json['postId']?.toString() ?? '',
-      createdAt: json['createdAt']?.toString() ?? '',
-      updatedAt: json['updatedAt']?.toString() ?? '',
-    );
-  }
 }

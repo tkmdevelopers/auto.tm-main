@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 // widgets/filter_bar.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -17,7 +18,7 @@ class FilterBar extends StatelessWidget {
       child: Material(
         color: theme.colorScheme.surface,
         elevation: 2,
-        shadowColor: theme.shadowColor.withOpacity(0.25),
+        shadowColor: theme.shadowColor.opacityCompat(0.25),
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -46,7 +47,7 @@ class FilterBar extends StatelessWidget {
                     style: TextStyle(
                       fontWeight: FontWeight.w500,
                       fontSize: 14,
-                      color: theme.colorScheme.onSurface.withOpacity(0.85),
+                      color: theme.colorScheme.onSurface.opacityCompat(0.85),
                     ),
                   ),
                 ),
@@ -55,7 +56,7 @@ class FilterBar extends StatelessWidget {
                   height: 20,
                   width: 1,
                   margin: const EdgeInsets.symmetric(horizontal: 12),
-                  color: theme.colorScheme.onSurface.withOpacity(0.15),
+                  color: theme.colorScheme.onSurface.opacityCompat(0.15),
                 ),
                 SvgPicture.asset(
                   AppImages.filter,

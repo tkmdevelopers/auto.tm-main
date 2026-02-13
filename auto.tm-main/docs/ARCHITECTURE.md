@@ -227,6 +227,30 @@ This separation reflects different JSON shapes returned by the API (list DTO vs.
 
 ---
 
+## Future State: Layered Architecture Transition
+
+To improve maintainability and follow [official Flutter architecture recommendations](https://docs.flutter.dev/app-architecture), the project is transitioning from a Service-based approach to a formal **Layered Clean Architecture** (UI -> Domain -> Data).
+
+### Target Structure
+
+- **UI Layer (`lib/screens/`)**: Widgets and GetX Controllers. Controllers depend *only* on Repository interfaces from the Domain layer.
+- **Domain Layer (`lib/domain/`)**: 
+    - `models/`: Plain Dart objects representing business entities (e.g., `Post`).
+    - `repositories/`: Abstract classes (interfaces) defining data operations.
+- **Data Layer (`lib/data/`)**: 
+    - `dtos/`: Data Transfer Objects for JSON parsing.
+    - `mappers/`: Logic to convert DTOs to Domain Models.
+    - `repositories/`: Concrete implementations of domain interfaces, using `ApiClient` or local storage.
+
+### Transition Roadmap
+
+1.  **Phase 1: Data Layer Consolidation**: Move DTOs from `lib/models/` to `lib/data/dtos/`.
+2.  **Phase 2: Domain Layer Definition**: Extract shared entities to `lib/domain/models/` and define Repository interfaces.
+3.  **Phase 3: UI Layer Decoupling**: Refactor Controllers to use Repository interfaces.
+4.  **Phase 4: Cleanup**: Remove deprecated `lib/services/` and `lib/models/` structures.
+
+---
+
 ## Source Pointers
 
 - Entry point: `lib/main.dart`

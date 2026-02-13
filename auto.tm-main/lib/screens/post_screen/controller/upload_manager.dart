@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:auto_tm/global_controllers/connection_controller.dart';
 import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
@@ -173,7 +172,7 @@ class UploadManager extends GetxService {
       StreamController<UploadProgressEvent>.broadcast();
   Stream<UploadProgressEvent> get progressStream => _progressCtrl.stream;
   final _uuid = const Uuid();
-  final _persistence = UploadPersistenceService();
+  UploadPersistenceService get _persistence => Get.find<UploadPersistenceService>();
   final _notifications = FlutterLocalNotificationsPlugin();
   bool _notificationsInitialized = false;
   // Rolling speed samples (timestamp, uploadedBytes)
@@ -191,7 +190,7 @@ class UploadManager extends GetxService {
   RxString get etaDisplay => currentTask.value?.etaDisplay ?? '--:--'.obs;
 
   Future<UploadManager> init() async {
-    final recovered = _persistence.recoverTask();
+    final recovered = Get.find<UploadPersistenceService>().recoverTask();
     if (recovered != null) {
       currentTask.value = recovered;
     }
@@ -412,7 +411,7 @@ class UploadManager extends GetxService {
   }
 
   // ---- Weighted Step Pipeline ----
-  
+
   /// Calculate upload pipeline weights based on media size.
   /// Returns (createWeight, mediaWeight, finalizeWeight) normalized to sum to 1.0
   ({double create, double media, double finalize}) _calculatePipelineWeights(
@@ -435,7 +434,10 @@ class UploadManager extends GetxService {
 
     int photosBytes = 0;
     try {
-      photosBytes = task.snapshot.photoBytesLengths.fold<int>(0, (a, b) => a + b);
+      photosBytes = task.snapshot.photoBytesLengths.fold<int>(
+        0,
+        (a, b) => a + b,
+      );
     } catch (_) {}
 
     final totalMediaBytes = (videoBytes + photosBytes).clamp(0, 1 << 62);
@@ -516,7 +518,8 @@ class UploadManager extends GetxService {
         () => controller.uploadSingleVideo(
           postId,
           snap,
-          onBytes: (delta) => _onMediaDelta(task, deltaBytes: delta, video: true),
+          onBytes: (delta) =>
+              _onMediaDelta(task, deltaBytes: delta, video: true),
         ),
       );
 
@@ -536,8 +539,10 @@ class UploadManager extends GetxService {
       if (task.phase.value != UploadPhase.uploadingPhotos) {
         task.phase.value = UploadPhase.uploadingPhotos;
       }
-      task.status.value = 'Uploading photo @current of @total…'
-          .trParams({'current': '${i + 1}', 'total': '$totalPhotos'});
+      task.status.value = 'Uploading photo @current of @total…'.trParams({
+        'current': '${i + 1}',
+        'total': '$totalPhotos',
+      });
       _emitMirror(task);
 
       final ok = await _runWithNetworkWait(
@@ -547,7 +552,8 @@ class UploadManager extends GetxService {
           postId,
           snap,
           i,
-          onBytes: (delta) => _onMediaDelta(task, deltaBytes: delta, video: false),
+          onBytes: (delta) =>
+              _onMediaDelta(task, deltaBytes: delta, video: false),
         ),
       );
 
@@ -606,7 +612,7 @@ class UploadManager extends GetxService {
     _update(
       task,
       overall: 1.0,
-  status: 'common_success'.tr,
+      status: 'common_success'.tr,
       phase: UploadPhase.complete,
     );
     _handleSuccess(controller, task);
@@ -639,7 +645,11 @@ class UploadManager extends GetxService {
         return true;
       } on _Cancelled {
         task.isCancelled.value = true;
-  _update(task, status: 'post_upload_cancelled_hint'.tr, phase: UploadPhase.cancelled);
+        _update(
+          task,
+          status: 'post_upload_cancelled_hint'.tr,
+          phase: UploadPhase.cancelled,
+        );
         _clearPersisted();
         return false;
       } catch (e) {
@@ -666,7 +676,11 @@ class UploadManager extends GetxService {
     task.status.value = 'Cancelled (needs retry)';
     task.error.value = 'User cancelled';
     _persist(task); // keep snapshot so user can retry or discard later
-    _update(task, status: 'post_upload_cancelled_hint'.tr, phase: UploadPhase.cancelled);
+    _update(
+      task,
+      status: 'post_upload_cancelled_hint'.tr,
+      phase: UploadPhase.cancelled,
+    );
     _showNotif(
       title: 'post_upload_cancelled_hint'.tr,
       body: 'post_upload_cancelled_hint'.tr,
@@ -677,6 +691,16 @@ class UploadManager extends GetxService {
 
   void _handleSuccess(PostController controller, UploadTask task) {
     task.isCompleted.value = true;
+    if (task.publishedPostId.value != null) {
+      controller.lastUploadedPostUuid.value = task.publishedPostId.value;
+      // Auto-clear highlight after 10 seconds
+      Future.delayed(const Duration(seconds: 10), () {
+        if (controller.lastUploadedPostUuid.value ==
+            task.publishedPostId.value) {
+          controller.lastUploadedPostUuid.value = null;
+        }
+      });
+    }
     _clearPersisted();
     _showNotif(
       title: 'post_upload_success_title'.tr,
@@ -705,7 +729,10 @@ class UploadManager extends GetxService {
     // Classify error
     task.failureType.value = _classifyFailure(task.error.value);
     _persist(task); // keep snapshot so user can retry
-  _showNotif(title: 'common_error'.tr, body: _friendlyError(task)); // body already user-friendly, could map to keys
+    _showNotif(
+      title: 'common_error'.tr,
+      body: _friendlyError(task),
+    ); // body already user-friendly, could map to keys
     // Do NOT auto-clear; user decides retry/discard
   }
 
@@ -908,7 +935,8 @@ class UploadManager extends GetxService {
       c.selectedImages.assignAll(_persistence.hydrateImages(snap));
     }
     if (c.selectedVideo.value == null && _persistence.hasValidVideoFile(snap)) {
-      c.selectedVideo.value = snap.usedCompressedVideo && snap.compressedVideoFile != null
+      c.selectedVideo.value =
+          snap.usedCompressedVideo && snap.compressedVideoFile != null
           ? snap.compressedVideoFile
           : snap.videoFile;
       c.usedCompressedVideo.value = snap.usedCompressedVideo;

@@ -1,9 +1,13 @@
-import 'package:auto_tm/screens/blog_screen/model/blog_model.dart';
-import 'package:auto_tm/services/network/api_client.dart';
+import 'package:auto_tm/domain/models/blog.dart';
+import 'package:auto_tm/domain/repositories/common_repository.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 class BlogController extends GetxController {
+  final CommonRepository _repository;
+
+  BlogController() : _repository = Get.find<CommonRepository>();
+
   var blogs = <Blog>[].obs;
   var isLoading = false.obs;
 
@@ -17,29 +21,8 @@ class BlogController extends GetxController {
     if (isLoading.value) return;
     isLoading.value = true;
     try {
-      final response = await ApiClient.to.dio.get('vlog');
-      final jsonResponse = response.data;
-
-      if (response.statusCode == 200 && jsonResponse != null) {
-        final data = jsonResponse is Map && jsonResponse['data'] != null
-            ? jsonResponse['data'] as List
-            : (jsonResponse is List ? jsonResponse : <dynamic>[]);
-        final map = <String, Blog>{};
-        for (final item in data) {
-          try {
-            final blog = Blog.fromJson(item is Map<String, dynamic> ? item : Map<String, dynamic>.from(item as Map));
-            map[blog.uuid] = blog;
-          } catch (_) {}
-        }
-        blogs.value = map.values.toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
-      } else {
-        Get.snackbar(
-          'Error',
-          'Failed to load blogs. Please try again later.'.tr,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-      }
+      final results = await _repository.fetchBlogs();
+      blogs.value = results..sort((a, b) => b.date.compareTo(a.date));
     } catch (e) {
       Get.snackbar(
         'Error',
@@ -51,17 +34,10 @@ class BlogController extends GetxController {
     }
   }
 
-  // Token refresh is now handled by the Dio ApiClient interceptor.
-  // The duplicated refreshAccessToken() method has been removed.
-
   Future<String> fetchBlogDetails(String blogId) async {
     try {
-      final response = await ApiClient.to.dio.get('vlog/$blogId');
-      final data = response.data;
-      if (response.statusCode == 200 && data is Map) {
-        return (data['description'] as String?) ?? '';
-      }
-      return '';
+      final blog = await _repository.fetchBlogDetails(blogId);
+      return blog?.description ?? '';
     } catch (e) {
       return '';
     }

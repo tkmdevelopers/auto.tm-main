@@ -15,11 +15,7 @@ class PostDetailsShimmer extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image carousel shimmer
-            Container(
-              height: 300,
-              width: double.infinity,
-              color: Colors.white,
-            ),
+            Container(height: 300, width: double.infinity, color: Colors.white),
             const SizedBox(height: 16),
 
             // Title and post date

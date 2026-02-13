@@ -19,27 +19,11 @@ import 'test_setup.mocks.dart';
   MockSpec<FlutterSecureStorage>(),
   MockSpec<GetStorage>(),
 ])
-
 /// Fake ConnectionController for tests
 class FakeConnectionController extends GetxController
     implements ConnectionController {
   @override
   var hasConnection = true.obs;
-
-  @override
-  void onInit() {
-    super.onInit();
-  }
-
-  @override
-  void onReady() {
-    super.onReady();
-  }
-
-  @override
-  void onClose() {
-    super.onClose();
-  }
 }
 
 /// Base test configuration with all common mocks pre-configured
@@ -80,14 +64,18 @@ class TestSetup {
     when(mockDio.options).thenReturn(BaseOptions());
 
     // Configure storage with tokens
-    when(mockStorage.read(key: 'ACCESS_TOKEN'))
-        .thenAnswer((_) async => accessToken);
-    when(mockStorage.read(key: 'REFRESH_TOKEN'))
-        .thenAnswer((_) async => refreshToken ?? 'test_refresh_token');
-    when(mockStorage.read(key: 'USER_PHONE'))
-        .thenAnswer((_) async => '+99365000000');
-    when(mockStorage.write(key: anyNamed('key'), value: anyNamed('value')))
-        .thenAnswer((_) async => {});
+    when(
+      mockStorage.read(key: 'ACCESS_TOKEN'),
+    ).thenAnswer((_) async => accessToken);
+    when(
+      mockStorage.read(key: 'REFRESH_TOKEN'),
+    ).thenAnswer((_) async => refreshToken ?? 'test_refresh_token');
+    when(
+      mockStorage.read(key: 'USER_PHONE'),
+    ).thenAnswer((_) async => '+99365000000');
+    when(
+      mockStorage.write(key: anyNamed('key'), value: anyNamed('value')),
+    ).thenAnswer((_) async => {});
     when(mockStorage.delete(key: anyNamed('key'))).thenAnswer((_) async => {});
 
     // Configure GetStorage
@@ -111,51 +99,58 @@ class TestSetup {
 
   /// Helper to create a basic MaterialApp for widget tests
   Widget wrapWithMaterialApp(Widget child) {
-    return GetMaterialApp(
-      home: Scaffold(body: child),
-    );
+    return GetMaterialApp(home: Scaffold(body: child));
   }
 
   /// Helper to mock a successful GET response
   void mockGet(String path, dynamic data, {int statusCode = 200}) {
-    when(mockDio.get(path, queryParameters: anyNamed('queryParameters')))
-        .thenAnswer((_) async => Response(
-              requestOptions: RequestOptions(path: path),
-              statusCode: statusCode,
-              data: data,
-            ));
+    when(
+      mockDio.get(path, queryParameters: anyNamed('queryParameters')),
+    ).thenAnswer(
+      (_) async => Response(
+        requestOptions: RequestOptions(path: path),
+        statusCode: statusCode,
+        data: data,
+      ),
+    );
   }
 
   /// Helper to mock a successful POST response
   void mockPost(String path, dynamic data, {int statusCode = 200}) {
-    when(mockDio.post(path, data: anyNamed('data')))
-        .thenAnswer((_) async => Response(
-              requestOptions: RequestOptions(path: path),
-              statusCode: statusCode,
-              data: data,
-            ));
+    when(mockDio.post(path, data: anyNamed('data'))).thenAnswer(
+      (_) async => Response(
+        requestOptions: RequestOptions(path: path),
+        statusCode: statusCode,
+        data: data,
+      ),
+    );
   }
 
   /// Helper to mock a successful DELETE response
   void mockDelete(String path, {dynamic data, int statusCode = 200}) {
-    when(mockDio.delete(path)).thenAnswer((_) async => Response(
-          requestOptions: RequestOptions(path: path),
-          statusCode: statusCode,
-          data: data ?? {'status': 'ok'},
-        ));
+    when(mockDio.delete(path)).thenAnswer(
+      (_) async => Response(
+        requestOptions: RequestOptions(path: path),
+        statusCode: statusCode,
+        data: data ?? {'status': 'ok'},
+      ),
+    );
   }
 
   /// Helper to mock a Dio error
   void mockError(String path, {int statusCode = 500, String? message}) {
-    when(mockDio.get(path, queryParameters: anyNamed('queryParameters')))
-        .thenThrow(DioException(
-      requestOptions: RequestOptions(path: path),
-      response: Response(
+    when(
+      mockDio.get(path, queryParameters: anyNamed('queryParameters')),
+    ).thenThrow(
+      DioException(
         requestOptions: RequestOptions(path: path),
-        statusCode: statusCode,
-        data: {'message': message ?? 'Server error'},
+        response: Response(
+          requestOptions: RequestOptions(path: path),
+          statusCode: statusCode,
+          data: {'message': message ?? 'Server error'},
+        ),
+        type: DioExceptionType.badResponse,
       ),
-      type: DioExceptionType.badResponse,
-    ));
+    );
   }
 }

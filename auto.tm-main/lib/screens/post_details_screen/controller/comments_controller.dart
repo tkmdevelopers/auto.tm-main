@@ -1,27 +1,30 @@
-import 'dart:convert';
-import 'package:auto_tm/services/network/api_client.dart';
+import 'package:auto_tm/domain/models/comment.dart';
+import 'package:auto_tm/domain/repositories/post_repository.dart';
 import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 
 class CommentsController extends GetxController {
+  final PostRepository _postRepository;
+  CommentsController({PostRepository? postRepository})
+    : _postRepository = postRepository ?? Get.find<PostRepository>();
+
   final TextEditingController commentTextController = TextEditingController();
-  var comments = <Map<String, dynamic>>[].obs;
+  final RxList<Comment> comments = <Comment>[].obs;
   var isLoading = false.obs;
   var isSending = false.obs; // prevents duplicate rapid sends
 
-  var replyToComment =
-      Rxn<Map<String, dynamic>>(); // Stores selected comment for reply
+  var replyToComment = Rxn<Comment>(); // Stores selected comment for reply
   // Track expansion state per parent comment uuid
   final threadExpanded = <String, bool>{}.obs;
 
   // Cached grouped structure: parent uuid -> list of replies
-  Map<String, List<Map<String, dynamic>>> get groupedReplies {
-    final map = <String, List<Map<String, dynamic>>>{};
+  Map<String, List<Comment>> get groupedReplies {
+    final map = <String, List<Comment>>{};
     for (final c in comments) {
-      final replyTo = c['replyTo'];
+      final replyTo = c.replyTo;
       if (replyTo != null) {
-        map.putIfAbsent(replyTo.toString(), () => []).add(c);
+        map.putIfAbsent(replyTo, () => []).add(c);
       }
     }
     return map;
@@ -45,70 +48,39 @@ class CommentsController extends GetxController {
     _lastFetchedPostId = postId;
     isLoading.value = true;
     try {
-      final response = await ApiClient.to.dio.get(
-        'comments',
-        queryParameters: {'postId': postId},
-      );
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data;
-        final List<dynamic> list = data is List
-            ? data as List
-            : (data is Map && data['data'] != null)
-                ? (data['data'] as List)
-                : (data is Map && data['results'] != null)
-                    ? (data['results'] as List)
-                    : [];
-        final rawList = list
-            .map((e) => e is Map<String, dynamic> ? e : Map<String, dynamic>.from(e as Map))
-            .toList();
-        // Deduplicate by uuid
-        final seen = <String>{};
-        final unique = <Map<String, dynamic>>[];
-        for (final c in rawList) {
-          final id = c['uuid']?.toString();
-          if (id != null) {
-            if (seen.add(id)) {
-              unique.add(c);
-            }
-          } else {
-            unique.add(c); // keep those without uuid just in case
+      final result = await _postRepository.getComments(postId);
+
+      // Deduplicate by uuid
+      final seen = <String>{};
+      final unique = <Comment>[];
+      for (final c in result) {
+        if (c.uuid.isNotEmpty) {
+          if (seen.add(c.uuid)) {
+            unique.add(c);
           }
+        } else {
+          unique.add(c); // keep those without uuid just in case
         }
-        comments.value = unique;
-        // Initialize expansion state for any new parents (default collapsed if they have >0 replies)
-        final replyMap = <String, int>{};
-        for (final c in unique) {
-          final parentId = c['replyTo'];
-          if (parentId != null) {
-            replyMap[parentId.toString()] =
-                (replyMap[parentId.toString()] ?? 0) + 1;
-          }
+      }
+      comments.assignAll(unique);
+      // Initialize expansion state for any new parents (default collapsed if they have >0 replies)
+      final replyMap = <String, int>{};
+      for (final c in unique) {
+        final parentId = c.replyTo;
+        if (parentId != null) {
+          replyMap[parentId] = (replyMap[parentId] ?? 0) + 1;
         }
-        for (final parentId in replyMap.keys) {
-          threadExpanded.putIfAbsent(
-            parentId,
-            () => false,
-          ); // collapsed by default
-        }
-        // Debug: log if duplicates were removed
-        final removed = rawList.length - unique.length;
-        if (removed > 0) {
-          // ignore: avoid_print
-          print('[COMMENTS] Removed $removed duplicate comment(s)');
-        }
-        Future.delayed(Duration.zero, () {
-          // Schedule for next frame
-          isLoading.value = false;
-        });
-      } else {
-        Future.delayed(Duration.zero, () {
-          isLoading.value = false;
-        });
+      }
+      for (final parentId in replyMap.keys) {
+        threadExpanded.putIfAbsent(
+          parentId,
+          () => false,
+        ); // collapsed by default
       }
     } catch (e) {
-      Future.delayed(Duration.zero, () {
-        isLoading.value = false;
-      });
+      // ignore
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -122,26 +94,15 @@ class CommentsController extends GetxController {
     }
     isSending.value = true;
 
-    final commentData = {"postId": postId, "message": message};
-
-    // If replying, attach `replyTo` UUID
-    if (replyToComment.value != null) {
-      commentData["replyTo"] = replyToComment.value!["uuid"];
-    }
-
     try {
-      final response = await ApiClient.to.dio.post(
-        'comments',
-        data: commentData,
+      final newComment = await _postRepository.addComment(
+        postUuid: postId,
+        message: message,
+        replyToUuid: replyToComment.value?.uuid,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final newComment = response.data is Map<String, dynamic>
-            ? response.data as Map<String, dynamic>
-            : jsonDecode(response.data is String ? response.data as String : '{}') as Map<String, dynamic>;
-        final id = newComment['uuid']?.toString();
-        final exists =
-            id != null && comments.any((c) => c['uuid']?.toString() == id);
+      if (newComment != null) {
+        final exists = comments.any((c) => c.uuid == newComment.uuid);
         if (!exists) {
           comments.add(newComment); // Add new unique comment to list
         }
@@ -154,11 +115,8 @@ class CommentsController extends GetxController {
     }
   }
 
-  // Token refresh is now handled by the Dio ApiClient interceptor.
-  // The duplicated refreshAccessToken() method has been removed.
-
   // Set a comment as the one being replied to
-  void setReplyTo(Map<String, dynamic> comment) {
+  void setReplyTo(Comment comment) {
     replyToComment.value = comment;
   }
 

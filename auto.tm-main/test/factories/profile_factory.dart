@@ -1,14 +1,14 @@
-import 'package:auto_tm/screens/profile_screen/model/profile_model.dart';
+import 'package:auto_tm/domain/models/user_profile.dart';
 
 class ProfileFactory {
-  static ProfileModel make({
+  static UserProfile make({
     String? uuid,
     String? name,
     String? phone,
     String? email,
     String? location,
   }) {
-    return ProfileModel(
+    return UserProfile(
       uuid: uuid ?? 'user_123',
       name: name ?? 'Test User',
       email: email ?? 'test@example.com',
@@ -38,8 +38,8 @@ class ProfileFactory {
           'small': 'small.jpg',
           'medium': 'medium.jpg',
           'large': 'large.jpg',
-        }
-      }
+        },
+      },
     };
   }
 }

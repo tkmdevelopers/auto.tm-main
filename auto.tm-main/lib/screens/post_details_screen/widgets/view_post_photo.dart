@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/utils/image_url_helper.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
@@ -41,7 +42,10 @@ class _ViewPostPhotoScreenState extends State<ViewPostPhotoScreen> {
   @override
   void initState() {
     super.initState();
-    _index = widget.currentIndex.clamp(0, widget.imageUrls.isEmpty ? 0 : widget.imageUrls.length - 1);
+    _index = widget.currentIndex.clamp(
+      0,
+      widget.imageUrls.isEmpty ? 0 : widget.imageUrls.length - 1,
+    );
     _pageController = PageController(initialPage: _index);
     _favoritesController = Get.put(FavoritesController(), permanent: false);
   }
@@ -71,7 +75,8 @@ class _ViewPostPhotoScreenState extends State<ViewPostPhotoScreen> {
             },
             scaleStateChangedCallback: (PhotoViewScaleState state) {
               setState(() {
-                _currentPageZoomed = state == PhotoViewScaleState.zoomedIn ||
+                _currentPageZoomed =
+                    state == PhotoViewScaleState.zoomedIn ||
                     state == PhotoViewScaleState.originalSize;
               });
             },
@@ -87,7 +92,8 @@ class _ViewPostPhotoScreenState extends State<ViewPostPhotoScreen> {
                 child: Container(
                   width: size.width,
                   height: size.height,
-                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.8),
+                  color: theme.colorScheme.surfaceContainerHighest
+                      .opacityCompat(0.8),
                 ),
               );
             },
@@ -97,7 +103,8 @@ class _ViewPostPhotoScreenState extends State<ViewPostPhotoScreen> {
               return PhotoViewGalleryPageOptions(
                 imageProvider: CachedNetworkImageProvider(url),
                 heroAttributes: PhotoViewHeroAttributes(
-                  tag: 'post-media-${widget.heroGroupTag ?? hashCode}-$index-${path.hashCode}',
+                  tag:
+                      'post-media-${widget.heroGroupTag ?? hashCode}-$index-${path.hashCode}',
                 ),
                 minScale: PhotoViewComputedScale.contained,
                 maxScale: PhotoViewComputedScale.covered * 2.5,
@@ -129,7 +136,8 @@ class _ViewPostPhotoScreenState extends State<ViewPostPhotoScreen> {
                     children: [
                       Obx(() {
                         final uuid = widget.postUuid;
-                        final isFav = uuid != null &&
+                        final isFav =
+                            uuid != null &&
                             _favoritesController.favorites.contains(uuid);
                         return _OverlayButton(
                           icon: isFav ? Icons.favorite : Icons.favorite_border,

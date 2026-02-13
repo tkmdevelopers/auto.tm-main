@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/screens/filter_screen/controller/brand_controller.dart';
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 // Removed direct navigation to FilterResultPage; we now return to origin screen.
@@ -115,7 +116,9 @@ class _BrandSelectionState extends State<BrandSelection> {
             ),
           ),
         ),
-        style: AppStyles.f14w4Th(context).copyWith(color: theme.colorScheme.onSurface),
+        style: AppStyles.f14w4Th(
+          context,
+        ).copyWith(color: theme.colorScheme.onSurface),
         cursorColor: theme.colorScheme.onSurface,
       ),
     );
@@ -128,38 +131,60 @@ class _BrandSelectionState extends State<BrandSelection> {
       if (brandController.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
       }
-      if (brandController.brands.isEmpty) {
+      if (brandController.brandHistory.isEmpty) {
         return const SizedBox.shrink(); // Don't show if there's no history
       }
 
       return Container(
-        height: 80,
+        height: 90,
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
-          itemCount: brandController.brands.length,
+          itemCount: brandController.brandHistory.length,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemBuilder: (context, index) {
-            final brand = brandController.brands[index];
-            final String logoUrl = brand['photo']?['originalPath'] ?? '';
-            final String brandName = brand['name'] ?? '';
+            final item = brandController.brandHistory[index];
+            final String logoUrl = item.brandLogo ?? '';
+            final String brandName = item.brandName;
+            final String? modelName = item.modelName;
 
             return GestureDetector(
               onTap: () {
-                controller.fetchModels(brand['uuid']);
-                brandController.addToHistory(brand['uuid']);
-                Get.to(() => ModelSelection(
-                      brandUuid: brand['uuid'],
-                      brandName: brandName,
-                      origin: widget.origin,
-                    ));
+                // Restore full filter context (Region, Price, etc.)
+                if (item.filterState != null) {
+                  controller.restoreFilterState(item.filterState!);
+                }
+
+                controller.selectBrand(item.brandUuid, item.brandName);
+                if (item.modelUuid != null && item.modelName != null) {
+                  controller.selectModel(item.modelUuid!, item.modelName!);
+                }
+                
+                if (widget.origin == 'results') {
+                  controller.searchProducts();
+                  Get.back();
+                } else if (widget.origin == 'initial' ||
+                    widget.origin == 'directHome') {
+                  controller.searchProducts();
+                  controller.hasViewedResults.value = true;
+                  Get.offAll(
+                    () => FilterResultPage(),
+                    transition: Transition.noTransition,
+                    duration: Duration.zero,
+                  );
+                } else {
+                  Get.back();
+                }
               },
               child: Container(
-                width: 100,
+                width: 110,
                 margin: const EdgeInsets.symmetric(horizontal: 4),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  border: Border.all(color: theme.dividerColor, width: 0.5),
+                  border: Border.all(
+                    color: theme.colorScheme.onSurface.opacityCompat(0.1),
+                    width: 0.5,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                   color: theme.colorScheme.surface,
                 ),
@@ -174,16 +199,30 @@ class _BrandSelectionState extends State<BrandSelection> {
                         errorBuilder: (context, error, stackTrace) =>
                             const Icon(
                               Icons.business,
-                              size: 24,
+                              size: 20,
                               color: Colors.grey,
                             ),
-                      ),
+                      )
+                    else
+                      const Icon(Icons.directions_car, size: 20, color: Colors.grey),
                     const SizedBox(height: 4),
                     Text(
                       brandName,
-                      style: theme.textTheme.bodySmall,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (modelName != null)
+                      Text(
+                        modelName,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
+                          color: theme.colorScheme.onSurface.opacityCompat(0.6),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                   ],
                 ),
               ),
@@ -230,17 +269,22 @@ class _BrandSelectionState extends State<BrandSelection> {
                 ),
                 onTap: () {
                   // Clear brand/model filters
-                  controller.selectedBrandUuid.value = '';
-                  controller.selectedBrandName.value = '';
-                  controller.selectedModelUuid.value = '';
-                  controller.selectedModelName.value = '';
+                  controller.selectedBrandUuids.clear();
+                  controller.selectedBrandNames.clear();
+                  controller.selectedModelUuids.clear();
+                  controller.selectedModelNames.clear();
                   if (widget.origin == 'results') {
                     controller.searchProducts();
                     Get.back();
-                  } else if (widget.origin == 'initial' || widget.origin == 'directHome') {
+                  } else if (widget.origin == 'initial' ||
+                      widget.origin == 'directHome') {
                     controller.searchProducts();
                     controller.hasViewedResults.value = true;
-                    Get.offAll(() => FilterResultPage(), transition: Transition.noTransition, duration: Duration.zero);
+                    Get.offAll(
+                      () => FilterResultPage(),
+                      transition: Transition.noTransition,
+                      duration: Duration.zero,
+                    );
                   } else {
                     // filter origin
                     Get.back();
@@ -252,7 +296,7 @@ class _BrandSelectionState extends State<BrandSelection> {
             // Adjust index for the brand list
             final brandIndex = index - 2;
             final brand = controller.filteredBrands[brandIndex];
-            final String logoUrl = brand.photo?.originalPath ?? '';
+            final String logoUrl = brand.photoPath ?? '';
             final String brandName = brand.name;
 
             // Use ListTile for a clean, consistent, and semantic row item
@@ -277,12 +321,19 @@ class _BrandSelectionState extends State<BrandSelection> {
               ),
               onTap: () {
                 controller.fetchModels(brand.uuid);
-                brandController.addToHistory(brand.uuid);
-                Get.to(() => ModelSelection(
-                      brandUuid: brand.uuid,
-                      brandName: brandName,
-                      origin: widget.origin,
-                    ));
+                brandController.addToHistory(
+                  brandUuid: brand.uuid,
+                  brandName: brandName,
+                  brandLogo: logoUrl,
+                  filterState: controller.captureFilterState(),
+                );
+                Get.to(
+                  () => ModelSelection(
+                    brandUuid: brand.uuid,
+                    brandName: brandName,
+                    origin: widget.origin,
+                  ),
+                );
               },
             );
           },

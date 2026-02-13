@@ -88,237 +88,141 @@ export class PostService {
   }
 
     async findAll(query: FindAllPosts) {
-
       const {
-
         brand,
-
         limit,
-
         model,
-
         offset,
-
         status,
-
         search,
-
         sortAs,
-
         photo,
-
         sortBy,
-
         category,
-
         categoryFilter,
-
         engineType,
-
         enginePower,
-
         credit,
-
         exchange,
-
         subFilter,
-
         subscription,
-
         color,
-
         maxPrice,
-
         milleage,
-
         minPrice,
-
         transmission,
-
         maxYear,
-
         minYear,
-
         brandFilter,
-
         modelFilter,
-
         condition,
-
         region,
-
         location,
-
+        countOnly,
       } = query;
 
       const includePayload: any[] = [];
-
   
-
       if (stringToBoolean(brand)) {
-
         includePayload.push({ model: this.brands, as: "brand" });
-
       }
-
       if (subFilter) {
-
         includePayload.push({
-
           model: this.subscription,
-
           as: "subscription",
-
           where: {
-
             uuid: {
-
               [Op.in]: typeof subFilter == "string" ? [subFilter] : [...subFilter],
-
             },
-
           },
-
         });
-
       }
-
       if (stringToBoolean(model)) {
-
         includePayload.push({
-
           model: this.models,
-
           as: "model",
-
         });
-
       }
-
       if (stringToBoolean(photo)) {
-
         includePayload.push({ model: this.photo, as: "photo" });
-
       }
-
       if (stringToBoolean(category)) {
-
         includePayload.push({ model: this.category, as: "category" });
-
       }
-
       if (stringToBoolean(subscription)) {
-
         includePayload.push({
-
           model: this.subscription,
-
           as: "subscription",
-
           attributes: ["uuid", "name"],
-
           include: ["photo"],
-
         });
-
       }
-
   
-
       const baseWhere: any = {
-
         ...(status !== undefined && { status: stringToBoolean(status as any) }),
-
         ...((minYear != null || maxYear != null) && {
-
           year: { [Op.between]: [+minYear || 0, +maxYear || 2100] },
-
         }),
-
         ...(engineType != null && { engineType }),
-
         ...(enginePower != null && { enginePower: { [Op.gte]: +enginePower } }),
-
         ...(credit != null && { credit: stringToBoolean(credit) }),
-
         ...(exchange != null && { exchange: stringToBoolean(exchange) }),
-
         ...(milleage != null && { milleage: { [Op.lte]: +milleage } }),
-
         ...((minPrice != null || maxPrice != null) && {
-
           price: { [Op.between]: [+minPrice || 0, +maxPrice || 2000000000] },
-
         }),
-
         ...(transmission != null && { transmission }),
-
         ...(condition != null && { condition }),
-
-        ...(brandFilter != null && { brandsId: brandFilter }),
-
-        ...(modelFilter != null && { modelsId: modelFilter }),
-
-        ...(categoryFilter != null && { categoryId: categoryFilter }),
-
-        ...(color != null && { color }),
-
-        ...(location != null && { location: { [Op.iLike]: `%${location}%` } }),
-
-        ...(region != null && {
-
-          "personalInfo.region": { [Op.iLike]: `%${region}%` },
-
+        ...(brandFilter != null && {
+          brandsId: Array.isArray(brandFilter)
+            ? { [Op.in]: brandFilter }
+            : brandFilter,
         }),
-
+        ...(modelFilter != null && {
+          modelsId: Array.isArray(modelFilter)
+            ? { [Op.in]: modelFilter }
+            : modelFilter,
+        }),
+        ...(categoryFilter != null && { categoryId: categoryFilter }),
+        ...(color != null && {
+          color: Array.isArray(color) ? { [Op.in]: color } : color,
+        }),
+        ...(location != null && { location: { [Op.iLike]: `%${location}%` } }),
+        ...(region != null && {
+          "personalInfo.region": { [Op.iLike]: `%${region}%` },
+        }),
       };
-
   
-
       // If search is provided, look into brand and model names via inclusions
-
       if (search) {
-
         baseWhere[Op.or] = [
-
           { description: { [Op.iLike]: `%${search}%` } },
-
           { "$brand.name$": { [Op.iLike]: `%${search}%` } },
-
           { "$model.name$": { [Op.iLike]: `%${search}%` } },
-
         ];
-
         // Ensure brand and model are included if searching by them
-
         if (!stringToBoolean(brand)) includePayload.push({ model: this.brands, as: "brand", attributes: ["name"] });
-
         if (!stringToBoolean(model)) includePayload.push({ model: this.models, as: "model", attributes: ["name"] });
-
       }
 
+      if (stringToBoolean(countOnly)) {
+        const count = await this.posts.count({
+          where: { ...baseWhere },
+          include: includePayload.filter((inc) => inc.where), // Only include required joins for counting
+        });
+        return { count };
+      }
   
-
       const payload: FindOptions = {
-
         limit: limit || 50,
-
         offset: offset || 0,
-
         include: [...includePayload],
-
         order: [[sortBy || "createdAt", sortAs || "desc"]],
-
         attributes: { exclude: ["userId"] },
-
         where: { ...baseWhere },
-
       };
-
   
-
-      return this.posts.findAll(payload);
-
+      return this.posts.findAndCountAll(payload);
     }
 
   async listOfProducts(body: listPost) {
@@ -549,6 +453,7 @@ export class PostService {
     return this.posts.findAll({
       where: { userId: req.uuid },
       include: ["photo", "brand", "model"],
+      order: [["createdAt", "DESC"]],
     });
   }
 }

@@ -1,9 +1,6 @@
 /// Factory for creating Brand test data
 class BrandFactory {
-  static Map<String, dynamic> makeJson({
-    String? uuid,
-    String? name,
-  }) {
+  static Map<String, dynamic> makeJson({String? uuid, String? name}) {
     return {
       'uuid': uuid ?? 'brand_${DateTime.now().millisecondsSinceEpoch}',
       'name': name ?? 'Toyota',
@@ -13,8 +10,16 @@ class BrandFactory {
   /// Create a list of brands
   static List<Map<String, dynamic>> makeList({int count = 10}) {
     final brandNames = [
-      'Toyota', 'BMW', 'Mercedes', 'Audi', 'Honda',
-      'Ford', 'Chevrolet', 'Nissan', 'Hyundai', 'Kia',
+      'Toyota',
+      'BMW',
+      'Mercedes',
+      'Audi',
+      'Honda',
+      'Ford',
+      'Chevrolet',
+      'Nissan',
+      'Hyundai',
+      'Kia',
     ];
     return List.generate(
       count,
@@ -41,10 +46,7 @@ class ModelFactory {
   }
 
   /// Create a list of models for a brand
-  static List<Map<String, dynamic>> makeList({
-    String? brandId,
-    int count = 5,
-  }) {
+  static List<Map<String, dynamic>> makeList({String? brandId, int count = 5}) {
     final modelNames = ['Camry', 'Corolla', 'RAV4', 'Highlander', 'Prius'];
     return List.generate(
       count,

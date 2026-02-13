@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/screens/auth_screens/login_screen/widgets/text_field_text.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
 import 'package:auto_tm/screens/profile_screen/widgets/location_select.dart';
@@ -46,7 +47,7 @@ class EditProfileScreen extends StatelessWidget {
             return TextButton(
               style: TextButton.styleFrom(
                 foregroundColor: theme.colorScheme.onSurface,
-                backgroundColor: theme.colorScheme.surface.withOpacity(0.6),
+                backgroundColor: theme.colorScheme.surface.opacityCompat(0.6),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: 8,
@@ -88,10 +89,11 @@ class EditProfileScreen extends StatelessWidget {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .opacityCompat(0.4),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: theme.colorScheme.outlineVariant.withOpacity(
+                        color: theme.colorScheme.outlineVariant.opacityCompat(
                           0.4,
                         ),
                       ),
@@ -109,7 +111,7 @@ class EditProfileScreen extends StatelessWidget {
                             'profile_edit_offline'.tr,
                             style: TextStyle(
                               fontSize: 12,
-                              color: theme.colorScheme.onSurface.withOpacity(
+                              color: theme.colorScheme.onSurface.opacityCompat(
                                 0.75,
                               ),
                             ),
@@ -127,10 +129,11 @@ class EditProfileScreen extends StatelessWidget {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .opacityCompat(0.4),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: theme.colorScheme.outlineVariant.withOpacity(
+                        color: theme.colorScheme.outlineVariant.opacityCompat(
                           0.4,
                         ),
                       ),
@@ -148,7 +151,7 @@ class EditProfileScreen extends StatelessWidget {
                             'Loading profile...'.tr,
                             style: TextStyle(
                               fontSize: 12,
-                              color: theme.colorScheme.onSurface.withOpacity(
+                              color: theme.colorScheme.onSurface.opacityCompat(
                                 0.75,
                               ),
                             ),
@@ -167,10 +170,11 @@ class EditProfileScreen extends StatelessWidget {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceVariant.withOpacity(0.35),
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .opacityCompat(0.35),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: theme.colorScheme.outlineVariant.withOpacity(
+                        color: theme.colorScheme.outlineVariant.opacityCompat(
                           0.4,
                         ),
                       ),
@@ -189,7 +193,7 @@ class EditProfileScreen extends StatelessWidget {
                             'profile_edit_not_loaded'.tr,
                             style: TextStyle(
                               fontSize: 12,
-                              color: theme.colorScheme.onSurface.withOpacity(
+                              color: theme.colorScheme.onSurface.opacityCompat(
                                 0.75,
                               ),
                             ),
@@ -222,9 +226,8 @@ class EditProfileScreen extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceVariant.withOpacity(
-                          0.6,
-                        ),
+                        color: theme.colorScheme.surfaceContainerHighest
+                            .opacityCompat(0.6),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -276,7 +279,7 @@ class EditProfileScreen extends StatelessWidget {
                                   fontWeight: FontWeight.w500,
                                   // Use surface/onSurface palette instead of primary accent
                                   color: theme.colorScheme.onSurface
-                                      .withOpacity(0.75),
+                                      .opacityCompat(0.75),
                                 ),
                               ),
                             ),
@@ -361,7 +364,7 @@ class ProfileFormFields extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurface.withOpacity(0.7),
+            color: theme.colorScheme.onSurface.opacityCompat(0.7),
           ),
         ),
         SizedBox(height: 6),

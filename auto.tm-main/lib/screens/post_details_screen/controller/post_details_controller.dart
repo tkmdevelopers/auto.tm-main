@@ -1,14 +1,13 @@
-import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
-import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/models/post_dtos.dart';
-import 'package:auto_tm/services/network/api_client.dart';
+import 'package:auto_tm/domain/models/post.dart';
+import 'package:auto_tm/domain/repositories/post_repository.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PostDetailsController extends GetxController {
-  PostDetailsController({String? uuid}) : _uuid = uuid;
+  final PostRepository _postRepository;
+  PostDetailsController({String? uuid, PostRepository? postRepository})
+    : _uuid = uuid,
+      _postRepository = postRepository ?? Get.find<PostRepository>();
 
   final String? _uuid;
   var post = Rxn<Post>();
@@ -20,10 +19,10 @@ class PostDetailsController extends GetxController {
   String? get uuid => _uuid;
 
   void retry() {
-    if (_uuid != null && _uuid!.isNotEmpty) {
+    if (_uuid != null && _uuid.isNotEmpty) {
       isError.value = false;
       errorMessage.value = '';
-      fetchProductDetails(_uuid!);
+      fetchProductDetails(_uuid);
     }
   }
 
@@ -34,8 +33,8 @@ class PostDetailsController extends GetxController {
   @override
   void onReady() {
     super.onReady();
-    if (_uuid != null && _uuid!.isNotEmpty) {
-      fetchProductDetails(_uuid!);
+    if (_uuid != null && _uuid.isNotEmpty) {
+      fetchProductDetails(_uuid);
     }
   }
 
@@ -44,31 +43,13 @@ class PostDetailsController extends GetxController {
     isError.value = false;
     errorMessage.value = '';
     try {
-      final response = await ApiClient.to.dio.get(
-        'posts/$uuid',
-        queryParameters: {'model': true, 'brand': true, 'photo': true},
-      );
+      final result = await _postRepository.getPost(uuid);
 
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data is Map<String, dynamic>
-            ? response.data as Map<String, dynamic>
-            : json.decode(response.data is String ? response.data as String : '{}') as Map<String, dynamic>;
-        if (kDebugMode) {
-          final videoSection = data['video'];
-          debugPrint(
-            '[PostDetailsController] video section raw: $videoSection',
-          );
-        }
-        post.value = PostLegacyExtension.fromJson(data);
-        if (kDebugMode)
-          debugPrint(
-            '[PostDetailsController] parsed post video: ${post.value?.video}',
-          );
+      if (result != null) {
+        post.value = result;
       } else {
         isError.value = true;
-        errorMessage.value = response.statusCode == 404
-            ? 'Post not found'.tr
-            : 'Something went wrong'.tr;
+        errorMessage.value = 'Post not found'.tr;
         post.value = null;
       }
     } catch (e) {
@@ -86,5 +67,4 @@ class PostDetailsController extends GetxController {
       await launchUrl(callUri);
     } else {}
   }
-
 }

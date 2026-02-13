@@ -22,10 +22,7 @@ class CommentFactory {
   }
 
   /// Create a list of comments
-  static List<Map<String, dynamic>> makeList({
-    String? postId,
-    int count = 5,
-  }) {
+  static List<Map<String, dynamic>> makeList({String? postId, int count = 5}) {
     final comments = [
       'Great car!',
       'Is the price negotiable?',

@@ -14,7 +14,10 @@ class BlogDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         elevation: 4,
-        title: Text('blog_detail_title'.tr, style: TextStyle(color: theme.colorScheme.onSurface)),
+        title: Text(
+          'blog_detail_title'.tr,
+          style: TextStyle(color: theme.colorScheme.onSurface),
+        ),
         backgroundColor: theme.appBarTheme.backgroundColor,
         surfaceTintColor: theme.appBarTheme.backgroundColor,
       ),
@@ -33,8 +36,10 @@ class BlogDetailScreen extends StatelessWidget {
 
           return Padding(
             padding: EdgeInsets.all(10),
-      child: _buildContentWithImages(
-        snapshot.data!, theme.colorScheme.onSurface),
+            child: _buildContentWithImages(
+              snapshot.data!,
+              theme.colorScheme.onSurface,
+            ),
           );
         },
       ),
@@ -55,26 +60,26 @@ class BlogDetailScreen extends StatelessWidget {
         Padding(
           padding: EdgeInsets.symmetric(vertical: 10),
           child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                match.group(0)!,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                height: 230,
-              )),
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              match.group(0)!,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              height: 230,
+            ),
+          ),
         ),
       );
       lastIndex = match.end;
     }
 
     if (lastIndex < content.length) {
-      contentWidgets.add(Text(
-        content.substring(lastIndex),
-        style: TextStyle(
-          fontSize: 16,
-          color: color,
+      contentWidgets.add(
+        Text(
+          content.substring(lastIndex),
+          style: TextStyle(fontSize: 16, color: color),
         ),
-      ));
+      );
     }
 
     return SingleChildScrollView(

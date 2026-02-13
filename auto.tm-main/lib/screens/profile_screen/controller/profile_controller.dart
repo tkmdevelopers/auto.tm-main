@@ -1,22 +1,20 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 // ignore_for_file: deprecated_member_use
 
-import 'dart:convert';
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:auto_tm/domain/models/user_profile.dart';
+import 'package:auto_tm/domain/repositories/auth_repository.dart';
 import 'package:auto_tm/global_controllers/connection_controller.dart';
-import 'package:auto_tm/screens/profile_screen/model/profile_model.dart';
 import 'package:auto_tm/services/auth/auth_service.dart';
-import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:auto_tm/utils/key.dart';
 import 'package:auto_tm/utils/logger.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart' hide Response, FormData, MultipartFile;
+import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -29,16 +27,15 @@ class ProfileController extends GetxController {
     if (Get.isRegistered<ProfileController>()) {
       return Get.find<ProfileController>();
     }
-    // Should normally be registered in initServices(). Log if late-bound.
-    AppLogger.w(
-      'ProfileController.ensure() late registration - verify global init.',
-    );
     return Get.put(ProfileController(), permanent: true);
   }
 
+  final AuthRepository _authRepository;
   final GetStorage box;
-  
-  ProfileController({GetStorage? storage}) : box = storage ?? GetStorage();
+
+  ProfileController({GetStorage? storage, AuthRepository? authRepository})
+    : box = storage ?? GetStorage(),
+      _authRepository = authRepository ?? Get.find<AuthRepository>();
 
   var selectedImage = Rx<Uint8List?>(null);
   // final TextEditingController phoneController = TextEditingController();
@@ -60,7 +57,7 @@ class ProfileController extends GetxController {
 
   late final ConnectionController _connectionController;
 
-  var profile = Rxn<ProfileModel>();
+  var profile = Rxn<UserProfile>();
 
   // Tracks whether we've already initialized the form field controllers with existing data
   final RxBool fieldsInitialized = false.obs;
@@ -72,7 +69,7 @@ class ProfileController extends GetxController {
       false.obs; // set true after first successful load
   // Completer to signal the first fetch completion (success, failure, or timeout)
   Completer<void>? _initialLoadCompleter;
-  
+
   Timer? _watchdogTimer;
 
   /// Debug hook: logs current state flags; safe to leave in production (low cost).
@@ -117,7 +114,7 @@ class ProfileController extends GetxController {
     fetchProfile();
 
     // Late-arrival profile listener: if profile loads after screen build and fields not initialized, prefill.
-    ever<ProfileModel?>(profile, (p) {
+    ever<UserProfile?>(profile, (p) {
       if (p != null &&
           (!fieldsInitialized.value || nameController.text.isEmpty)) {
         ensureFormFieldPrefill(force: true);
@@ -163,24 +160,6 @@ class ProfileController extends GetxController {
     AppLogger.i('=== End API Configuration Test ===');
   }
 
-  Future<void> testJsonParsing(String jsonString) async {
-    try {
-      AppLogger.d('=== Testing JSON Parsing ===');
-      AppLogger.d('JSON string: $jsonString');
-
-      final data = json.decode(jsonString);
-      AppLogger.d('Decoded JSON: $data');
-
-      final profile = ProfileModel.fromJson(data);
-      AppLogger.d('Successfully created ProfileModel: ${profile.name}');
-
-      AppLogger.d('=== End JSON Parsing Test ===');
-    } catch (e, st) {
-      AppLogger.e('JSON parsing error', error: e, stackTrace: st);
-      AppLogger.d('=== End JSON Parsing Test with Error ===');
-    }
-  }
-
   Future<void> fetchProfile({bool retry = false}) async {
     debugDumpFlags('fetchProfile:enter');
     // Prevent overlapping calls
@@ -216,23 +195,6 @@ class ProfileController extends GetxController {
         return _earlyReturnCleanup('no_token');
       }
 
-      // Check if API URL is properly configured
-      AppLogger.d('API Base URL: ${ApiKey.ip}');
-      AppLogger.d('API Key: ${ApiKey.apiKey}');
-      AppLogger.d('Get Profile Key: ${ApiKey.getProfileKey}');
-
-      if (ApiKey.ip.isEmpty || ApiKey.ip == 'null') {
-        AppLogger.w(
-          'fetchProfile: API base URL is not configured properly (ApiKey.ip = ${ApiKey.ip})',
-        );
-        Get.snackbar(
-          'Error',
-          'API configuration error. Please check environment variables.',
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return _earlyReturnCleanup('bad_api_url');
-      }
-
       if (!_connectionController.hasConnection.value) {
         AppLogger.w('fetchProfile: no connection detected, using cache');
         isOffline.value = true;
@@ -240,95 +202,23 @@ class ProfileController extends GetxController {
         return _earlyReturnCleanup('no_connection');
       }
 
-      AppLogger.i('Fetching profile from: auth/me');
+      AppLogger.i('Fetching profile from repository');
 
-      final response = await ApiClient.to.dio
-          .get('auth/me')
-          .timeout(
-            const Duration(seconds: 12),
-            onTimeout: () {
-              throw TimeoutException('Profile request timed out');
-            },
-          );
+      final result = await _authRepository.getMe();
 
-      AppLogger.d('Response status code: ${response.statusCode}');
-      AppLogger.d('Response body: ${response.data}');
+      if (result != null) {
+        profile.value = result;
+        box.write('USER_ID', result.uuid);
+        phone.value = result.phone;
+        isOffline.value = false;
 
-      if (response.statusCode == 200) {
-        try {
-          if (response.data == null) {
-            AppLogger.w('fetchProfile: Empty response body received');
-            Get.snackbar(
-              'Error',
-              'Empty response from server',
-              snackPosition: SnackPosition.BOTTOM,
-            );
-            return _earlyReturnCleanup('empty_body');
-          }
-
-          final dynamic raw = response.data;
-          final Map<String, dynamic> data = raw is String
-              ? Map<String, dynamic>.from(json.decode(raw))
-              : Map<String, dynamic>.from(raw as Map);
-
-          AppLogger.d('Parsed JSON data: $data');
-
-          profile.value = ProfileModel.fromJson(data);
-          box.write('USER_ID', data['uuid']);
-          phone.value = data['phone']?.toString() ?? '';
-          box.write('cached_profile_json', json.encode(data));
-          isOffline.value = false;
-
-          AppLogger.i('Profile fetched successfully: ${profile.value?.name}');
-          hasLoadedProfile.value = true;
-          // If we flipped hasLoadedProfile within this fetch, ensure loading spinner will be cleared.
-          if (isLoading.value) {
-            AppLogger.d(
-              'fetchProfile: marking initial load complete, will clear spinner in finally',
-            );
-          }
-        } catch (parseError, st) {
-          AppLogger.e(
-            'Error parsing JSON response',
-            error: parseError,
-            stackTrace: st,
-          );
-          AppLogger.d('Response body that failed to parse: ${response.data}');
-          Get.snackbar(
-            'Error',
-            'Failed to parse profile data: $parseError',
-            snackPosition: SnackPosition.BOTTOM,
-          );
-          // parsing error should still resolve initial load so UI can present fallback
-        }
+        AppLogger.i('Profile fetched successfully: ${profile.value?.name}');
+        hasLoadedProfile.value = true;
       } else {
-        AppLogger.w('Unexpected status code: ${response.statusCode}');
-        Get.snackbar(
-          'Error',
-          'Failed to fetch profile. Status: ${response.statusCode}',
-          snackPosition: SnackPosition.BOTTOM,
-        );
+        return _earlyReturnCleanup('failed_fetch');
       }
-    } on TimeoutException catch (e) {
-      AppLogger.w('Profile fetch timeout: $e');
-      Get.snackbar(
-        'Timeout',
-        'Profile request took too long. Pull to retry.',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      isOffline.value = true;
-      _restoreCachedProfile();
-    } on DioException catch (e) {
-      AppLogger.e('Error fetching profile (Dio)', error: e);
-      isOffline.value = true;
-      _restoreCachedProfile();
     } catch (e) {
       AppLogger.e('Error fetching profile', error: e);
-      Get.snackbar(
-        'Error',
-        'Failed to fetch profile: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
       isOffline.value = true;
       _restoreCachedProfile();
     } finally {
@@ -373,7 +263,7 @@ class ProfileController extends GetxController {
     Duration timeout = const Duration(seconds: 8),
   }) {
     if (hasLoadedProfile.value) return; // already loaded
-    
+
     _watchdogTimer?.cancel();
     // Only schedule if this is the first creation of the completer (initial load scenario)
     _watchdogTimer = Timer(timeout, () {
@@ -444,41 +334,33 @@ class ProfileController extends GetxController {
     }
   }
 
-  /// Restore profile from cached JSON stored in GetStorage.
+  /// Restore profile from cached data in repository.
   /// Returns true if a valid cached profile was loaded.
   bool _restoreCachedProfile() {
-    final cached = box.read('cached_profile_json');
-    if (cached == null || cached is! String || cached.isEmpty) {
-      return false;
-    }
-    try {
-      final data = json.decode(cached);
-      if (data is! Map) return false;
+    _authRepository.getCachedMe().then((cached) {
+      if (cached != null) {
+        profile.value = cached;
+        hasLoadedProfile.value = true;
+        name.value = cached.name;
+        phone.value = cached.phone;
+        final restoredLocation = cached.location ?? location.value;
+        location.value = restoredLocation.isNotEmpty
+            ? restoredLocation
+            : defaultLocation;
+        locationController.text = location.value;
 
-      profile.value = ProfileModel.fromJson(Map<String, dynamic>.from(data));
-      hasLoadedProfile.value = true;
-      name.value = profile.value?.name ?? name.value;
-      phone.value = profile.value?.phone ?? phone.value;
-      final restoredLocation = profile.value?.location ?? location.value;
-      location.value = restoredLocation.isNotEmpty
-          ? restoredLocation
-          : defaultLocation;
-      locationController.text = location.value;
-
-      if (name.value.isNotEmpty) {
-        box.write('user_name', name.value);
+        if (name.value.isNotEmpty) {
+          box.write('user_name', name.value);
+        }
+        if (phone.value.isNotEmpty) {
+          box.write('user_phone', phone.value);
+        }
+        if (location.value.isNotEmpty) {
+          box.write('user_location', location.value);
+        }
       }
-      if (phone.value.isNotEmpty) {
-        box.write('user_phone', phone.value);
-      }
-      if (location.value.isNotEmpty) {
-        box.write('user_location', location.value);
-      }
-      return true;
-    } catch (e, st) {
-      AppLogger.w('Failed to restore cached profile', error: e, stackTrace: st);
-      return false;
-    }
+    });
+    return true;
   }
 
   /// Ensure form text controllers are prefilled with the latest known values.
@@ -554,46 +436,24 @@ class ProfileController extends GetxController {
   }
 
   Future<void> uploadImage(Uint8List imageBytes) async {
-    // Token is handled by ApiClient interceptor automatically
     try {
-      final formData = FormData.fromMap({
-        'uuid': profile.value!.uuid,
-        'file': MultipartFile.fromBytes(
-          imageBytes,
-          filename: 'image.jpg',
-          contentType: MediaType('image', 'jpeg'),
-        ),
-      });
-
-      // Use relative path 'photo/user' - Base URL is handled by ApiClient
-      final response = await ApiClient.to.dio.put('photo/user', data: formData);
-
-      if (response.statusCode == 200 && response.data != null) {
-        final jsonBody = response.data;
-        final paths = jsonBody['paths'];
-        String? chosen;
-        if (paths is Map) {
-          chosen =
-              paths['medium']?.toString() ??
-              paths['large']?.toString() ??
-              paths['small']?.toString();
-        }
-        if (chosen != null && chosen.isNotEmpty) {
-          final current = profile.value;
-          if (current != null) {
-            profile.value = ProfileModel(
-              uuid: current.uuid,
-              name: current.name,
-              email: current.email,
-              phone: current.phone,
-              location: current.location,
-              avatar: chosen,
-              createdAt: current.createdAt,
-              brandUuid: current.brandUuid,
-              role: current.role,
-              access: current.access,
-            );
-          }
+      final chosen = await _authRepository.updateAvatar(imageBytes);
+      if (chosen != null && chosen.isNotEmpty) {
+        final current = profile.value;
+        if (current != null) {
+          profile.value = UserProfile(
+            uuid: current.uuid,
+            name: current.name,
+            email: current.email,
+            phone: current.phone,
+            location: current.location,
+            avatar: chosen,
+            avatarVariants: current.avatarVariants,
+            createdAt: current.createdAt,
+            brandUuid: current.brandUuid,
+            role: current.role,
+            access: current.access,
+          );
         }
       }
     } catch (e) {
@@ -631,7 +491,7 @@ class ProfileController extends GetxController {
       animationDuration: const Duration(milliseconds: 250),
       boxShadows: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.15),
+          color: Colors.black.opacityCompat(0.15),
           blurRadius: 8,
           offset: const Offset(0, 3),
         ),
@@ -680,20 +540,17 @@ class ProfileController extends GetxController {
   Future<bool> postUserDataSave() async {
     try {
       final trimmedName = nameController.text.trim();
-      final Map<String, dynamic> body = {
-        if (trimmedName.isNotEmpty) 'name': trimmedName,
-        'location': locationController.text,
-      };
+      final success = await _authRepository.updateProfile(
+        name: trimmedName,
+        location: locationController.text,
+      );
 
-      // Use relative path 'auth' which maps to ApiKey.setPasswordKey relative logic
-      final response = await ApiClient.to.dio.put('auth', data: body);
-
-      if (response.statusCode == 200) {
-        if ((body['name'] ?? '').toString().isNotEmpty) {
-          box.write('user_name', body['name']);
+      if (success) {
+        if (trimmedName.isNotEmpty) {
+          box.write('user_name', trimmedName);
         }
         box.write('user_location', locationController.text);
-        return true; // local merge will happen in uploadProfile
+        return true;
       }
 
       return false;
@@ -721,7 +578,7 @@ class ProfileController extends GetxController {
                     ? name.value
                     : (box.read('user_name') ?? '')));
     if (current == null) {
-      profile.value = ProfileModel(
+      profile.value = UserProfile(
         uuid: box.read('USER_ID') ?? '',
         name: preservedName,
         email: '',
@@ -736,7 +593,7 @@ class ProfileController extends GetxController {
         access: const [],
       );
     } else {
-      profile.value = ProfileModel(
+      profile.value = UserProfile(
         uuid: current.uuid,
         name: preservedName,
         email: current.email,

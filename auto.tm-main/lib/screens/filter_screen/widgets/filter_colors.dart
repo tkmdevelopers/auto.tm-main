@@ -1,6 +1,3 @@
-// final FilterController filterController = Get.put(FilterController());
-// filterController.selectedColor.value = color;
-
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:flutter/material.dart';
@@ -8,7 +5,7 @@ import 'package:get/get.dart';
 
 // Controller
 class ColorController extends GetxController {
-  final selectedColor = Rx<String?>(null); // Changed to single selected color
+  final selectedColors = <String>{}.obs; 
   final allColors = <String>[
     'White',
     'Black',
@@ -31,13 +28,19 @@ class ColorController extends GetxController {
   void onInit() {
     super.onInit();
     filteredColors.assignAll(allColors);
+    
+    // Initialize from FilterController if it exists
+    try {
+      final filterController = Get.find<FilterController>();
+      selectedColors.assignAll(filterController.selectedColors);
+    } catch (_) {}
   }
 
   void toggleColor(String color) {
-    if (selectedColor.value == color) {
-      selectedColor.value = null; // Deselect if already selected
+    if (selectedColors.contains(color)) {
+      selectedColors.remove(color);
     } else {
-      selectedColor.value = color; // Select the new color
+      selectedColors.add(color);
     }
   }
 
@@ -47,16 +50,18 @@ class ColorController extends GetxController {
       filteredColors.assignAll(allColors);
     } else {
       final lowerCaseQuery = query.toLowerCase();
-      filteredColors.assignAll(allColors.where((color) {
-        return color.toLowerCase().contains(lowerCaseQuery);
-      }).toList());
+      filteredColors.assignAll(
+        allColors.where((color) {
+          return color.toLowerCase().contains(lowerCaseQuery);
+        }).toList(),
+      );
     }
   }
 
   void resetSearch() {
     searchText.value = '';
     filteredColors.assignAll(allColors);
-    selectedColor.value = null; // Clear selection
+    selectedColors.clear();
   }
 }
 
@@ -72,18 +77,23 @@ class SFilterColors extends StatelessWidget {
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(elevation:4,
+      appBar: AppBar(
+        elevation: 4,
         backgroundColor: theme.appBarTheme.backgroundColor,
         surfaceTintColor: theme.appBarTheme.backgroundColor,
         title: Text(
           "Color".tr,
-          style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w600),
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         centerTitle: false,
         actions: [
           TextButton(
             onPressed: () {
               colorController.resetSearch();
+              filterController.selectedColors.clear();
             },
             child: Text(
               "Reset".tr,
@@ -113,13 +123,17 @@ class SFilterColors extends StatelessWidget {
                 onChanged: colorController.filterColors,
                 style: TextStyle(color: theme.colorScheme.onSurface),
                 decoration: InputDecoration(
-                  prefixIcon:
-                      Icon(Icons.search, color: AppColors.textTertiaryColor),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: AppColors.textTertiaryColor,
+                  ),
                   hintText: "Search",
                   hintStyle: TextStyle(color: AppColors.textTertiaryColor),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
-                      vertical: 10.0, horizontal: 16.0),
+                    vertical: 10.0,
+                    horizontal: 16.0,
+                  ),
                 ),
               ),
             ),
@@ -132,12 +146,11 @@ class SFilterColors extends StatelessWidget {
                     itemCount: colorController.filteredColors.length,
                     itemBuilder: (context, index) {
                       final color = colorController.filteredColors[index];
-                      //  final isSelected = colorController.selectedColor.value == color; // Changed to single selection
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
                         child: Obx(() {
                           final isSelected =
-                              colorController.selectedColor.value == color;
+                              colorController.selectedColors.contains(color);
                           return AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             decoration: BoxDecoration(
@@ -145,8 +158,8 @@ class SFilterColors extends StatelessWidget {
                               borderRadius: BorderRadius.circular(12.0),
                               border: Border.all(
                                 color: isSelected
-                                                    ? theme.colorScheme.onSurface
-                                                    : AppColors.textTertiaryColor,
+                                    ? theme.colorScheme.onSurface
+                                    : AppColors.textTertiaryColor,
                                 width: isSelected ? 1 : 0.5,
                               ),
                             ),
@@ -163,29 +176,27 @@ class SFilterColors extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: _getColor(
-                                      color), // Use helper to get color
+                                    color,
+                                  ), // Use helper to get color
                                   border: Border.all(
-                  color: isSelected
-                    ? theme.colorScheme.onSurface
-                    : Colors.transparent,
-                                    width: 2,
+                                    color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                                    width: 1,
                                   ),
                                 ),
                               ),
                               trailing: isSelected
                                   ? Icon(
-                                      Icons.radio_button_checked,
+                                      Icons.check_circle_rounded,
                                       color: theme.colorScheme.onSurface,
                                     )
-                                  : const Icon(
-                                      Icons.radio_button_off,
-                                      color: AppColors.textTertiaryColor,
+                                  : Icon(
+                                      Icons.circle_outlined,
+                                      color: AppColors.textTertiaryColor.withOpacity(0.3),
                                     ),
-                                                onTap: () {
-                                                  colorController.toggleColor(color);
-                                                  filterController.selectColor(color);
-                                                },
-                              
+                              onTap: () {
+                                colorController.toggleColor(color);
+                                filterController.toggleColor(color);
+                              },
                             ),
                           );
                         }),

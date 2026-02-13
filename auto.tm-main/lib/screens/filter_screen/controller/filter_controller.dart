@@ -1,22 +1,29 @@
 import 'dart:async';
-
-import 'package:auto_tm/services/brand_model_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 
+import 'package:auto_tm/domain/models/brand.dart';
+import 'package:auto_tm/domain/models/car_model.dart';
 import 'package:auto_tm/domain/models/post.dart';
 import 'package:auto_tm/domain/models/post_filter.dart';
-import 'package:auto_tm/services/filter_service.dart';
-import 'package:auto_tm/models/post_dtos.dart';
+import 'package:auto_tm/domain/repositories/filter_repository.dart';
+import 'package:auto_tm/domain/repositories/brand_repository.dart';
+import 'package:auto_tm/screens/filter_screen/controller/brand_controller.dart';
 
 class FilterController extends GetxController {
+  final FilterRepository _filterRepository;
+  final BrandRepository _brandRepository;
+  final _storage = GetStorage();
+  
+  static const String _storageKey = 'persisted_filters_v1';
+  
   final TextEditingController milleageController = TextEditingController();
   final TextEditingController enginepowerController = TextEditingController();
   final TextEditingController brandSearchController = TextEditingController();
   final TextEditingController modelSearchController = TextEditingController();
   final ScrollController scrollController = ScrollController();
-  final box = GetStorage();
+  
   var offset = 0;
   final int limit = 20;
   // Tracks whether user has already opened the results page in this session.
@@ -27,32 +34,55 @@ class FilterController extends GetxController {
   void debouncedSearch() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
-      searchProducts();
+      saveFilterState();
+      fetchMatchCount();
+      
+      // Auto-update history if a brand is selected to capture refinements (e.g. Region change)
+      if (selectedBrandUuids.isNotEmpty) {
+        try {
+          final brandController = Get.find<BrandController>();
+          brandController.addToHistory(
+            brandUuid: selectedBrandUuids.first,
+            brandName: selectedBrandNames.first,
+            modelUuid: selectedModelUuids.isNotEmpty ? selectedModelUuids.first : null,
+            modelName: selectedModelNames.isNotEmpty ? selectedModelNames.first : null,
+            filterState: captureFilterState(),
+          );
+        } catch (_) {}
+      }
+
+      // If we are currently viewing results, also update the list
+      if (hasViewedResults.value) {
+        searchProducts();
+      }
     });
   }
 
-  // Brand/model data – delegated to BrandModelService
-  late final BrandModelService _brandModelSvc;
-  FilterController({BrandModelService? brandModelSvc}) : _brandModelSvc = brandModelSvc ?? BrandModelService.to;
+  FilterController({
+    BrandRepository? brandRepository,
+    FilterRepository? filterRepository,
+  }) : _brandRepository = brandRepository ?? Get.find<BrandRepository>(),
+       _filterRepository = filterRepository ?? Get.find<FilterRepository>();
 
-  RxList<BrandDto> get brands => _brandModelSvc.brands;
-  RxList<ModelDto> get models => _brandModelSvc.models;
-  RxBool get isLoadingBrands => _brandModelSvc.isLoadingBrands;
-  RxBool get isLoadingModels => _brandModelSvc.isLoadingModels;
+  RxList<Brand> get brands => _brandRepository.brands;
+  RxList<CarModel> get models => _brandRepository.models;
+  RxBool get isLoadingBrands => _brandRepository.isLoadingBrands;
+  RxBool get isLoadingModels => _brandRepository.isLoadingModels;
   final RxBool isLoading = false.obs;
 
-  // Selection state
-  final RxString selectedBrandUuid = ''.obs;
-  final RxString selectedModelUuid = ''.obs;
-    final RxString selectedBrandName = ''.obs;
-    final RxString selectedModelName = ''.obs;
-    
-    // Aliases for test compatibility
-    RxString get selectedBrand => selectedBrandName;
-    RxString get selectedModel => selectedModelName;
-  
-    final RxString selectedCategoryUuid = ''.obs;
-  
+  // Selection state (Support multi-selection)
+  final RxSet<String> selectedBrandUuids = <String>{}.obs;
+  final RxSet<String> selectedModelUuids = <String>{}.obs;
+  final RxSet<String> selectedBrandNames = <String>{}.obs;
+  final RxSet<String> selectedModelNames = <String>{}.obs;
+
+  // Legacy accessors for compatibility
+  String get selectedBrandUuid => selectedBrandUuids.isNotEmpty ? selectedBrandUuids.first : '';
+  String get selectedModelUuid => selectedModelUuids.isNotEmpty ? selectedModelUuids.first : '';
+  String get selectedBrandName => selectedBrandNames.isNotEmpty ? selectedBrandNames.join(', ') : '';
+  String get selectedModelName => selectedModelNames.isNotEmpty ? selectedModelNames.join(', ') : '';
+
+  final RxString selectedCategoryUuid = ''.obs;
   final RxString selectedCategoryName = ''.obs;
 
   // Filter state
@@ -60,7 +90,7 @@ class FilterController extends GetxController {
   var condition = 'All'.obs;
   var location = ''.obs; // Specific city
   var transmission = ''.obs;
-  var selectedColor = ''.obs;
+  final RxSet<String> selectedColors = <String>{}.obs;
   var enginePower = ''.obs;
   var milleage = ''.obs;
   var exchange = false.obs;
@@ -76,54 +106,78 @@ class FilterController extends GetxController {
   // Slider bounds
   final RxInt yearLowerBound = 1990.obs;
   final RxInt yearUpperBound = DateTime.now().year.obs;
-  final Rx<RangeValues> yearRange = RangeValues(
+  final Rx<RangeValues> yearRange = Rx<RangeValues>(RangeValues(
     1990,
     DateTime.now().year.toDouble(),
-  ).obs;
+  ));
   final RxInt priceLowerBound = 0.obs;
   final RxInt priceUpperBound = 1000000.obs;
-  final Rx<RangeValues> priceRange = const RangeValues(0, 1000000).obs;
+  final Rx<RangeValues> priceRange = Rx<RangeValues>(const RangeValues(0, 1000000));
 
   // Year range accessors
-  String get effectiveMinYear => minYear.value.isNotEmpty ? minYear.value : (yearRange.value.start != yearLowerBound.value ? yearRange.value.start.round().toString() : '');
-  String get effectiveMaxYear => maxYear.value.isNotEmpty ? maxYear.value : (yearRange.value.end != yearUpperBound.value ? yearRange.value.end.round().toString() : '');
+  String get effectiveMinYear => minYear.value.isNotEmpty
+      ? minYear.value
+      : (yearRange.value.start != yearLowerBound.value
+            ? yearRange.value.start.round().toString()
+            : '');
+  String get effectiveMaxYear => maxYear.value.isNotEmpty
+      ? maxYear.value
+      : (yearRange.value.end != yearUpperBound.value
+            ? yearRange.value.end.round().toString()
+            : '');
 
   final RxString selectedSortOption = 'createdAt_desc'.obs;
   final RxBool isSearchLoading = false.obs;
+  final RxBool isCountLoading = false.obs;
+  final RxInt totalMatches = 0.obs;
   final RxList<Post> searchResults = <Post>[].obs;
   final RxString error = ''.obs;
 
   @override
   void onInit() {
     super.onInit();
-    // _brandModelSvc already assigned via constructor or late init fallback
-    
+    _loadPersistedFilters();
+
     // Sync isLoading with service states
-    ever(isLoadingBrands, (val) => isLoading.value = val || isLoadingModels.value);
-    ever(isLoadingModels, (val) => isLoading.value = val || isLoadingBrands.value);
+    ever(
+      isLoadingBrands,
+      (val) => isLoading.value = val || isLoadingModels.value,
+    );
+    ever(
+      isLoadingModels,
+      (val) => isLoading.value = val || isLoadingBrands.value,
+    );
 
     // Listen to text controllers for auto-search
     milleageController.addListener(debouncedSearch);
     enginepowerController.addListener(debouncedSearch);
 
-    // Listen to Rx variables
-    ever(transmission, (_) => debouncedSearch());
-    ever(condition, (_) => debouncedSearch());
-    ever(exchange, (_) => debouncedSearch());
-    ever(credit, (_) => debouncedSearch());
-    ever(minYear, (_) => debouncedSearch());
-    ever(maxYear, (_) => debouncedSearch());
-    ever(minPrice, (_) => debouncedSearch());
-    ever(maxPrice, (_) => debouncedSearch());
-    ever(priceRange, (_) => debouncedSearch());
-    ever(yearRange, (_) => debouncedSearch());
-    ever(selectedBrandUuid, (_) => debouncedSearch());
-    ever(selectedModelUuid, (_) => debouncedSearch());
-    ever(selectedCategoryUuid, (_) => debouncedSearch());
-    ever(location, (_) => debouncedSearch());
-    ever(selectedCountry, (_) => debouncedSearch());
+    // Unified listener for all filter changes
+    final List<RxInterface> filters = [
+      transmission,
+      condition,
+      exchange,
+      credit,
+      minYear,
+      maxYear,
+      minPrice,
+      maxPrice,
+      priceRange,
+      yearRange,
+      selectedBrandUuids,
+      selectedModelUuids,
+      selectedCategoryUuid,
+      selectedColors,
+      location,
+      selectedCountry,
+    ];
+
+    for (var filter in filters) {
+      ever(filter, (_) => debouncedSearch());
+    }
 
     // Initial fetch
+    fetchMatchCount();
     searchProducts();
 
     // Setup scroll listener
@@ -147,7 +201,7 @@ class FilterController extends GetxController {
     transmission.value = '';
     enginepowerController.clear();
     milleageController.clear();
-    selectedColor.value = '';
+    selectedColors.clear();
     condition.value = 'All';
     exchange.value = false;
     credit.value = false;
@@ -167,13 +221,14 @@ class FilterController extends GetxController {
       priceUpperBound.value.toDouble(),
     );
     if (includeBrandModel) {
-      selectedBrandUuid.value = '';
-      selectedModelUuid.value = '';
-      selectedBrandName.value = '';
-      selectedModelName.value = '';
+      selectedBrandUuids.clear();
+      selectedModelUuids.clear();
+      selectedBrandNames.clear();
+      selectedModelNames.clear();
       selectedCategoryUuid.value = '';
       selectedCategoryName.value = '';
     }
+    saveFilterState();
   }
 
   void togglePremium(String uuid) {
@@ -187,8 +242,8 @@ class FilterController extends GetxController {
 
   int get activeFilterCount {
     int count = 0;
-    if (selectedBrandUuid.value.isNotEmpty) count++;
-    if (selectedModelUuid.value.isNotEmpty) count++;
+    if (selectedBrandUuids.isNotEmpty) count++;
+    if (selectedModelUuids.isNotEmpty) count++;
     if (selectedCategoryUuid.value.isNotEmpty) count++;
     if (selectedCountry.value != 'Local' || location.value.isNotEmpty) count++;
     if (transmission.value.isNotEmpty) count++;
@@ -197,65 +252,77 @@ class FilterController extends GetxController {
     if (minYear.value.isNotEmpty || maxYear.value.isNotEmpty) count++;
     if (milleageController.text.isNotEmpty) count++;
     if (enginepowerController.text.isNotEmpty) count++;
-    if (selectedColor.value.isNotEmpty) count++;
+    if (selectedColors.isNotEmpty) count++;
     if (premium.isNotEmpty) count++;
     if (condition.value.isNotEmpty && condition.value != 'All') count++;
     return count;
   }
 
-  Map<String, dynamic> buildQueryParams() {
+  PostFilter buildFilter({bool countOnly = false}) {
     final sort = _parseSortOption(selectedSortOption.value);
-    
-    final filter = PostFilter(
-      brandFilter: selectedBrandUuid.value.isNotEmpty ? selectedBrandUuid.value : null,
-      modelFilter: selectedModelUuid.value.isNotEmpty ? selectedModelUuid.value : null,
-      categoryFilter: selectedCategoryUuid.value.isNotEmpty ? selectedCategoryUuid.value : null,
+
+    return PostFilter(
+      brandFilter: selectedBrandUuids.isNotEmpty
+          ? selectedBrandUuids.toList()
+          : null,
+      modelFilter: selectedModelUuids.isNotEmpty
+          ? selectedModelUuids.toList()
+          : null,
+      categoryFilter: selectedCategoryUuid.value.isNotEmpty
+          ? selectedCategoryUuid.value
+          : null,
       region: selectedCountry.value != 'Local' ? selectedCountry.value : null,
-      location: (selectedCountry.value == 'Local' && location.value.isNotEmpty) ? location.value : null,
-      color: selectedColor.value.isNotEmpty ? selectedColor.value : null,
+      location: (selectedCountry.value == 'Local' && location.value.isNotEmpty)
+          ? location.value
+          : null,
+      color: selectedColors.isNotEmpty ? selectedColors.toList() : null,
       credit: credit.value ? true : null,
       exchange: exchange.value ? true : null,
       transmission: transmission.value.isNotEmpty ? transmission.value : null,
-      enginePower: enginepowerController.text.isNotEmpty ? enginepowerController.text : null,
-      milleage: milleageController.text.isNotEmpty ? milleageController.text : null,
+      enginePower: enginepowerController.text.isNotEmpty
+          ? enginepowerController.text
+          : null,
+      milleage: milleageController.text.isNotEmpty
+          ? milleageController.text
+          : null,
       condition: condition.value != 'All' ? condition.value : null,
-      minYear: minYear.value.isNotEmpty ? minYear.value : (yearRange.value.start != yearLowerBound.value ? yearRange.value.start.round().toString() : null),
-      maxYear: maxYear.value.isNotEmpty ? maxYear.value : (yearRange.value.end != yearUpperBound.value ? yearRange.value.end.round().toString() : null),
-      minPrice: minPrice.value != null ? minPrice.value.toString() : (priceRange.value.start != priceLowerBound.value ? priceRange.value.start.round().toString() : null),
-      maxPrice: maxPrice.value != null ? maxPrice.value.toString() : (priceRange.value.end != priceUpperBound.value ? priceRange.value.end.round().toString() : null),
+      minYear: minYear.value.isNotEmpty
+          ? minYear.value
+          : (yearRange.value.start != yearLowerBound.value
+                ? yearRange.value.start.round().toString()
+                : null),
+      maxYear: maxYear.value.isNotEmpty
+          ? maxYear.value
+          : (yearRange.value.end != yearUpperBound.value
+                ? yearRange.value.end.round().toString()
+                : null),
+      minPrice: minPrice.value != null
+          ? minPrice.value.toString()
+          : (priceRange.value.start != priceLowerBound.value
+                ? priceRange.value.start.round().toString()
+                : null),
+      maxPrice: maxPrice.value != null
+          ? maxPrice.value.toString()
+          : (priceRange.value.end != priceUpperBound.value
+                ? priceRange.value.end.round().toString()
+                : null),
       subFilter: premium.isNotEmpty ? premium.toList() : null,
       sortBy: sort['sortBy'],
       sortAs: sort['sortAs'],
+      countOnly: countOnly ? true : null,
     );
-
-    Map<String, dynamic> params = {
-      'brand': true,
-      'model': true,
-      'photo': true,
-      'subscription': true,
-      'status': true,
-      'offset': offset,
-      'limit': limit,
-      ...filter.toQueryParams(),
-    };
-
-    return params;
   }
 
-  String buildQuery() {
-    final params = buildQueryParams();
-    // Remove default boolean flags for cleaner test output if they are true
-    params.removeWhere((k, v) => (k == 'brand' || k == 'model' || k == 'photo' || k == 'subscription' || k == 'status') && v == true);
-    // Remove pagination for cleaner test output
-    params.remove('offset');
-    params.remove('limit');
-    // Remove default sort
-    if (params['sortBy'] == 'createdAt' && params['sortAs'] == 'desc') {
-      params.remove('sortBy');
-      params.remove('sortAs');
+  Future<void> fetchMatchCount() async {
+    isCountLoading.value = true;
+    try {
+      final filter = buildFilter(countOnly: true);
+      totalMatches.value = await _filterRepository.getMatchCount(filter);
+    } catch (e) {
+      print('Error fetching match count: $e');
+    } finally {
+      isCountLoading.value = false;
     }
-
-    return params.entries.map((e) => '${e.key}=${e.value}').join('&');
   }
 
   Future<void> searchProducts({bool loadMore = false}) async {
@@ -268,13 +335,18 @@ class FilterController extends GetxController {
 
     isSearchLoading.value = true;
     try {
-      final queryParams = buildQueryParams();
-      final newResults = await FilterService.to.searchPosts(queryParams);
+      final filter = buildFilter();
+      final result = await _filterRepository.searchPosts(
+        offset: offset,
+        limit: limit,
+        filters: filter,
+      );
 
-      if (newResults.isNotEmpty) {
-        searchResults.addAll(newResults);
+      if (result.posts.isNotEmpty) {
+        searchResults.addAll(result.posts);
         offset += limit;
       }
+      totalMatches.value = result.totalCount;
     } catch (e) {
       error.value = e.toString();
     } finally {
@@ -286,18 +358,21 @@ class FilterController extends GetxController {
     final parts = option.split('_');
     return {
       'sortBy': parts.isNotEmpty ? parts[0] : 'createdAt',
-      'sortAs': parts.length > 1 ? parts[1] : 'desc'
+      'sortAs': parts.length > 1 ? parts[1] : 'desc',
     };
   }
 
-  // Delegation to BrandModelService
-  void filterBrands(String query) => _brandModelSvc.brandSearchQuery.value = query;
-  void filterModels(String query) => _brandModelSvc.modelSearchQuery.value = query;
-  List<BrandDto> get filteredBrands => _brandModelSvc.filteredBrands;
-  List<ModelDto> get filteredModels => _brandModelSvc.filteredModels;
+  // Delegation to BrandRepository
+  void filterBrands(String query) =>
+      _brandRepository.brandSearchQuery.value = query;
+  void filterModels(String query) =>
+      _brandRepository.modelSearchQuery.value = query;
+  List<Brand> get filteredBrands => _brandRepository.filteredBrands;
+  List<CarModel> get filteredModels => _brandRepository.filteredModels;
 
-  Future<void> fetchBrands() => _brandModelSvc.fetchBrands();
-  Future<void> fetchModels(String brandUuid) => _brandModelSvc.fetchModels(brandUuid);
+  Future<void> fetchBrands() => _brandRepository.fetchBrands();
+  Future<void> fetchModels(String brandUuid) =>
+      _brandRepository.fetchModels(brandUuid);
 
   void selectFilter(String val) {
     condition.value = val;
@@ -315,14 +390,167 @@ class FilterController extends GetxController {
     debouncedSearch();
   }
 
+  // Multi-selection methods
+  void toggleBrand(String uuid, String name) {
+    if (selectedBrandUuids.contains(uuid)) {
+      selectedBrandUuids.remove(uuid);
+      selectedBrandNames.remove(name);
+      // Clear models if brand removed? (Maybe not if multiple brands)
+    } else {
+      selectedBrandUuids.add(uuid);
+      selectedBrandNames.add(name);
+      fetchModels(uuid);
+    }
+  }
+
+  void toggleModel(String uuid, String name) {
+    if (selectedModelUuids.contains(uuid)) {
+      selectedModelUuids.remove(uuid);
+      selectedModelNames.remove(name);
+    } else {
+      selectedModelUuids.add(uuid);
+      selectedModelNames.add(name);
+    }
+  }
+
+  void toggleColor(String color) {
+    if (selectedColors.contains(color)) {
+      selectedColors.remove(color);
+    } else {
+      selectedColors.add(color);
+    }
+  }
+
+  // Legacy selection methods (updated for compatibility)
+  void selectBrand(String uuid, String name) {
+    selectedBrandUuids.clear();
+    selectedBrandNames.clear();
+    selectedBrandUuids.add(uuid);
+    selectedBrandNames.add(name);
+    selectedModelUuids.clear();
+    selectedModelNames.clear();
+    fetchModels(uuid);
+  }
+
+  void selectModel(String uuid, String name) {
+    selectedModelUuids.clear();
+    selectedModelNames.clear();
+    selectedModelUuids.add(uuid);
+    selectedModelNames.add(name);
+  }
+
   void selectColor(String color) {
-    selectedColor.value = color;
-    debouncedSearch();
+    selectedColors.clear();
+    selectedColors.add(color);
+  }
+
+  Map<String, dynamic> captureFilterState() {
+    return {
+      'transmission': transmission.value,
+      'condition': condition.value,
+      'exchange': exchange.value,
+      'credit': credit.value,
+      'minYear': minYear.value,
+      'maxYear': maxYear.value,
+      'minPrice': minPrice.value,
+      'maxPrice': maxPrice.value,
+      'yearRangeStart': yearRange.value.start,
+      'yearRangeEnd': yearRange.value.end,
+      'priceRangeStart': priceRange.value.start,
+      'priceRangeEnd': priceRange.value.end,
+      'selectedCategoryUuid': selectedCategoryUuid.value,
+      'selectedCategoryName': selectedCategoryName.value,
+      'selectedColors': selectedColors.toList(),
+      'location': location.value,
+      'selectedCountry': selectedCountry.value,
+      'milleage': milleageController.text,
+      'enginePower': enginepowerController.text,
+    };
+  }
+
+  void restoreFilterState(Map<String, dynamic> state) {
+    transmission.value = state['transmission'] ?? '';
+    condition.value = state['condition'] ?? 'All';
+    exchange.value = state['exchange'] ?? false;
+    credit.value = state['credit'] ?? false;
+    minYear.value = state['minYear'] ?? '';
+    maxYear.value = state['maxYear'] ?? '';
+    minPrice.value = state['minPrice'];
+    maxPrice.value = state['maxPrice'];
+    
+    if (state['yearRangeStart'] != null && state['yearRangeEnd'] != null) {
+      yearRange.value = RangeValues(
+        (state['yearRangeStart'] as num).toDouble(),
+        (state['yearRangeEnd'] as num).toDouble(),
+      );
+    }
+    
+    if (state['priceRangeStart'] != null && state['priceRangeEnd'] != null) {
+      priceRange.value = RangeValues(
+        (state['priceRangeStart'] as num).toDouble(),
+        (state['priceRangeEnd'] as num).toDouble(),
+      );
+    }
+
+    selectedCategoryUuid.value = state['selectedCategoryUuid'] ?? '';
+    selectedCategoryName.value = state['selectedCategoryName'] ?? '';
+    
+    if (state['selectedColors'] != null) {
+      selectedColors.assignAll(List<String>.from(state['selectedColors']));
+    }
+    
+    location.value = state['location'] ?? '';
+    selectedCountry.value = state['selectedCountry'] ?? 'Local';
+    milleageController.text = state['milleage'] ?? '';
+    enginepowerController.text = state['enginePower'] ?? '';
+    
+    saveFilterState(); // Persist the restored state
+  }
+
+  void saveFilterState() {
+    final state = {
+      ...captureFilterState(),
+      'selectedBrandUuids': selectedBrandUuids.toList(),
+      'selectedModelUuids': selectedModelUuids.toList(),
+      'selectedBrandNames': selectedBrandNames.toList(),
+      'selectedModelNames': selectedModelNames.toList(),
+    };
+    _storage.write(_storageKey, state);
+  }
+
+  void _loadPersistedFilters() {
+    final state = _storage.read(_storageKey);
+    if (state != null && state is Map) {
+      final mapState = Map<String, dynamic>.from(state);
+      restoreFilterState(mapState);
+
+      if (mapState['selectedBrandUuids'] != null) {
+        selectedBrandUuids.assignAll(List<String>.from(mapState['selectedBrandUuids']));
+      }
+      if (mapState['selectedModelUuids'] != null) {
+        selectedModelUuids.assignAll(List<String>.from(mapState['selectedModelUuids']));
+      }
+      if (mapState['selectedBrandNames'] != null) {
+        selectedBrandNames.assignAll(List<String>.from(mapState['selectedBrandNames']));
+      }
+      if (mapState['selectedModelNames'] != null) {
+        selectedModelNames.assignAll(List<String>.from(mapState['selectedModelNames']));
+      }
+      
+      if (selectedBrandUuids.isNotEmpty) {
+        fetchModels(selectedBrandUuids.first);
+      }
+    }
   }
 
   @override
   void onClose() {
     _debounce?.cancel();
+    milleageController.dispose();
+    enginepowerController.dispose();
+    brandSearchController.dispose();
+    modelSearchController.dispose();
+    scrollController.dispose();
     super.onClose();
   }
 }

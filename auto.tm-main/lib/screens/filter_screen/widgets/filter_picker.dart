@@ -1,10 +1,11 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class FilterPicker extends StatelessWidget {
-  FilterPicker({super.key});
+  const FilterPicker({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -29,28 +30,33 @@ class FilterPicker extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: filterOptions.entries.map((entry) { 
+          children: filterOptions.entries.map((entry) {
             final String englishValue = entry.key;
-            final String translationKey = entry.value; 
+            final String translationKey = entry.value;
 
-            bool isSelected = controller.condition.value == englishValue; 
+            bool isSelected = controller.condition.value == englishValue;
 
             return GestureDetector(
               onTap: () => controller.selectFilter(englishValue),
               child: Container(
                 width: MediaQuery.of(context).size.width * 0.28,
-                padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 2,
+                  horizontal: 16,
+                ),
                 decoration: BoxDecoration(
-                  color: isSelected ? theme.colorScheme.onSurface.withOpacity(0.08) : Colors.transparent,
+                  color: isSelected
+                      ? theme.colorScheme.onSurface.opacityCompat(0.08)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  translationKey.tr, 
+                  translationKey.tr,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: isSelected
                         ? theme.colorScheme.onSurface
-                        : theme.colorScheme.onSurface.withOpacity(0.60),
+                        : theme.colorScheme.onSurface.opacityCompat(0.60),
                     fontWeight: FontWeight.w500,
                   ),
                 ),

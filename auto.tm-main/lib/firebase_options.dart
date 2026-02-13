@@ -65,5 +65,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'alpha-motors.firebasestorage.app',
     iosBundleId: 'com.example.alphaMotorsApp',
   );
-
 }

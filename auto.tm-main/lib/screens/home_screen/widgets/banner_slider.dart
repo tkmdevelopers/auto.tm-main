@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/global_controllers/theme_controller.dart';
 import 'package:auto_tm/screens/home_screen/controller/banner_controller.dart';
 import 'package:auto_tm/ui_components/images.dart';
@@ -29,13 +30,13 @@ class BannerSlider extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                theme.colorScheme.primaryContainer.withOpacity(0.3),
-                theme.colorScheme.surface.withOpacity(0.8),
+                theme.colorScheme.primaryContainer.opacityCompat(0.3),
+                theme.colorScheme.surface.opacityCompat(0.8),
               ],
             ),
             boxShadow: [
               BoxShadow(
-                color: theme.shadowColor.withOpacity(0.1),
+                color: theme.shadowColor.opacityCompat(0.1),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -43,7 +44,7 @@ class BannerSlider extends StatelessWidget {
           ),
           child: Shimmer.fromColors(
             baseColor: theme.colorScheme.primaryContainer,
-            highlightColor: theme.colorScheme.primary.withOpacity(0.3),
+            highlightColor: theme.colorScheme.primary.opacityCompat(0.3),
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
@@ -63,17 +64,17 @@ class BannerSlider extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                theme.colorScheme.primary.withOpacity(0.1),
-                theme.colorScheme.primaryContainer.withOpacity(0.3),
+                theme.colorScheme.primary.opacityCompat(0.1),
+                theme.colorScheme.primaryContainer.opacityCompat(0.3),
               ],
             ),
             border: Border.all(
-              color: theme.colorScheme.outline.withOpacity(0.1),
+              color: theme.colorScheme.outline.opacityCompat(0.1),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: theme.shadowColor.withOpacity(0.1),
+                color: theme.shadowColor.opacityCompat(0.1),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -89,8 +90,8 @@ class BannerSlider extends StatelessWidget {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        theme.colorScheme.primary.withOpacity(0.05),
-                        theme.colorScheme.primaryContainer.withOpacity(0.2),
+                        theme.colorScheme.primary.opacityCompat(0.05),
+                        theme.colorScheme.primaryContainer.opacityCompat(0.2),
                       ],
                     ),
                   ),
@@ -103,7 +104,7 @@ class BannerSlider extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        color: theme.colorScheme.primary.opacityCompat(0.1),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Icon(
@@ -136,7 +137,7 @@ class BannerSlider extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: theme.shadowColor.withOpacity(0.15),
+                  color: theme.shadowColor.opacityCompat(0.15),
                   blurRadius: 25,
                   offset: const Offset(0, 10),
                 ),
@@ -163,8 +164,8 @@ class BannerSlider extends StatelessWidget {
                             height: imageHeight,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            errorBuilder:
-                                (context, error, stackTrace) => Container(
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
                                   height: imageHeight,
                                   width: double.infinity,
                                   decoration: BoxDecoration(
@@ -172,11 +173,11 @@ class BannerSlider extends StatelessWidget {
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                       colors: [
-                                        theme.colorScheme.primary.withOpacity(
+                                        theme.colorScheme.primary.opacityCompat(
                                           0.1,
                                         ),
                                         theme.colorScheme.primaryContainer
-                                            .withOpacity(0.3),
+                                            .opacityCompat(0.3),
                                       ],
                                     ),
                                   ),
@@ -186,7 +187,7 @@ class BannerSlider extends StatelessWidget {
                                       height: 60,
                                       width: 60,
                                       colorFilter: ColorFilter.mode(
-                                        theme.colorScheme.primary.withOpacity(
+                                        theme.colorScheme.primary.opacityCompat(
                                           0.3,
                                         ),
                                         BlendMode.srcIn,
@@ -208,8 +209,8 @@ class BannerSlider extends StatelessWidget {
                               end: Alignment.bottomCenter,
                               colors: [
                                 Colors.transparent,
-                                Colors.black.withOpacity(0.1),
-                                Colors.black.withOpacity(0.3),
+                                Colors.black.opacityCompat(0.1),
+                                Colors.black.opacityCompat(0.3),
                               ],
                             ),
                           ),
@@ -229,7 +230,7 @@ class BannerSlider extends StatelessWidget {
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.9),
+                                  color: Colors.white.opacityCompat(0.9),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -291,34 +292,31 @@ class BannerSlider extends StatelessWidget {
                   width: controller.currentPage.value == index ? 24 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    gradient:
-                        controller.currentPage.value == index
-                            ? LinearGradient(
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                              colors: [
-                                theme.colorScheme.primary,
-                                theme.colorScheme.primary.withOpacity(0.8),
-                              ],
-                            )
-                            : null,
-                    color:
-                        controller.currentPage.value == index
-                            ? null
-                            : theme.colorScheme.outline.withOpacity(0.3),
+                    gradient: controller.currentPage.value == index
+                        ? LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              theme.colorScheme.primary,
+                              theme.colorScheme.primary.opacityCompat(0.8),
+                            ],
+                          )
+                        : null,
+                    color: controller.currentPage.value == index
+                        ? null
+                        : theme.colorScheme.outline.opacityCompat(0.3),
                     borderRadius: BorderRadius.circular(4),
-                    boxShadow:
-                        controller.currentPage.value == index
-                            ? [
-                              BoxShadow(
-                                color: theme.colorScheme.primary.withOpacity(
-                                  0.3,
-                                ),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                    boxShadow: controller.currentPage.value == index
+                        ? [
+                            BoxShadow(
+                              color: theme.colorScheme.primary.opacityCompat(
+                                0.3,
                               ),
-                            ]
-                            : null,
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
                   ),
                 );
               }),

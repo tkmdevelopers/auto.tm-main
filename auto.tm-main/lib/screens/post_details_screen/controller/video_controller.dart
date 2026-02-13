@@ -90,12 +90,14 @@ class FullVideoPlayerController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-  final args = Get.arguments;
-  if (kDebugMode) debugPrint('[VideoController] raw args: $args');
+    final args = Get.arguments;
+    if (kDebugMode) debugPrint('[VideoController] raw args: $args');
     // Accept either a single relative path string OR a List<String> of fully-qualified or relative paths (first one plays now).
     String? resolved;
-    String _joinBase(String pathPart) {
-      final base = apiKeyIp.endsWith('/') ? apiKeyIp.substring(0, apiKeyIp.length - 1) : apiKeyIp;
+    String joinBase(String pathPart) {
+      final base = apiKeyIp.endsWith('/')
+          ? apiKeyIp.substring(0, apiKeyIp.length - 1)
+          : apiKeyIp;
       return base + pathPart; // pathPart already begins with '/'
     }
 
@@ -105,11 +107,11 @@ class FullVideoPlayerController extends GetxController {
       if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
       // If starts with /media it is already served path, just prefix domain (ensure no duplicate slashes)
       if (raw.startsWith('/media/')) {
-        return _joinBase(raw);
+        return joinBase(raw);
       }
       // If looks like a publicUrl property accidentally passed without leading slash
       if (raw.startsWith('media/')) {
-        return _joinBase('/' + raw);
+        return joinBase('/$raw');
       }
       // If backend relative (e.g., video/xyz.mp4 or uploads/video/xyz.mp4)
       // Strip leading 'uploads/' because backend exposes /media root
@@ -119,8 +121,9 @@ class FullVideoPlayerController extends GetxController {
         cleaned = cleaned.substring('uploads/'.length);
       }
       // Build /media/<cleaned>
-      return _joinBase('/media/' + cleaned);
+      return joinBase('/media/$cleaned');
     }
+
     if (args is List) {
       // Choose first non-empty element
       for (final element in args) {
@@ -134,11 +137,17 @@ class FullVideoPlayerController extends GetxController {
     }
     if (resolved != null && resolved.isNotEmpty) {
       videoUrl = normalize(resolved);
-      if (kDebugMode) debugPrint('[VideoController] resolved: $resolved => videoUrl: $videoUrl');
+      if (kDebugMode) {
+        debugPrint(
+          '[VideoController] resolved: $resolved => videoUrl: $videoUrl',
+        );
+      }
       _playVideo();
       isEmpty.value = false;
     } else {
-      if (kDebugMode) debugPrint('[VideoController] No valid video argument provided');
+      if (kDebugMode) {
+        debugPrint('[VideoController] No valid video argument provided');
+      }
       isEmpty.value = true;
     }
   }
@@ -147,11 +156,19 @@ class FullVideoPlayerController extends GetxController {
     isLoading.value = true;
     errorMessage.value = null;
 
-    if (kDebugMode) debugPrint('[VideoController] Initializing player with: $videoUrl');
-    videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+    if (kDebugMode) {
+      debugPrint('[VideoController] Initializing player with: $videoUrl');
+    }
+    videoPlayerController = VideoPlayerController.networkUrl(
+      Uri.parse(videoUrl),
+    );
     try {
       await videoPlayerController!.initialize();
-      if (kDebugMode) debugPrint('[VideoController] Initialization success. AspectRatio=${videoPlayerController!.value.aspectRatio}');
+      if (kDebugMode) {
+        debugPrint(
+          '[VideoController] Initialization success. AspectRatio=${videoPlayerController!.value.aspectRatio}',
+        );
+      }
       chewieController = ChewieController(
         videoPlayerController: videoPlayerController!,
         autoPlay: true,
@@ -159,10 +176,16 @@ class FullVideoPlayerController extends GetxController {
         showControls: true,
         aspectRatio: videoPlayerController!.value.aspectRatio,
         errorBuilder: (context, errorMessage) => Center(
-          child: Text('post_video_play_error'.trParams({'error': errorMessage})),
+          child: Text(
+            'post_video_play_error'.trParams({'error': errorMessage}),
+          ),
         ),
       );
-      if (kDebugMode) debugPrint('[VideoController] Player ready. Duration=${videoPlayerController!.value.duration}');
+      if (kDebugMode) {
+        debugPrint(
+          '[VideoController] Player ready. Duration=${videoPlayerController!.value.duration}',
+        );
+      }
       isLoading.value = false;
     } catch (e) {
       isLoading.value = false;

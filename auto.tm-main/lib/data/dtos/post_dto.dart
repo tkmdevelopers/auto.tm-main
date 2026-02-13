@@ -1,6 +1,3 @@
-import 'package:get/get.dart';
-
-
 /// Post data transfer object - reflects the raw JSON from backend
 class PostDto {
   final String uuid;
@@ -8,6 +5,8 @@ class PostDto {
   final String? modelName;
   final String? brandsId;
   final String? modelsId;
+  final Map<String, dynamic>? brandObj;
+  final Map<String, dynamic>? modelObj;
   final num? price;
   final num? year;
   final num? milleage;
@@ -35,6 +34,8 @@ class PostDto {
     this.modelName,
     this.brandsId,
     this.modelsId,
+    this.brandObj,
+    this.modelObj,
     this.price,
     this.year,
     this.milleage,
@@ -64,6 +65,8 @@ class PostDto {
       modelName: json['modelName']?.toString(),
       brandsId: json['brandsId']?.toString(),
       modelsId: json['modelsId']?.toString(),
+      brandObj: json['brand'] as Map<String, dynamic>?,
+      modelObj: json['model'] as Map<String, dynamic>?,
       price: json['price'] as num?,
       year: json['year'] as num?,
       milleage: json['milleage'] as num?,

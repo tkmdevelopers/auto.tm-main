@@ -128,8 +128,7 @@ class PostSelectableField extends StatelessWidget {
             onTap: enabled ? onTap : null,
             borderRadius: BorderRadius.circular(12),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 color: theme.colorScheme.onSurface.withValues(
                   alpha: enabled ? 0.05 : 0.03,
@@ -138,10 +137,8 @@ class PostSelectableField extends StatelessWidget {
                 border: Border.all(
                   color: errorText == null
                       ? (enabled
-                            ? theme.colorScheme.outline
-                                .withValues(alpha: 0.3)
-                            : theme.colorScheme.outline
-                                .withValues(alpha: 0.15))
+                            ? theme.colorScheme.outline.withValues(alpha: 0.3)
+                            : theme.colorScheme.outline.withValues(alpha: 0.15))
                       : theme.colorScheme.error,
                 ),
               ),
@@ -151,11 +148,11 @@ class PostSelectableField extends StatelessWidget {
                     Icon(
                       icon,
                       color: !enabled
-                          ? theme.colorScheme.onSurface
-                                .withValues(alpha: 0.3)
+                          ? theme.colorScheme.onSurface.withValues(alpha: 0.3)
                           : (errorText == null
-                                ? theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.7)
+                                ? theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.7,
+                                  )
                                 : theme.colorScheme.error),
                       size: 20,
                     ),
@@ -165,11 +162,11 @@ class PostSelectableField extends StatelessWidget {
                       value.isEmpty ? hint : value,
                       style: TextStyle(
                         color: !enabled
-                            ? theme.colorScheme.onSurface
-                                .withValues(alpha: 0.3)
+                            ? theme.colorScheme.onSurface.withValues(alpha: 0.3)
                             : (value.isEmpty
-                                  ? theme.colorScheme.onSurface
-                                      .withValues(alpha: 0.5)
+                                  ? theme.colorScheme.onSurface.withValues(
+                                      alpha: 0.5,
+                                    )
                                   : theme.colorScheme.onSurface),
                         fontWeight: FontWeight.w500,
                         fontSize: 16,
@@ -183,11 +180,11 @@ class PostSelectableField extends StatelessWidget {
                   Icon(
                     Icons.arrow_forward_ios_rounded,
                     color: !enabled
-                        ? theme.colorScheme.onSurface
-                            .withValues(alpha: 0.25)
+                        ? theme.colorScheme.onSurface.withValues(alpha: 0.25)
                         : (errorText == null
-                              ? theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.5)
+                              ? theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.5,
+                                )
                               : theme.colorScheme.error),
                     size: 16,
                   ),
@@ -268,8 +265,7 @@ class PostTextFormField extends StatelessWidget {
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(
-                color:
-                    theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 fontWeight: FontWeight.normal,
               ),
               prefixText: prefixText,
@@ -280,8 +276,7 @@ class PostTextFormField extends StatelessWidget {
               ),
               suffixIcon: suffix,
               filled: true,
-              fillColor:
-                  theme.colorScheme.onSurface.withValues(alpha: 0.05),
+              fillColor: theme.colorScheme.onSurface.withValues(alpha: 0.05),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 14,

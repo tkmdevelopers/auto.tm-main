@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/global_widgets/no_internet_screen.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -44,7 +45,9 @@ class ConnectionController extends GetxController {
                 'Internet connection restored',
                 snackPosition: SnackPosition.BOTTOM,
                 duration: const Duration(seconds: 2),
-                backgroundColor: Get.theme.colorScheme.primary.withOpacity(0.9),
+                backgroundColor: Get.theme.colorScheme.primary.opacityCompat(
+                  0.9,
+                ),
                 colorText: Get.theme.colorScheme.onPrimary,
                 margin: const EdgeInsets.all(16),
                 borderRadius: 8,

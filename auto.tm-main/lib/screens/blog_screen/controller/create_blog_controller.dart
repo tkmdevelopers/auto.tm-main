@@ -3,12 +3,12 @@ import 'package:auto_tm/utils/key.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:auto_tm/services/blog_service.dart';
+import 'package:auto_tm/domain/repositories/common_repository.dart';
 
 class CreateBlogController extends GetxController {
-  final BlogService _blogService; // Injected BlogService
+  final CommonRepository _commonRepository;
 
-  CreateBlogController(this._blogService);
+  CreateBlogController(this._commonRepository);
 
   final titleController = TextEditingController();
   final descriptionController = TextEditingController();
@@ -21,9 +21,10 @@ class CreateBlogController extends GetxController {
     if (pickedFile != null) {
       isUploading.value = true; // Start uploading indicator
       try {
-        final url = await _blogService.uploadImage(File(pickedFile.path));
+        final url = await _commonRepository.uploadBlogImage(File(pickedFile.path));
         if (url != null) {
-          imageLink.value = ApiKey.ip + url; // Assuming ApiKey.ip is the base for displaying
+          imageLink.value =
+              ApiKey.ip + url; // Assuming ApiKey.ip is the base for displaying
           Get.snackbar('Uploaded', 'Image uploaded successfully!');
         } else {
           Get.snackbar('Upload Failed', 'Failed to upload image.');
@@ -54,7 +55,7 @@ class CreateBlogController extends GetxController {
     }
 
     try {
-      await _blogService.postBlog(description); // Delegate to service
+      await _commonRepository.postBlog(description); // Delegate to service
       Get.snackbar('Success', 'Blog posted!');
       titleController.clear();
       descriptionController.clear();

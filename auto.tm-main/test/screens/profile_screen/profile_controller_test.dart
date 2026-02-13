@@ -20,16 +20,10 @@ import 'profile_controller_test.mocks.dart';
   MockSpec<FlutterSecureStorage>(),
   MockSpec<GetStorage>(),
 ])
-
-class FakeConnectionController extends GetxController implements ConnectionController {
+class FakeConnectionController extends GetxController
+    implements ConnectionController {
   @override
   var hasConnection = true.obs;
-  @override
-  void onInit() {}
-  @override
-  void onReady() {}
-  @override
-  void onClose() {}
 }
 
 void main() {
@@ -65,7 +59,9 @@ void main() {
     Get.put<ApiClient>(apiClient);
     Get.put<ConnectionController>(fakeConnectionController);
 
-    when(mockStorage.read(key: 'ACCESS_TOKEN')).thenAnswer((_) async => 'valid_token_string_long_enough');
+    when(
+      mockStorage.read(key: 'ACCESS_TOKEN'),
+    ).thenAnswer((_) async => 'valid_token_string_long_enough');
     when(mockBox.read(any)).thenReturn(null);
     when(mockBox.write(any, any)).thenAnswer((_) async {});
 
@@ -77,21 +73,25 @@ void main() {
   });
 
   group('ProfileController', () {
-    testWidgets('fetchProfile success should update profile state', (tester) async {
+    testWidgets('fetchProfile success should update profile state', (
+      tester,
+    ) async {
       await tester.pumpWidget(const GetMaterialApp(home: Scaffold()));
 
       // Arrange
       final profileData = ProfileFactory.makeJson();
-      when(mockDio.get('auth/me')).thenAnswer((_) async => Response(
-            requestOptions: RequestOptions(path: 'auth/me'),
-            statusCode: 200,
-            data: profileData,
-          ));
+      when(mockDio.get('auth/me')).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: 'auth/me'),
+          statusCode: 200,
+          data: profileData,
+        ),
+      );
 
       // Act
       // Get.put triggers onInit -> fetchProfile
       Get.put<ProfileController>(controller);
-      
+
       // Wait for async fetch to complete (onInit is fire-and-forget)
       // We pump for a few seconds to let the future resolve and update state
       await tester.pump(const Duration(seconds: 2));
@@ -99,7 +99,7 @@ void main() {
       // Assert
       expect(controller.profile.value, isNotNull);
       expect(controller.profile.value?.name, 'Test User');
-      
+
       // Cleanup manually to cancel timer
       controller.onClose();
     });

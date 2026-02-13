@@ -1,11 +1,13 @@
-import 'dart:convert';
-
-import 'package:auto_tm/screens/home_screen/model/category_model.dart';
-import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/services/network/api_client.dart';
+import 'package:auto_tm/domain/models/category.dart';
+import 'package:auto_tm/domain/repositories/common_repository.dart';
+import 'package:auto_tm/domain/models/post.dart';
 import 'package:get/get.dart';
 
 class CategoryController extends GetxController {
+  final CommonRepository _repository;
+
+  CategoryController() : _repository = Get.find<CommonRepository>();
+
   var isLoading = true.obs;
   var isLoading1 = true.obs;
   var categories = <Category>[].obs;
@@ -15,22 +17,8 @@ class CategoryController extends GetxController {
   Future<void> fetchCategories() async {
     isLoading.value = true;
     try {
-      final response = await ApiClient.to.dio.get(
-        'categories',
-        queryParameters: {'photo': true, 'post': true},
-      );
-      if (response.statusCode == 200 && response.data != null) {
-        List<dynamic> jsonResponse = response.data is List
-            ? response.data as List
-            : json.decode(response.data is String ? response.data as String : '[]');
-        categories.assignAll(
-          jsonResponse
-              .map((j) => Category.fromJson(j as Map<String, dynamic>))
-              .toList(),
-        );
-      } else {
-        throw Exception('Failed to load subcategories');
-      }
+      final results = await _repository.fetchCategories();
+      categories.assignAll(results);
     } finally {
       isLoading.value = false;
     }
@@ -39,23 +27,8 @@ class CategoryController extends GetxController {
   Future<void> fetchCategoryPosts(String uuid) async {
     isLoading1.value = true;
     try {
-      final response = await ApiClient.to.dio
-          .get(
-            'categories',
-            queryParameters: {'photo': true, 'post': true},
-          )
-          .timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200 && response.data != null) {
-        List<dynamic> jsonResponse = response.data is List
-            ? response.data as List
-            : json.decode(response.data is String ? response.data as String : '[]');
-        category.assignAll(
-          jsonResponse
-              .map((j) => Category.fromJson(j as Map<String, dynamic>))
-              .where((item) => item.uuid == uuid)
-              .toList(),
-        );
-      }
+      final results = await _repository.fetchCategories();
+      category.assignAll(results.where((item) => item.uuid == uuid).toList());
     } catch (e) {
       return;
     } finally {

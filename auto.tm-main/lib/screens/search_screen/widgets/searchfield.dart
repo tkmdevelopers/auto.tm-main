@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:flutter/material.dart';
 
 class SearchField extends StatelessWidget {
@@ -8,7 +9,8 @@ class SearchField extends StatelessWidget {
     required this.focusNode,
     // required this.suffixIcon,
     // required this.onSubmitted,
-    required this.onChanged, required this.suffixIcon,
+    required this.onChanged,
+    required this.suffixIcon,
   });
 
   final String hintText;
@@ -33,20 +35,18 @@ class SearchField extends StatelessWidget {
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide(
               // More visible neutral border when not focused
-              color: theme.colorScheme.onSurface.withOpacity(0.28),
+              color: theme.colorScheme.onSurface.opacityCompat(0.28),
               width: 1.1,
             ),
             borderRadius: BorderRadius.circular(12),
           ),
           errorBorder: OutlineInputBorder(
-            borderSide: BorderSide(
-              color: theme.colorScheme.error,
-            ),
+            borderSide: BorderSide(color: theme.colorScheme.error),
             borderRadius: BorderRadius.circular(12),
           ),
-            focusedBorder: OutlineInputBorder(
+          focusedBorder: OutlineInputBorder(
             borderSide: BorderSide(
-              color: theme.colorScheme.primary.withOpacity(0.6),
+              color: theme.colorScheme.primary.opacityCompat(0.6),
               width: 1.4,
             ),
             borderRadius: BorderRadius.circular(12),
@@ -64,11 +64,14 @@ class SearchField extends StatelessWidget {
           suffixIcon: suffixIcon,
           hintText: hintText,
           hintStyle: TextStyle(
-            color: theme.colorScheme.onSurface.withOpacity(0.45),
+            color: theme.colorScheme.onSurface.opacityCompat(0.45),
             fontWeight: FontWeight.w400,
           ),
         ),
-  style: TextStyle(fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface),
+        style: TextStyle(
+          fontWeight: FontWeight.w500,
+          color: theme.colorScheme.onSurface,
+        ),
         obscureText: false,
         controller: controller,
         focusNode: focusNode,

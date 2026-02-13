@@ -88,7 +88,7 @@ flutter build ios --release # iOS build (macOS only)
 - **Photo/Video:** Uses Sharp and FFmpeg. stored in `uploads/`.
 
 ### Frontend (Flutter + GetX)
-**Architecture:** Layered Clean Architecture (UI -> Domain -> Data).
+**Architecture:** Layered Clean Architecture (UI -> Domain -> Data), following the [official Flutter architecture recommendations](https://docs.flutter.dev/app-architecture).
 **State Management:** GetX (`Rx<T>`, `Obx()`, `GetxController`).
 **Networking:** Dio with interceptors for JWT injection and refresh.
 **Structure:**
@@ -101,6 +101,39 @@ flutter build ios --release # iOS build (macOS only)
     - `/mappers/`: Converters from DTO -> Domain Model.
     - `/repositories/`: Concrete implementations (e.g., `PostRepositoryImpl`).
 - `lib/services/`: Global services (Auth, Network, Notifications).
+
+## Architectural Transition Roadmap
+
+To align fully with the [official Flutter architecture recommendations](https://docs.flutter.dev/app-architecture/recommendations), which emphasize **Separation of Concerns** (UI vs Data layers) and the **Repository Pattern**, the following roadmap is established:
+
+### Core Principles
+1.  **Separation of Concerns:** Distinct separation between the **UI Layer** (displaying data, user events) and the **Data Layer** (business logic, data access).
+2.  **Repository Pattern:** Use Repositories to abstract data sources (API, DB) from the business logic.
+3.  **UI Logic Separation:** Keep widgets "dumb". Move state management and logic into Controllers (ViewModels).
+
+### Execution Phases
+
+1.  **Phase 1: Data Layer Consolidation (The "Data" Layer)**
+    -   **Goal:** Centralize all data access logic.
+    -   **Action:** Migrate shared DTOs to `lib/data/dtos/`.
+    -   **Action:** Encapsulate all raw API/DB interactions within **Repositories** (`lib/data/repositories/`) and **Data Sources** (`lib/data/datasources/`). Services (`lib/services/`) should generally be consumed by Repositories, not directly by UI.
+
+2.  **Phase 2: Domain Layer Definition (The Contract)**
+    -   **Goal:** Define the pure business rules and contracts independent of external frameworks.
+    -   **Action:** Standardize pure Business Entities in `lib/domain/models/` (free of JSON serialization logic).
+    -   **Action:** Define abstract **Repository Interfaces** in `lib/domain/repositories/`. These are the contracts the UI layer will depend on.
+
+3.  **Phase 3: UI Layer Decoupling (The "UI" Layer)**
+    -   **Goal:** Ensure UI components only interact with the Domain layer.
+    -   **Action:** Refactor GetX Controllers (`lib/screens/**/controller/`) to depend *only* on **Domain Repository Interfaces**.
+    -   **Action:** Remove direct API calls from Controllers.
+    -   **Action:** Use **Mappers** (`lib/data/mappers/`) to convert DTOs to Domain Models *before* data leaves the Data layer.
+    -   **Action:** Ensure Widgets are purely presentational and reactive to Controller state.
+
+4.  **Phase 4: Cleanup & Validation**
+    -   **Goal:** Enforce the architecture physically and programmatically.
+    -   **Action:** Remove redundant directories (e.g., `lib/models/` once empty).
+    -   **Action:** Update `test/architecture_test.dart` to strictly enforce these import boundaries (e.g., UI cannot import Data).
 
 ## Authentication Flow
 
@@ -119,7 +152,8 @@ flutter build ios --release # iOS build (macOS only)
 ### Schema Management
 - **Sequelize Migrations:** Source of truth.
 - **Entities:** Must explicitly define `@Column({ type: DataType.UUID, defaultValue: DataType.UUIDV4 })`.
-
+# Rules
+Before beginning any implementation, perform thorough step-by-step reasoning and validation of the approach. Do not assert correctness, completeness, or functionality without explicit logical justification, verifiable evidence, or alignment between the design and the actual implementation. Every claim about behavior, performance, or correctness must be demonstrably supported by analysis, constraints, or testable proof.
 ## "Android-as-a-Service" SMS Gateway
 
 **Pattern:** The backend acts as a command center for physical Android devices that perform the actual SMS delivery.

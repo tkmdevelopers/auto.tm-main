@@ -880,7 +880,8 @@ class AppTranslations extends Translations {
       'home_no_posts_found': 'Объявления не найдены',
       'home_no_results_tip': 'Попробуйте изменить фильтры или зайдите позже.',
       'home_error_title': 'Что-то пошло не так',
-      'home_error_tap_retry': 'Нажмите для повтора или потяните для обновления.',
+      'home_error_tap_retry':
+          'Нажмите для повтора или потяните для обновления.',
       'post_downloading_progress': 'Загрузка... @percent%',
       'post_vin': 'VIN',
       'post_year_unit': 'г.',

@@ -21,25 +21,32 @@ void main() {
     const tRefresh = 'refresh_token_456';
     const tPhone = '+99365000000';
 
-    test('saveTokens should write access, refresh and phone to storage',
-        () async {
-      // Act
-      await tokenStore.saveTokens(
-        accessToken: tAccess,
-        refreshToken: tRefresh,
-        phone: tPhone,
-      );
+    test(
+      'saveTokens should write access, refresh and phone to storage',
+      () async {
+        // Act
+        await tokenStore.saveTokens(
+          accessToken: tAccess,
+          refreshToken: tRefresh,
+          phone: tPhone,
+        );
 
-      // Assert
-      verify(mockStorage.write(key: 'ACCESS_TOKEN', value: tAccess)).called(1);
-      verify(mockStorage.write(key: 'REFRESH_TOKEN', value: tRefresh)).called(1);
-      verify(mockStorage.write(key: 'USER_PHONE', value: tPhone)).called(1);
-    });
+        // Assert
+        verify(
+          mockStorage.write(key: 'ACCESS_TOKEN', value: tAccess),
+        ).called(1);
+        verify(
+          mockStorage.write(key: 'REFRESH_TOKEN', value: tRefresh),
+        ).called(1);
+        verify(mockStorage.write(key: 'USER_PHONE', value: tPhone)).called(1);
+      },
+    );
 
     test('get accessToken should read from storage', () async {
       // Arrange
-      when(mockStorage.read(key: 'ACCESS_TOKEN'))
-          .thenAnswer((_) async => tAccess);
+      when(
+        mockStorage.read(key: 'ACCESS_TOKEN'),
+      ).thenAnswer((_) async => tAccess);
 
       // Act
       final result = await tokenStore.accessToken;
@@ -61,8 +68,9 @@ void main() {
 
     test('hasTokens should return true if accessToken exists', () async {
       // Arrange
-      when(mockStorage.read(key: 'ACCESS_TOKEN'))
-          .thenAnswer((_) async => tAccess);
+      when(
+        mockStorage.read(key: 'ACCESS_TOKEN'),
+      ).thenAnswer((_) async => tAccess);
 
       // Act
       final result = await tokenStore.hasTokens;
@@ -73,8 +81,7 @@ void main() {
 
     test('hasTokens should return false if accessToken is null', () async {
       // Arrange
-      when(mockStorage.read(key: 'ACCESS_TOKEN'))
-          .thenAnswer((_) async => null);
+      when(mockStorage.read(key: 'ACCESS_TOKEN')).thenAnswer((_) async => null);
 
       // Act
       final result = await tokenStore.hasTokens;
@@ -100,10 +107,7 @@ void main() {
 
     test('clearAll should set isLoggedIn to false', () async {
       // Arrange
-      await tokenStore.saveTokens(
-        accessToken: tAccess,
-        refreshToken: tRefresh,
-      );
+      await tokenStore.saveTokens(accessToken: tAccess, refreshToken: tRefresh);
       expect(tokenStore.isLoggedIn.value, true);
 
       // Act
@@ -115,8 +119,9 @@ void main() {
 
     test('init should hydrate isLoggedIn from storage', () async {
       // Arrange
-      when(mockStorage.read(key: 'ACCESS_TOKEN'))
-          .thenAnswer((_) async => tAccess);
+      when(
+        mockStorage.read(key: 'ACCESS_TOKEN'),
+      ).thenAnswer((_) async => tAccess);
 
       // Act
       await tokenStore.init();
@@ -130,8 +135,9 @@ void main() {
       await tokenStore.updateAccessToken('new_access_token');
 
       // Assert
-      verify(mockStorage.write(key: 'ACCESS_TOKEN', value: 'new_access_token'))
-          .called(1);
+      verify(
+        mockStorage.write(key: 'ACCESS_TOKEN', value: 'new_access_token'),
+      ).called(1);
     });
 
     test('updateRefreshToken should write new refresh token', () async {
@@ -139,8 +145,9 @@ void main() {
       await tokenStore.updateRefreshToken('new_refresh_token');
 
       // Assert
-      verify(mockStorage.write(key: 'REFRESH_TOKEN', value: 'new_refresh_token'))
-          .called(1);
+      verify(
+        mockStorage.write(key: 'REFRESH_TOKEN', value: 'new_refresh_token'),
+      ).called(1);
     });
   });
 }

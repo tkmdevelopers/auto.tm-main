@@ -13,12 +13,15 @@ import 'package:get_storage/get_storage.dart';
 
 class RegisterPageController extends GetxController {
   final notificationService = Get.find<NotificationService>();
-  final PhoneVerificationController phoneVerifyController = Get.find<PhoneVerificationController>();
+  final PhoneVerificationController phoneVerifyController =
+      Get.find<PhoneVerificationController>();
 
   // Use the controllers from PhoneVerificationController to maintain a single source of truth
-  TextEditingController get phoneController => phoneVerifyController.phoneController;
-  TextEditingController get otpController => phoneVerifyController.otpController;
-  
+  TextEditingController get phoneController =>
+      phoneVerifyController.phoneController;
+  TextEditingController get otpController =>
+      phoneVerifyController.otpController;
+
   final FocusNode phoneFocus = FocusNode();
   FocusNode get otpFocus => phoneVerifyController.otpFocus;
 
@@ -34,7 +37,7 @@ class RegisterPageController extends GetxController {
   void onInit() {
     super.onInit();
     _originRoute = Get.previousRoute.isNotEmpty ? Get.previousRoute : null;
-    
+
     // Sync otpController text to otpValue for reactivity
     otpController.addListener(() {
       otpValue.value = otpController.text;
@@ -54,7 +57,7 @@ class RegisterPageController extends GetxController {
     try {
       isLoading.value = true;
       await phoneVerifyController.sendOtp();
-      
+
       if (phoneVerifyController.needsOtp.value) {
         if (navigateToOtp) {
           Get.toNamed('/checkOtp');
@@ -71,31 +74,32 @@ class RegisterPageController extends GetxController {
     if (isLoading.value) return;
     try {
       isLoading.value = true;
-      
+
       await phoneVerifyController.verifyOtp();
-      
+
       if (phoneVerifyController.isPhoneVerified.value) {
         final sub = phoneController.text.trim();
-        
+
         unawaited(_registerDeviceToken());
         notificationService.enableNotifications();
-        
+
         final profileController = ProfileController.ensure();
         if (!profileController.hasLoadedProfile.value &&
             !profileController.isFetchingProfile.value) {
           unawaited(profileController.fetchProfile());
         }
-        
+
         await profileController.waitForInitialLoad();
         storage.write('user_phone', sub);
-        
+
         final existingLoc = storage.read('user_location');
-        if (existingLoc == null || (existingLoc is String && existingLoc.isEmpty)) {
-          storage.write('user_location', ProfileController.defaultLocation);
+        if (existingLoc == null ||
+            (existingLoc is String && existingLoc.isEmpty)) {
+          storage.write('user_location', 'Aşgabat');
         }
 
         if (onVerified != null) onVerified();
-        
+
         if (!_suppressInternalNavigation) {
           _handlePostAuthNavigation();
         }

@@ -22,7 +22,10 @@ void main() {
 
       test('should reject subscriber with wrong length', () {
         expect(PhoneFormatter.isValidSubscriber('6500000'), false); // 7 digits
-        expect(PhoneFormatter.isValidSubscriber('650000000'), false); // 9 digits
+        expect(
+          PhoneFormatter.isValidSubscriber('650000000'),
+          false,
+        ); // 9 digits
         expect(PhoneFormatter.isValidSubscriber('6'), false);
         expect(PhoneFormatter.isValidSubscriber(''), false);
       });
@@ -65,7 +68,10 @@ void main() {
       });
 
       test('should extract from formatted number', () {
-        expect(PhoneFormatter.extractSubscriber('+993 65 00 00 00'), '65000000');
+        expect(
+          PhoneFormatter.extractSubscriber('+993 65 00 00 00'),
+          '65000000',
+        );
       });
 
       test('should return raw digits when no 993 prefix', () {

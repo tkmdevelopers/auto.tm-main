@@ -35,7 +35,7 @@ class PostMediaScrollableSelectionWidget extends StatelessWidget {
           return ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: totalItems,
-            separatorBuilder: (_, __) => const SizedBox(width: _spacing),
+            separatorBuilder: (_, _) => const SizedBox(width: _spacing),
             itemBuilder: (context, index) {
               // Photos occupy [0 .. photoCount-1]
               if (index < photoCount) {

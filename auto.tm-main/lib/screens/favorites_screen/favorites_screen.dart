@@ -1,7 +1,7 @@
+import 'package:auto_tm/domain/models/post.dart';
 import 'package:auto_tm/global_widgets/refresh_indicator.dart';
 import 'package:auto_tm/screens/favorites_screen/controller/favorites_controller.dart';
 import 'package:auto_tm/screens/home_screen/widgets/post_item.dart';
-import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
 import 'package:auto_tm/screens/post_details_screen/post_details_screen.dart';
 import 'package:auto_tm/ui_components/styles.dart';
 import 'package:flutter/material.dart';
@@ -47,17 +47,7 @@ class FavoritesScreenTab extends StatelessWidget {
                   arguments: post.uuid.toString(),
                 ),
                 child: PostItem(
-                  uuid: post.uuid,
-                  brand: post.brand,
-                  model: post.model,
-                  price: post.price,
-                  photoPath: post.photoPath,
-                  year: post.year,
-                  milleage: post.milleage,
-                  currency: post.currency,
-                  createdAt: post.createdAt,
-                  location: post.location,
-                  region: post.region,
+                  post: post,
                   isFav: true,
                 ),
               ),
@@ -72,7 +62,9 @@ class FavoritesScreenTab extends StatelessWidget {
 class MyFavouritesScreen extends StatelessWidget {
   MyFavouritesScreen({super.key});
 
-  final FavoritesController favoritesController = Get.put(FavoritesController());
+  final FavoritesController favoritesController = Get.put(
+    FavoritesController(),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -89,9 +81,7 @@ class MyFavouritesScreen extends StatelessWidget {
         ),
       ),
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: FavoritesScreenTab(),
-      ),
+      body: SafeArea(child: FavoritesScreenTab()),
     );
   }
 }

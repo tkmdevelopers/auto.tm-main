@@ -113,7 +113,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
     }
     final theme = Theme.of(context);
 
-    Future<void> _handleExit() async {
+    Future<void> handleExit() async {
       if (_showingExitDialog || Get.isDialogOpen == true) return;
       // Active upload? show limited options
       try {
@@ -129,9 +129,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
           final result = await Get.dialog<String>(
             AlertDialog(
               title: Text('post_upload_in_progress'.tr),
-              content: Text(
-                'post_upload_leaving_note'.tr,
-              ),
+              content: Text('post_upload_leaving_note'.tr),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -152,7 +150,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
           _showingExitDialog = false;
           // 'view' no longer a path (deprecated)
           if (result == 'leave') {
-            NavigationUtils.close(context);
+            NavigationUtils.closeGlobal();
             return;
           }
           return; // stay
@@ -160,12 +158,12 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
       } catch (_) {}
       // NEW LOGIC: If a saved snapshot exists (partial or complete) we exit immediately, even if incomplete.
       if (postController.isFormSaved.value && !postController.isDirty.value) {
-        NavigationUtils.close(context);
+        NavigationUtils.closeGlobal();
         return;
       }
       // If form never saved and empty -> just leave silently
       if (!postController.isFormSaved.value && !postController.hasAnyInput) {
-        NavigationUtils.close(context);
+        NavigationUtils.closeGlobal();
         return;
       }
       // If form is saved but dirty OR unsaved with some input -> show discard dialog
@@ -206,16 +204,16 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
             postController.reset();
           }
         } catch (_) {}
-        NavigationUtils.close(context);
+        NavigationUtils.closeGlobal();
       }
     }
 
     // Use WillPopScope for broad compatibility; delegate logic to _handleExit
-    return WillPopScope(
-      onWillPop: () async {
-        await _handleExit();
-        // _handleExit decides whether to actually pop. Always return false to prevent double pop.
-        return false;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await handleExit();
       },
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
@@ -223,7 +221,7 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
           leading: IconButton(
             onPressed: () async {
               if (!NavigationUtils.throttle('post_back')) return;
-              await _handleExit();
+              await handleExit();
             },
             icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
           ),
@@ -238,9 +236,9 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
               Obx(() {
                 final saved = postController.isFormSaved.value;
                 final dirty = postController.isDirty.value;
-        final text = !saved
-          ? 'post_unsaved_form'.tr
-          : (dirty ? 'post_unsaved_changes'.tr : 'post_all_saved'.tr);
+                final text = !saved
+                    ? 'post_unsaved_form'.tr
+                    : (dirty ? 'post_unsaved_changes'.tr : 'post_all_saved'.tr);
                 final color = dirty
                     ? theme.colorScheme.error
                     : (saved
@@ -359,13 +357,17 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                     postController: postController,
                                     onBrandSelected: (uuid, name) {
                                       final changed =
-                                          postController.selectedBrandUuid.value !=
+                                          postController
+                                              .selectedBrandUuid
+                                              .value !=
                                           uuid;
                                       postController.selectedBrand.value = name;
-                                      postController.selectedBrandUuid.value = uuid;
+                                      postController.selectedBrandUuid.value =
+                                          uuid;
                                       if (changed) {
                                         postController.selectedModel.value = '';
-                                        postController.selectedModelUuid.value = '';
+                                        postController.selectedModelUuid.value =
+                                            '';
                                         postController.models.clear();
                                         postController.fetchModels(
                                           uuid,
@@ -409,7 +411,8 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                     postController: postController,
                                     onModelSelected: (uuid, name) {
                                       postController.selectedModel.value = name;
-                                      postController.selectedModelUuid.value = uuid;
+                                      postController.selectedModelUuid.value =
+                                          uuid;
                                       setState(() {
                                         _modelError = null;
                                       });
@@ -436,7 +439,8 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                       {'value': 'New', 'displayKey': 'New'},
                                       {'value': 'Used', 'displayKey': 'Used'},
                                     ],
-                                    selectedValue: postController.selectedCondition,
+                                    selectedValue:
+                                        postController.selectedCondition,
                                     onClose: _safeCloseOverlay,
                                   );
                                 }),
@@ -480,7 +484,8 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(11),
                             ],
-                            onFieldChanged: () => postController.markFieldChanged(),
+                            onFieldChanged: () =>
+                                postController.markFieldChanged(),
                             validatorFn: (value) {
                               // Remove leading zeros
                               final trimmed = value.replaceAll(
@@ -502,7 +507,8 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                             suffix: SizedBox(
                               width: 100,
                               child: DropdownButtonFormField<String>(
-                                value: postController.selectedCurrency.value,
+                                initialValue:
+                                    postController.selectedCurrency.value,
                                 decoration: InputDecoration(
                                   border: InputBorder.none,
                                   fillColor: Colors.transparent,
@@ -598,7 +604,8 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                       'displayKey': 'Electric',
                                     },
                                   ],
-                                  selectedValue: postController.selectedEngineType,
+                                  selectedValue:
+                                      postController.selectedEngineType,
                                   onClose: _safeCloseOverlay,
                                 );
                               }),
@@ -655,14 +662,17 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                                     {'value': 'Manual', 'displayKey': 'Manual'},
                                     {
                                       'value': 'CVT',
-                                      'displayKey': 'transmission_cvt', // localized display
+                                      'displayKey':
+                                          'transmission_cvt', // localized display
                                     },
                                     {
                                       'value': 'Dual-clutch',
-                                      'displayKey': 'transmission_dual_clutch', // localized display
+                                      'displayKey':
+                                          'transmission_dual_clutch', // localized display
                                     },
                                   ],
-                                  selectedValue: postController.selectedTransmission,
+                                  selectedValue:
+                                      postController.selectedTransmission,
                                   onClose: _safeCloseOverlay,
                                 );
                               }),
@@ -674,7 +684,8 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                             controller: postController.milleage,
                             keyboardType: TextInputType.number,
                             hint: 'post_mileage_example'.tr,
-                            onFieldChanged: () => postController.markFieldChanged(),
+                            onFieldChanged: () =>
+                                postController.markFieldChanged(),
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(9),
@@ -686,7 +697,8 @@ class _PostScreenState extends State<PostScreen> with WidgetsBindingObserver {
                             keyboardType: TextInputType.multiline,
                             hint: 'post_description_hint'.tr,
                             maxLines: 5,
-                            onFieldChanged: () => postController.markFieldChanged(),
+                            onFieldChanged: () =>
+                                postController.markFieldChanged(),
                           ),
                         ],
                       ),

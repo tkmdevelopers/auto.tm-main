@@ -44,7 +44,7 @@ class ApiClient extends GetxService {
           },
         ),
       );
-      
+
       // Only add interceptors if we initialized the Dio instance
       // (Mock Dio usually doesn't need them or handles them differently)
       dio.interceptors.add(_AuthInterceptor(this));

@@ -63,36 +63,39 @@ class _CustomSplashScreenState extends State<CustomSplashScreen>
             // child: Column(
             //   mainAxisSize: MainAxisSize.min,
             //   children: [
-               child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  // child: Image.asset(
-                  //   AppImages.splashLogoGif,
-                  //   height: 300,
-                  //   width: 300,
-                  //   fit: BoxFit.contain,
-                  // ),
-                  child: Image.asset(AppImages.appLogoDark).animate(onPlay: (controller) => controller.repeat(),)//onPlay: (controller) => controller.repeat(),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              // child: Image.asset(
+              //   AppImages.splashLogoGif,
+              //   height: 300,
+              //   width: 300,
+              //   fit: BoxFit.contain,
+              // ),
+              child: Image.asset(AppImages.appLogoDark)
+                  .animate(
+                    onPlay: (controller) => controller.repeat(),
+                  ) //onPlay: (controller) => controller.repeat(),
                   .fadeIn(duration: 1000.ms)
                   .then(delay: 500.ms)
                   .fadeOut(duration: 1000.ms)
                   .then(delay: 1000.ms),
-                  // .slideY(begin: 1, end: 0),
-                ),
-                // SizedBox(height: 20),
-                // Text(
-                //   'YourAppName',
-                //   style: TextStyle(
-                //     fontSize: 24,
-                //     fontWeight: FontWeight.bold,
-                //     color: theme.colorScheme.primary,
-                //     letterSpacing: 1.2,
-                //   ),
-                // ),
-                // SizedBox(height: 10),
-                // CircularProgressIndicator(
-                //   color: theme.colorScheme.secondary,
-                //   strokeWidth: 2,
-                // ),
+              // .slideY(begin: 1, end: 0),
+            ),
+            // SizedBox(height: 20),
+            // Text(
+            //   'YourAppName',
+            //   style: TextStyle(
+            //     fontSize: 24,
+            //     fontWeight: FontWeight.bold,
+            //     color: theme.colorScheme.primary,
+            //     letterSpacing: 1.2,
+            //   ),
+            // ),
+            // SizedBox(height: 10),
+            // CircularProgressIndicator(
+            //   color: theme.colorScheme.secondary,
+            //   strokeWidth: 2,
+            // ),
             //   ],
             // ),
           ),

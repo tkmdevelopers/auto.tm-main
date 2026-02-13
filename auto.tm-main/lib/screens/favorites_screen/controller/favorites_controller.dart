@@ -1,14 +1,17 @@
 import 'dart:async';
 
-import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/models/post_dtos.dart';
-import 'package:auto_tm/services/favorite_service.dart';
+import 'package:auto_tm/domain/models/post.dart';
+import 'package:auto_tm/domain/models/brand.dart';
+import 'package:auto_tm/domain/repositories/favorite_repository.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
 
 class FavoritesController extends GetxController {
   final box = GetStorage();
+  final FavoriteRepository _favoriteRepository;
+
+  FavoritesController() : _favoriteRepository = Get.find<FavoriteRepository>();
   final isFavorite = false.obs;
   final favoriteProducts = <Post>[].obs;
   final favorites = <String>[].obs;
@@ -18,8 +21,7 @@ class FavoritesController extends GetxController {
   final RxBool isLoadingSubscribedBrands = false.obs;
   final RxBool isRefreshingToken = false.obs;
   final lastSubscribes = <String>[].obs;
-  final RxList<Map<String, dynamic>> subscribedBrands =
-      <Map<String, dynamic>>[].obs;
+  final RxList<Brand> subscribedBrands = <Brand>[].obs;
   final RxList<Post> subscribeBrandPosts = <Post>[].obs;
 
   // Debounce timer for batching rapid favorite toggles before fetching details
@@ -63,20 +65,23 @@ class FavoritesController extends GetxController {
   }
 
   Future<void> fetchFavoriteProducts() async {
+    // Get.log('Fetching favorite products for ${favorites.length} items: $favorites');
     if (favorites.isEmpty) {
       favoriteProducts.clear();
       return;
     }
 
     try {
-      final posts = await FavoriteService.to.fetchFavoritePosts(favorites);
+      final posts = await _favoriteRepository.fetchFavoritePosts(favorites);
+      // Get.log('Fetched ${posts.length} favorite products');
       favoriteProducts.assignAll(posts);
     } catch (e) {
-       // Controller-level error handling if needed, or silent fail as before
+      Get.log('Error fetching favorite products: $e');
     }
   }
 
   void toggleFavorite(String uuid) {
+    // Get.log('Toggling favorite: $uuid');
     final removing = favorites.contains(uuid);
     if (removing) {
       // Optimistic UI update: remove immediately from both id list and product details list
@@ -87,6 +92,7 @@ class FavoritesController extends GetxController {
       favorites.add(uuid);
       isFavorite.value = true;
     }
+    // Get.log('New favorites list: $favorites');
     saveFavorites();
     _scheduleFavoritesSync(afterRemoval: removing);
   }
@@ -148,7 +154,7 @@ class FavoritesController extends GetxController {
 
   Future<void> subscribeToBrand(String brandUuid) async {
     try {
-      final success = await FavoriteService.to.subscribeToBrand(brandUuid);
+      final success = await _favoriteRepository.subscribeToBrand(brandUuid);
 
       if (success) {
         Get.snackbar(
@@ -169,7 +175,7 @@ class FavoritesController extends GetxController {
 
   Future<void> unSubscribeFromBrand(String brandUuid) async {
     try {
-      final success = await FavoriteService.to.unsubscribeFromBrand(brandUuid);
+      final success = await _favoriteRepository.unsubscribeFromBrand(brandUuid);
 
       if (success) {
         Get.snackbar(
@@ -223,20 +229,19 @@ class FavoritesController extends GetxController {
     }
 
     try {
-      final jsonData = await FavoriteService.to.fetchSubscribedBrands(lastSubscribes);
-      
-      if (jsonData.isNotEmpty) {
-        subscribedBrands.value = jsonData;
+      final brands = await _favoriteRepository.fetchSubscribedBrands(
+        lastSubscribes,
+      );
+
+      if (brands.isNotEmpty) {
+        subscribedBrands.assignAll(brands);
         final List<Post> allPosts = [];
-        for (final map in jsonData) {
-          final postsList = map['posts'];
-          if (postsList is List) {
-            allPosts.addAll(
-              postsList.map((postJson) => PostLegacyExtension.fromJson(postJson as Map<String, dynamic>)),
-            );
+        for (final brand in brands) {
+          if (brand.posts != null) {
+            allPosts.addAll(brand.posts!);
           }
         }
-        subscribeBrandPosts.value = allPosts;
+        subscribeBrandPosts.assignAll(allPosts);
       }
     } catch (e) {
       // ignore

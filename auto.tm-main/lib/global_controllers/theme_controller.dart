@@ -15,8 +15,8 @@ class ThemeController extends GetxController {
     Get.changeThemeMode(themeMode.value);
   }
 
-  Rx<ThemeMode> get themeMode => isDark.value ? ThemeMode.dark.obs : ThemeMode.light.obs;
-
+  Rx<ThemeMode> get themeMode =>
+      isDark.value ? ThemeMode.dark.obs : ThemeMode.light.obs;
 
   void _loadThemeFromStorage() {
     final bool? storedIsDark = _box.read<bool>(_themeKey);

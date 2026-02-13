@@ -6,6 +6,8 @@ class AuthBinding extends Bindings {
   @override
   void dependencies() {
     Get.lazyPut<RegisterPageController>(() => RegisterPageController());
-    Get.lazyPut<PhoneVerificationController>(() => PhoneVerificationController());
+    Get.lazyPut<PhoneVerificationController>(
+      () => PhoneVerificationController(),
+    );
   }
 }

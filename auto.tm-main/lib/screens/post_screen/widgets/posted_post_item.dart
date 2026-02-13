@@ -168,7 +168,9 @@ class PostedPostItem extends StatelessWidget {
       loadingBuilder: (c, child, progress) {
         if (progress == null) return child;
         return Container(
-          color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+          color: theme.colorScheme.surfaceContainerHighest.withValues(
+            alpha: 0.3,
+          ),
           child: const Center(
             child: SizedBox(
               width: 28,
@@ -190,8 +192,8 @@ class PostedPostItem extends StatelessWidget {
 
     return GestureDetector(
       onTap: () {
-        // Navigate only if explicitly active (status == true). If null (pending) or false (declined) show info.
-        if (status == true) {
+        // Navigate if active (true) or pending (null). Only block if declined (false).
+        if (status != false) {
           _navigateToPostDetails(uuid);
         } else {
           Get.closeAllSnackbars();
@@ -210,68 +212,76 @@ class PostedPostItem extends StatelessWidget {
       // APPLE-FRIENDLY REFINEMENT: The main card container.
       // Uses surfaceContainer for a layered look, a subtle border, and softer shadows
       // to create a sense of depth without being distracting.
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: theme.colorScheme.surfaceContainer,
-          border: Border.all(
-            color: theme.colorScheme.outline.withValues(alpha: 0.1),
-            width: 1,
+      child: Obx(() {
+        final bool isHighlighted =
+            postController.lastUploadedPostUuid.value == uuid;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 500),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: theme.colorScheme.surfaceContainer,
+            border: Border.all(
+              color: isHighlighted
+                  ? theme.colorScheme.primary.withValues(alpha: 0.5)
+                  : theme.colorScheme.outline.withValues(alpha: 0.1),
+              width: isHighlighted ? 2 : 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isHighlighted
+                    ? theme.colorScheme.primary.withValues(alpha: 0.2)
+                    : theme.shadowColor.withValues(
+                      alpha: isDarkMode ? 0.15 : 0.05,
+                    ),
+                blurRadius: isHighlighted ? 25 : 20,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: theme.shadowColor.withValues(
-                alpha: isDarkMode ? 0.15 : 0.05,
-              ),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top image with overlays like home screen
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: AspectRatio(
-                    aspectRatio: 4 / 3,
-                    child: _buildNetworkOrPlaceholder(theme),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top image with overlays like home screen
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: AspectRatio(
+                      aspectRatio: 4 / 3,
+                      child: _buildNetworkOrPlaceholder(theme),
+                    ),
                   ),
-                ),
-                Positioned(top: 12, left: 12, child: _buildStatusBadge(theme)),
-                Positioned(top: 12, right: 12, child: _buildActionMenu(theme)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Title
-            Text(
-              "$brand $model".trim(),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
+                  Positioned(top: 12, left: 12, child: _buildStatusBadge(theme)),
+                  Positioned(top: 12, right: 12, child: _buildActionMenu(theme)),
+                ],
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 6),
-            // Price and Year / Mileage row
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    "${price.toStringAsFixed(0)} $currency",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      // Green if accepted, otherwise default onSurface
-                      color: (s == true)
-                          ? acceptedGreen
-                          : theme.colorScheme.onSurface,
+              const SizedBox(height: 12),
+              // Title
+              Text(
+                "$brand $model".trim(),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 6),
+              // Price and Year / Mileage row
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "${price.toStringAsFixed(0)} $currency",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        // Green if accepted, otherwise default onSurface
+                        color: (s == true)
+                            ? acceptedGreen
+                            : theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -291,14 +301,15 @@ class PostedPostItem extends StatelessWidget {
             ),
           ],
         ),
-      ),
+      );
+    }),
     );
   }
 
   /// Builds a placeholder for the car image.
   Widget _buildPlaceholderImage(ThemeData theme) {
     return Container(
-      color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
       child: Center(
         child: SvgPicture.asset(
           AppImages.defaultImageSvg,

@@ -1,5 +1,5 @@
-import 'package:auto_tm/screens/post_details_screen/model/post_model.dart';
-import 'package:auto_tm/models/post_dtos.dart';
+import 'package:auto_tm/data/mappers/post_mapper.dart';
+import 'package:auto_tm/domain/models/post.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -24,13 +24,18 @@ void main() {
         'personalInfo': {'phone': '+99365000000', 'region': 'Ahal'},
         'createdAt': '2026-02-08T00:00:00Z',
         'photo': [
-          {'path': {'medium': '/photos/car1.jpg', 'small': '/photos/car1_small.jpg'}}
+          {
+            'path': {
+              'medium': '/photos/car1.jpg',
+              'small': '/photos/car1_small.jpg',
+            },
+          },
         ],
         'exchange': true,
         'credit': false,
       };
 
-      final post = PostLegacyExtension.fromJson(json);
+      final post = PostMapper.fromJson(json);
 
       expect(post.uuid, 'post-123');
       expect(post.brand, 'Toyota');
@@ -75,7 +80,7 @@ void main() {
         'createdAt': '2026-02-08T00:00:00Z',
       };
 
-      final post = PostLegacyExtension.fromJson(json);
+      final post = PostMapper.fromJson(json);
 
       expect(post.uuid, 'post-456');
       expect(post.brand, 'BMW');
@@ -109,36 +114,43 @@ void main() {
         'createdAt': '',
       };
 
-      final post = PostLegacyExtension.fromJson(json);
+      final post = PostMapper.fromJson(json);
 
       expect(post.brand, 'Unknown');
       expect(post.model, '');
     });
 
-    test('should extract brand/model from nested object if brandName missing', () {
-      final json = {
-        'uuid': 'post-101',
-        'brand': {'uuid': 'brand-1', 'name': 'Mercedes-Benz', 'logo': 'mb.png'},
-        'model': {'uuid': 'model-1', 'name': 'E-Class', 'brandId': 'brand-1'},
-        'price': 55000,
-        'year': 2024,
-        'milleage': 5000,
-        'engineType': 'hybrid',
-        'enginePower': 250,
-        'transmission': 'automatic',
-        'condition': 'new',
-        'currency': 'USD',
-        'description': 'Luxury sedan',
-        'location': 'Ashgabat',
-        'vin': 'XYZ789',
-        'createdAt': '2026-02-08T00:00:00Z',
-      };
+    test(
+      'should extract brand/model from nested object if brandName missing',
+      () {
+        final json = {
+          'uuid': 'post-101',
+          'brand': {
+            'uuid': 'brand-1',
+            'name': 'Mercedes-Benz',
+            'logo': 'mb.png',
+          },
+          'model': {'uuid': 'model-1', 'name': 'E-Class', 'brandId': 'brand-1'},
+          'price': 55000,
+          'year': 2024,
+          'milleage': 5000,
+          'engineType': 'hybrid',
+          'enginePower': 250,
+          'transmission': 'automatic',
+          'condition': 'new',
+          'currency': 'USD',
+          'description': 'Luxury sedan',
+          'location': 'Ashgabat',
+          'vin': 'XYZ789',
+          'createdAt': '2026-02-08T00:00:00Z',
+        };
 
-      final post = PostLegacyExtension.fromJson(json);
+        final post = PostMapper.fromJson(json);
 
-      expect(post.brand, 'Mercedes-Benz');
-      expect(post.model, 'E-Class');
-    });
+        expect(post.brand, 'Mercedes-Benz');
+        expect(post.model, 'E-Class');
+      },
+    );
 
     test('should parse multiple photos', () {
       final json = {
@@ -158,13 +170,19 @@ void main() {
         'vin': '',
         'createdAt': '2026-02-01T00:00:00Z',
         'photo': [
-          {'path': {'medium': '/photos/audi1.jpg'}},
-          {'path': {'medium': '/photos/audi2.jpg'}},
-          {'path': {'medium': '/photos/audi3.jpg'}},
+          {
+            'path': {'medium': '/photos/audi1.jpg'},
+          },
+          {
+            'path': {'medium': '/photos/audi2.jpg'},
+          },
+          {
+            'path': {'medium': '/photos/audi3.jpg'},
+          },
         ],
       };
 
-      final post = PostLegacyExtension.fromJson(json);
+      final post = PostMapper.fromJson(json);
 
       expect(post.photoPaths.length, 3);
       expect(post.photoPaths[0], '/photos/audi1.jpg');
@@ -193,12 +211,15 @@ void main() {
         'subscription': {
           'type': 'premium',
           'photo': {
-            'path': {'small': '/premium/small.jpg', 'medium': '/premium/medium.jpg'}
-          }
+            'path': {
+              'small': '/premium/small.jpg',
+              'medium': '/premium/medium.jpg',
+            },
+          },
         },
       };
 
-      final post = PostLegacyExtension.fromJson(json);
+      final post = PostMapper.fromJson(json);
 
       expect(post.subscription, '/premium/small.jpg');
     });
@@ -220,12 +241,10 @@ void main() {
         'location': 'Ashgabat',
         'vin': '',
         'createdAt': '2026-02-08T00:00:00Z',
-        'video': {
-          'publicUrl': 'https://example.com/video.mp4',
-        },
+        'video': {'publicUrl': 'https://example.com/video.mp4'},
       };
 
-      final post = PostLegacyExtension.fromJson(json);
+      final post = PostMapper.fromJson(json);
 
       expect(post.video, 'https://example.com/video.mp4');
     });
@@ -256,39 +275,11 @@ void main() {
         },
       };
 
-      final post = PostLegacyExtension.fromJson(json);
+      final post = PostMapper.fromJson(json);
 
       expect(post.file, isNotNull);
       expect(post.file!.uuid, 'file-123');
       expect(post.file!.path, '/files/document.pdf');
-    });
-  });
-
-  group('FileData Model - JSON Parsing', () {
-    test('should parse file data from JSON', () {
-      final json = {
-        'uuid': 'file-abc',
-        'path': '/uploads/document.pdf',
-        'postId': 'post-123',
-        'createdAt': '2026-02-08T00:00:00Z',
-        'updatedAt': '2026-02-08T00:00:00Z',
-      };
-
-      final file = FileData.fromJson(json);
-
-      expect(file.uuid, 'file-abc');
-      expect(file.path, '/uploads/document.pdf');
-      expect(file.postId, 'post-123');
-    });
-
-    test('should handle missing file data fields', () {
-      final json = <String, dynamic>{};
-
-      final file = FileData.fromJson(json);
-
-      expect(file.uuid, '');
-      expect(file.path, '');
-      expect(file.postId, '');
     });
   });
 }

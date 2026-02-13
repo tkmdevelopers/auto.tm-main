@@ -150,8 +150,9 @@ class SLocationSelection extends StatelessWidget {
                         isSelected:
                             locationController.selectedLocation.value == city,
                         onTap: () {
-                          if (!NavigationUtils.throttle('location_select'))
+                          if (!NavigationUtils.throttle('location_select')) {
                             return;
+                          }
                           locationController.selectLocation(city);
                           // Return selected city so caller can handle focus reset centrally
                           FocusScope.of(context).unfocus();
@@ -206,7 +207,7 @@ class _LocationTile extends StatelessWidget {
         : theme.colorScheme.outline.withValues(alpha: 0.4);
     final bg = isSelected
         ? primary.withValues(alpha: 0.08)
-        : theme.colorScheme.surfaceVariant.withValues(alpha: 0.3);
+        : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -266,7 +267,7 @@ class _MaterialSearchBar extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.4),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: theme.colorScheme.outline.withValues(alpha: 0.3),
@@ -310,7 +311,9 @@ class _CupertinoSearchBar extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.25),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.25,
+        ),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

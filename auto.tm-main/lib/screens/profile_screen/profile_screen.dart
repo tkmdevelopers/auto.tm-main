@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
 import 'package:auto_tm/screens/profile_screen/widgets/edit_profile_screen.dart';
 import 'package:auto_tm/screens/profile_screen/widgets/profile_avatar.dart';
@@ -57,14 +58,15 @@ class ProfileScreen extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
-                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                        color: theme.colorScheme.onSurface.opacityCompat(0.7),
                       ),
                     ),
                     const SizedBox(height: 20),
                     ElevatedButton.icon(
                       onPressed: () {
-                        if (!controller.isFetchingProfile.value)
+                        if (!controller.isFetchingProfile.value) {
                           controller.fetchProfile();
+                        }
                       },
                       icon: const Icon(Icons.refresh),
                       label: Text('profile_retry'.tr),
@@ -88,10 +90,11 @@ class ProfileScreen extends StatelessWidget {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceVariant.withOpacity(0.55),
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .opacityCompat(0.55),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: theme.colorScheme.outlineVariant.withOpacity(
+                        color: theme.colorScheme.outlineVariant.opacityCompat(
                           0.35,
                         ),
                       ),
@@ -101,7 +104,7 @@ class ProfileScreen extends StatelessWidget {
                         Icon(
                           Icons.cloud_off,
                           size: 18,
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
+                          color: theme.colorScheme.onSurface.opacityCompat(0.7),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -109,7 +112,7 @@ class ProfileScreen extends StatelessWidget {
                             'profile_offline_cached'.tr,
                             style: TextStyle(
                               fontSize: 12,
-                              color: theme.colorScheme.onSurface.withOpacity(
+                              color: theme.colorScheme.onSurface.opacityCompat(
                                 0.75,
                               ),
                             ),
@@ -158,7 +161,7 @@ class ProfileScreen extends StatelessWidget {
                         style: TextButton.styleFrom(
                           foregroundColor: theme.colorScheme.onSurface,
                           backgroundColor: theme.colorScheme.surface
-                              .withOpacity(0.6),
+                              .opacityCompat(0.6),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 8,
@@ -217,7 +220,7 @@ class ProfileScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       width: 0.6,
-                      color: theme.colorScheme.outline.withOpacity(0.15),
+                      color: theme.colorScheme.outline.opacityCompat(0.15),
                     ),
                   ),
                   child: Column(
@@ -230,7 +233,7 @@ class ProfileScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              color: theme.colorScheme.onSurface.withOpacity(
+                              color: theme.colorScheme.onSurface.opacityCompat(
                                 0.55,
                               ),
                             ),
@@ -247,7 +250,7 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       Divider(
-                        color: theme.colorScheme.outline.withOpacity(0.15),
+                        color: theme.colorScheme.outline.opacityCompat(0.15),
                         height: 1,
                       ),
                       const SizedBox(height: 12),
@@ -259,7 +262,7 @@ class ProfileScreen extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
-                              color: theme.colorScheme.onSurface.withOpacity(
+                              color: theme.colorScheme.onSurface.opacityCompat(
                                 0.55,
                               ),
                             ),
@@ -278,7 +281,7 @@ class ProfileScreen extends StatelessWidget {
                           (user!.location ?? '').isNotEmpty) ...[
                         const SizedBox(height: 12),
                         Divider(
-                          color: theme.colorScheme.outline.withOpacity(0.15),
+                          color: theme.colorScheme.outline.opacityCompat(0.15),
                           height: 1,
                         ),
                         const SizedBox(height: 12),
@@ -290,9 +293,8 @@ class ProfileScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
-                                color: theme.colorScheme.onSurface.withOpacity(
-                                  0.55,
-                                ),
+                                color: theme.colorScheme.onSurface
+                                    .opacityCompat(0.55),
                               ),
                             ),
                             Flexible(
@@ -322,7 +324,7 @@ class ProfileScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       width: 0.6,
-                      color: theme.colorScheme.outline.withOpacity(0.15),
+                      color: theme.colorScheme.outline.opacityCompat(0.15),
                     ),
                   ),
                   child: Column(
@@ -352,7 +354,7 @@ class ProfileScreen extends StatelessWidget {
                             'alphamotors@gmail.com',
                             style: TextStyle(
                               fontSize: 14,
-                              color: theme.colorScheme.onSurface.withOpacity(
+                              color: theme.colorScheme.onSurface.opacityCompat(
                                 0.55,
                               ),
                             ),
@@ -363,7 +365,7 @@ class ProfileScreen extends StatelessWidget {
                       Text(
                         'Terms of service'.tr,
                         style: TextStyle(
-                          color: theme.colorScheme.onSurface.withOpacity(0.8),
+                          color: theme.colorScheme.onSurface.opacityCompat(0.8),
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -372,7 +374,7 @@ class ProfileScreen extends StatelessWidget {
                       Text(
                         'Privacy Policy'.tr,
                         style: TextStyle(
-                          color: theme.colorScheme.onSurface.withOpacity(0.8),
+                          color: theme.colorScheme.onSurface.opacityCompat(0.8),
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -383,7 +385,7 @@ class ProfileScreen extends StatelessWidget {
                         style: TextButton.styleFrom(
                           foregroundColor: theme.colorScheme.onSurface,
                           backgroundColor: theme.colorScheme.surface
-                              .withOpacity(0.6),
+                              .opacityCompat(0.6),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 8,

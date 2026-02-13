@@ -30,7 +30,7 @@ void _logDebugNS(
       'data': data,
       'sessionId': 'debug-session',
       'runId': 'run1',
-      if (hypothesisId != null) 'hypothesisId': hypothesisId,
+      'hypothesisId': ?hypothesisId,
     };
     logFile.writeAsStringSync(
       '${jsonEncode(logEntry)}\n',

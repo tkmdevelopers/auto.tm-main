@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 import 'package:auto_tm/screens/filter_screen/filter_screen.dart';
 import 'package:auto_tm/screens/home_screen/controller/premium_controller.dart';
@@ -31,10 +32,7 @@ class ResultPremiumSelection extends StatelessWidget {
                 Get.off(() => FilterScreen());
               },
               child: Container(
-                padding: EdgeInsets.symmetric(
-                  vertical: 4,
-                  horizontal: 10,
-                ),
+                padding: EdgeInsets.symmetric(vertical: 4, horizontal: 10),
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: AppColors.textTertiaryColor,
@@ -56,9 +54,7 @@ class ResultPremiumSelection extends StatelessWidget {
                       ),
                       // color: theme.colorScheme.primary,
                     ),
-                    SizedBox(
-                      width: 10,
-                    ),
+                    SizedBox(width: 10),
                     Text(
                       'Filter'.tr,
                       style: TextStyle(
@@ -71,12 +67,8 @@ class ResultPremiumSelection extends StatelessWidget {
                 ),
               ),
             ),
-            SizedBox(
-              width: 2,
-            ),
-            SizedBox(
-              width: 2,
-            ),
+            SizedBox(width: 2),
+            SizedBox(width: 2),
             Row(
               children: premiumController.subscriptions.map((option) {
                 return GestureDetector(
@@ -90,40 +82,48 @@ class ResultPremiumSelection extends StatelessWidget {
                     // filterController
                     //     .applyFilters();
                   },
-                  child: Obx(
-                    () {
-                      final bool isSelected = controller.premium.contains(option.uuid);
-                      return Container(
-                        margin: EdgeInsets.symmetric(horizontal: 2,),
+                  child: Obx(() {
+                    final bool isSelected = controller.premium.contains(
+                      option.uuid,
+                    );
+                    return Container(
+                      margin: EdgeInsets.symmetric(horizontal: 2),
                       // Obx to react to changes in selectedPremiumTypes
-                      padding:
-                          const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 10,
+                      ),
                       decoration: BoxDecoration(
                         border: Border.all(
-              color: isSelected
-                ? theme.colorScheme.onSurface
-                : AppColors.textTertiaryColor,
+                          color: isSelected
+                              ? theme.colorScheme.onSurface
+                              : AppColors.textTertiaryColor,
                           width: 0.3,
                         ),
                         borderRadius: BorderRadius.circular(12),
-            color: isSelected
-              ? theme.colorScheme.onSurface.withOpacity(0.07)
-              : theme.colorScheme.secondaryContainer,
+                        color: isSelected
+                            ? theme.colorScheme.onSurface.opacityCompat(0.07)
+                            : theme.colorScheme.secondaryContainer,
                         // color: AppColors.primaryColor,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min, // Wrap content
                         children: [
-                          if(option.path != '')
-                          Image.network('${ApiKey.ip}${option.path}', height: 22, width: 22,)
-                          else Icon(Icons.ac_unit_rounded),
+                          if (option.iconPath != '')
+                            Image.network(
+                              '${ApiKey.ip}${option.iconPath}',
+                              height: 22,
+                              width: 22,
+                            )
+                          else
+                            Icon(Icons.ac_unit_rounded),
                           const SizedBox(width: 12),
                           // Text(
                           //   option.price.toString(), // Your premium type name
-                            //   style: AppStyles.f14w4Th(context).copyWith(
-                            //     color: isSelected
-                            //         ? AppColors.primaryColor
-                          
+                          //   style: AppStyles.f14w4Th(context).copyWith(
+                          //     color: isSelected
+                          //         ? AppColors.primaryColor
+
                           //         : theme.colorScheme.onSurface,
                           //   ),
                           // ),
@@ -135,18 +135,18 @@ class ResultPremiumSelection extends StatelessWidget {
                             },
                             activeColor: theme.colorScheme.onSurface,
                             checkColor: Colors.white,
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
                             visualDensity: VisualDensity.compact,
                           ),
                         ],
                       ),
                     );
-                    },
-                  ),
+                  }),
                 );
               }).toList(),
             ),
-            SizedBox(width: 2,),
+            SizedBox(width: 2),
           ],
         ),
       ),

@@ -1,6 +1,6 @@
+import 'package:auto_tm/data/dtos/common_dtos.dart';
 import 'package:auto_tm/data/dtos/post_dto.dart';
 import 'package:auto_tm/domain/models/post.dart' as domain;
-import 'package:auto_tm/models/post_dtos.dart' hide PostDto;
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/services/token_service/token_store.dart';
 import 'package:dio/dio.dart';
@@ -15,42 +15,42 @@ import 'post_controller_test.mocks.dart';
 
 /// PostController Testing Plan
 /// ============================
-/// 
+///
 /// The PostController is a large (2342 lines) controller with multiple responsibilities:
-/// 
+///
 /// ## Testable Areas (Unit Tests - No API calls):
-/// 
+///
 /// 1. **Form State Management**
 ///    - Initial state values
 ///    - Form field validation logic
 ///    - Currency/location/condition defaults
 ///    - Form dirty state tracking
-/// 
+///
 /// 2. **Brand/Model Filtering**
 ///    - filteredBrands getter with search query
 ///    - filteredModels getter with search query
 ///    - Brand/model selection state
-/// 
+///
 /// 3. **Media State**
 ///    - Image list management
 ///    - Video state tracking
 ///    - Media validation (max images, etc.)
-/// 
+///
 /// 4. **Upload State**
 ///    - Upload progress tracking
 ///    - Cancel/retry state
 ///    - Error state management
-/// 
+///
 /// 5. **Phone Verification State**
 ///    - OTP countdown logic
 ///    - Phone verification state
-/// 
+///
 /// ## Hard to Test (Require heavy mocking or integration tests):
 /// - Actual API calls (fetchBrands, fetchModels, createPost)
 /// - Video compression (VideoCompress plugin)
 /// - Image picking (ImagePicker plugin)
 /// - File I/O operations
-/// 
+///
 /// This file focuses on unit-testable state management logic.
 
 @GenerateNiceMocks([MockSpec<Dio>(), MockSpec<FlutterSecureStorage>()])
@@ -76,8 +76,9 @@ void main() {
 
     when(mockDio.interceptors).thenReturn(Interceptors());
     when(mockDio.options).thenReturn(BaseOptions());
-    when(mockStorage.read(key: 'ACCESS_TOKEN'))
-        .thenAnswer((_) async => 'test_token');
+    when(
+      mockStorage.read(key: 'ACCESS_TOKEN'),
+    ).thenAnswer((_) async => 'test_token');
 
     tokenStore = TokenStore(storage: mockStorage);
     apiClient = ApiClient(dio: mockDio);
@@ -96,43 +97,63 @@ void main() {
   // These tests are skipped in unit tests but work in integration tests.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  group('PostController - Form State', () {
-    // PostController uses GetStorage internally which doesn't work in unit tests
-    // These would need widget tests or integration tests with proper mocking
-  }, skip: 'PostController requires GetStorage platform channel');
+  group(
+    'PostController - Form State',
+    () {
+      // PostController uses GetStorage internally which doesn't work in unit tests
+      // These would need widget tests or integration tests with proper mocking
+    },
+    skip: 'PostController requires GetStorage platform channel',
+  );
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 2. BRAND/MODEL FILTERING TESTS
   // Note: PostController uses GetStorage - these tests require integration setup
   // ═══════════════════════════════════════════════════════════════════════════
 
-  group('PostController - Brand/Model Filtering', () {
-    // PostController uses GetStorage internally which doesn't work in unit tests
-  }, skip: 'PostController requires GetStorage platform channel');
+  group(
+    'PostController - Brand/Model Filtering',
+    () {
+      // PostController uses GetStorage internally which doesn't work in unit tests
+    },
+    skip: 'PostController requires GetStorage platform channel',
+  );
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 3. MEDIA STATE TESTS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  group('PostController - Media State', () {
-    // PostController uses GetStorage internally which doesn't work in unit tests
-  }, skip: 'PostController requires GetStorage platform channel');
+  group(
+    'PostController - Media State',
+    () {
+      // PostController uses GetStorage internally which doesn't work in unit tests
+    },
+    skip: 'PostController requires GetStorage platform channel',
+  );
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 4. UPLOAD STATE TESTS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  group('PostController - Upload State', () {
-    // PostController uses GetStorage internally which doesn't work in unit tests
-  }, skip: 'PostController requires GetStorage platform channel');
+  group(
+    'PostController - Upload State',
+    () {
+      // PostController uses GetStorage internally which doesn't work in unit tests
+    },
+    skip: 'PostController requires GetStorage platform channel',
+  );
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 5. PHONE VERIFICATION STATE TESTS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  group('PostController - Phone Verification', () {
-    // PostController uses GetStorage internally which doesn't work in unit tests
-  }, skip: 'PostController requires GetStorage platform channel');
+  group(
+    'PostController - Phone Verification',
+    () {
+      // PostController uses GetStorage internally which doesn't work in unit tests
+    },
+    skip: 'PostController requires GetStorage platform channel',
+  );
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 6. DTO PARSING TESTS
@@ -165,9 +186,7 @@ void main() {
     });
 
     test('should handle missing optional fields', () {
-      final json = {
-        'uuid': 'post_123',
-      };
+      final json = {'uuid': 'post_123'};
 
       final post = PostDto.fromJson(json);
 
@@ -217,47 +236,95 @@ void main() {
   group('domain.Post - Status Extension', () {
     test('null status should be pending', () {
       final post = domain.Post(
-        uuid: 'p1', brand: '', model: '', 
-        price: 0, photoPath: '', year: 0, milleage: 0,
-        currency: '', createdAt: '', status: null,
-        photoPaths: [], enginePower: 0, transmission: '',
-        condition: '', engineType: '', vinCode: '',
-        region: '', location: '', exchange: false, credit: false,
-        description: '', phoneNumber: '', 
-        video: null, file: null,
+        uuid: 'p1',
+        brand: '',
+        model: '',
+        price: 0,
+        photoPath: '',
+        year: 0,
+        milleage: 0,
+        currency: '',
+        createdAt: '',
+        status: null,
+        photoPaths: [],
+        enginePower: 0,
+        transmission: '',
+        condition: '',
+        engineType: '',
+        vinCode: '',
+        region: '',
+        location: '',
+        exchange: false,
+        credit: false,
+        description: '',
+        phoneNumber: '',
+        video: null,
+        file: null,
       );
 
-      expect(post.triStatus, PostStatusTri.pending);
+      expect(post.triStatus, domain.PostStatusTri.pending);
     });
 
     test('true status should be active', () {
       final post = domain.Post(
-        uuid: 'p1', brand: '', model: '', 
-        price: 0, photoPath: '', year: 0, milleage: 0,
-        currency: '', createdAt: '', status: true,
-        photoPaths: [], enginePower: 0, transmission: '',
-        condition: '', engineType: '', vinCode: '',
-        region: '', location: '', exchange: false, credit: false,
-        description: '', phoneNumber: '', 
-        video: null, file: null,
+        uuid: 'p1',
+        brand: '',
+        model: '',
+        price: 0,
+        photoPath: '',
+        year: 0,
+        milleage: 0,
+        currency: '',
+        createdAt: '',
+        status: true,
+        photoPaths: [],
+        enginePower: 0,
+        transmission: '',
+        condition: '',
+        engineType: '',
+        vinCode: '',
+        region: '',
+        location: '',
+        exchange: false,
+        credit: false,
+        description: '',
+        phoneNumber: '',
+        video: null,
+        file: null,
       );
 
-      expect(post.triStatus, PostStatusTri.active);
+      expect(post.triStatus, domain.PostStatusTri.active);
     });
 
     test('false status should be inactive', () {
       final post = domain.Post(
-        uuid: 'p1', brand: '', model: '', 
-        price: 0, photoPath: '', year: 0, milleage: 0,
-        currency: '', createdAt: '', status: false,
-        photoPaths: [], enginePower: 0, transmission: '',
-        condition: '', engineType: '', vinCode: '',
-        region: '', location: '', exchange: false, credit: false,
-        description: '', phoneNumber: '', 
-        video: null, file: null,
+        uuid: 'p1',
+        brand: '',
+        model: '',
+        price: 0,
+        photoPath: '',
+        year: 0,
+        milleage: 0,
+        currency: '',
+        createdAt: '',
+        status: false,
+        photoPaths: [],
+        enginePower: 0,
+        transmission: '',
+        condition: '',
+        engineType: '',
+        vinCode: '',
+        region: '',
+        location: '',
+        exchange: false,
+        credit: false,
+        description: '',
+        phoneNumber: '',
+        video: null,
+        file: null,
       );
 
-      expect(post.triStatus, PostStatusTri.inactive);
+      expect(post.triStatus, domain.PostStatusTri.inactive);
     });
   });
 }

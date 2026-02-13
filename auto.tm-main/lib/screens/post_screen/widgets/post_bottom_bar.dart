@@ -26,8 +26,12 @@ class PostBottomBar extends StatelessWidget {
   final VoidCallback onPost;
 
   /// Called when an active upload blocks a new post.
-  final void Function(BuildContext context, UploadManager manager, UploadTask task)
-      onUploadBlocked;
+  final void Function(
+    BuildContext context,
+    UploadManager manager,
+    UploadTask task,
+  )
+  onUploadBlocked;
 
   /// Current brand / model validation errors (nullable).
   final String? brandError;
@@ -76,8 +80,8 @@ class PostBottomBar extends StatelessWidget {
                         final msg = nowComplete
                             ? 'Form saved'.tr
                             : (wasCompleteBefore
-                                ? 'Form saved (still complete)'.tr
-                                : 'Partial form saved'.tr);
+                                  ? 'Form saved (still complete)'.tr
+                                  : 'Partial form saved'.tr);
                         Get.rawSnackbar(
                           message: msg,
                           duration: const Duration(seconds: 2),
@@ -133,8 +137,8 @@ class PostBottomBar extends StatelessWidget {
                       },
                 style: FilledButton.styleFrom(
                   backgroundColor: theme.colorScheme.onSurface,
-                  disabledBackgroundColor:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  disabledBackgroundColor: theme.colorScheme.onSurface
+                      .withValues(alpha: 0.3),
                   foregroundColor: theme.colorScheme.surface,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -185,7 +189,8 @@ class PostBottomBar extends StatelessWidget {
             const SizedBox(width: 12),
             IconButton(
               tooltip: 'Reset form'.tr,
-              onPressed: (postController.hasAnyInput ||
+              onPressed:
+                  (postController.hasAnyInput ||
                       postController.isFormSaved.value ||
                       postController.isDirty.value)
                   ? () {
@@ -193,8 +198,7 @@ class PostBottomBar extends StatelessWidget {
                       postController.clearSavedForm();
                       postController.reset();
                       Get.rawSnackbar(
-                        message:
-                            hadSaved ? 'Form cleared'.tr : 'Form reset'.tr,
+                        message: hadSaved ? 'Form cleared'.tr : 'Form reset'.tr,
                         duration: const Duration(seconds: 2),
                       );
                     }

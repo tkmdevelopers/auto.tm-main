@@ -1,10 +1,11 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 // Temporary clean replacement version to avoid patch collisions. After verifying, rename to comments.dart.
+import 'package:auto_tm/domain/models/comment.dart';
 import 'package:auto_tm/screens/post_details_screen/controller/comments_controller.dart';
 import 'package:auto_tm/screens/profile_screen/widgets/profile_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/foundation.dart';
 
 class CommentsPage extends StatefulWidget {
   const CommentsPage({super.key});
@@ -15,7 +16,7 @@ class CommentsPage extends StatefulWidget {
 class _CommentsPageState extends State<CommentsPage> {
   final CommentsController controller = Get.put(CommentsController());
   late final String uuid;
-  Map<String, dynamic>? initialReplyTarget;
+  Comment? initialReplyTarget;
 
   // Scroll + focus handling
   final ScrollController _scrollController = ScrollController();
@@ -32,7 +33,7 @@ class _CommentsPageState extends State<CommentsPage> {
     } else if (args is Map) {
       uuid = args['postId']?.toString() ?? '';
       final rt = args['replyTo'];
-      if (rt is Map<String, dynamic>) initialReplyTarget = rt;
+      if (rt is Comment) initialReplyTarget = rt;
     } else {
       uuid = '';
     }
@@ -41,7 +42,7 @@ class _CommentsPageState extends State<CommentsPage> {
       await controller.fetchComments(uuid);
       if (initialReplyTarget != null) {
         controller.setReplyTo(initialReplyTarget!);
-        _highlightCommentId = initialReplyTarget!['uuid']?.toString();
+        _highlightCommentId = initialReplyTarget!.uuid;
         // Delay focus until first frame built
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _commentFocusNode.requestFocus();
@@ -57,12 +58,14 @@ class _CommentsPageState extends State<CommentsPage> {
     return Scaffold(
       appBar: AppBar(
         elevation: 1,
-        title: Text('Comments'.tr,
-            style: TextStyle(
-              color: theme.colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.2,
-            )),
+        title: Text(
+          'Comments'.tr,
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+          ),
+        ),
         backgroundColor: theme.colorScheme.surface,
         surfaceTintColor: theme.colorScheme.surface,
       ),
@@ -76,25 +79,29 @@ class _CommentsPageState extends State<CommentsPage> {
               }
               if (controller.comments.isEmpty) {
                 return Center(
-                  child: Text('No comments yet'.tr,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      )),
+                  child: Text(
+                    'No comments yet'.tr,
+                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                  ),
                 );
               }
               // Flatten to single-level replies: show all descendants at depth 1 when expanded
               final all = controller.comments;
-              final children = <String, List<Map<String, dynamic>>>{};
+              final children = <String, List<Comment>>{};
               for (final c in all) {
-                final rt = c['replyTo'];
+                final rt = c.replyTo;
                 if (rt != null) {
-                  children.putIfAbsent(rt.toString(), () => []).add(c);
+                  children.putIfAbsent(rt, () => []).add(c);
                 }
               }
-              final roots = all.where((c) => c['replyTo'] == null).toList();
+              final roots = all.where((c) => c.replyTo == null).toList();
               roots.sort((a, b) {
-                final at = DateTime.tryParse(a['createdAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-                final bt = DateTime.tryParse(b['createdAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                final at =
+                    DateTime.tryParse(a.createdAt) ??
+                    DateTime.fromMillisecondsSinceEpoch(0);
+                final bt =
+                    DateTime.tryParse(b.createdAt) ??
+                    DateTime.fromMillisecondsSinceEpoch(0);
                 return at.compareTo(bt);
               });
 
@@ -107,8 +114,8 @@ class _CommentsPageState extends State<CommentsPage> {
                   final list = children[current];
                   if (list == null) continue;
                   for (final ch in list) {
-                    final cid = ch['uuid']?.toString();
-                    if (cid == null || visited.contains(cid)) continue;
+                    final cid = ch.uuid;
+                    if (visited.contains(cid)) continue;
                     visited.add(cid);
                     count += 1;
                     stack.add(cid);
@@ -117,8 +124,8 @@ class _CommentsPageState extends State<CommentsPage> {
                 return count;
               }
 
-              List<Map<String, dynamic>> collectDescendants(String rootId) {
-                final flat = <Map<String, dynamic>>[];
+              List<Comment> collectDescendants(String rootId) {
+                final flat = <Comment>[];
                 final stack = <String>[rootId];
                 final visited = <String>{};
                 while (stack.isNotEmpty) {
@@ -127,13 +134,17 @@ class _CommentsPageState extends State<CommentsPage> {
                   if (list == null) continue;
                   // sort each sibling batch chronologically
                   list.sort((a, b) {
-                    final at = DateTime.tryParse(a['createdAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-                    final bt = DateTime.tryParse(b['createdAt'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+                    final at =
+                        DateTime.tryParse(a.createdAt) ??
+                        DateTime.fromMillisecondsSinceEpoch(0);
+                    final bt =
+                        DateTime.tryParse(b.createdAt) ??
+                        DateTime.fromMillisecondsSinceEpoch(0);
                     return at.compareTo(bt);
                   });
                   for (final ch in list) {
-                    final cid = ch['uuid']?.toString();
-                    if (cid == null || visited.contains(cid)) continue;
+                    final cid = ch.uuid;
+                    if (visited.contains(cid)) continue;
                     visited.add(cid);
                     flat.add(ch);
                     stack.add(cid);
@@ -142,32 +153,63 @@ class _CommentsPageState extends State<CommentsPage> {
                 return flat;
               }
 
-              final display = <({Map<String, dynamic> comment, int depth, bool isParent, int repliesCount, bool expanded, VoidCallback? toggle})>[];
+              final display =
+                  <
+                    ({
+                      Comment comment,
+                      int depth,
+                      bool isParent,
+                      int repliesCount,
+                      bool expanded,
+                      VoidCallback? toggle,
+                    })
+                  >[];
               for (final root in roots) {
-                final rootId = root['uuid']?.toString();
-                if (rootId == null) continue;
+                final rootId = root.uuid;
                 final totalReplies = descendantCount(rootId);
                 final expanded = controller.isThreadExpanded(rootId);
-                display.add((comment: root, depth: 0, isParent: true, repliesCount: totalReplies, expanded: expanded, toggle: totalReplies > 0 ? () => controller.toggleThread(rootId) : null));
+                display.add((
+                  comment: root,
+                  depth: 0,
+                  isParent: true,
+                  repliesCount: totalReplies,
+                  expanded: expanded,
+                  toggle: totalReplies > 0
+                      ? () => controller.toggleThread(rootId)
+                      : null,
+                ));
                 if (expanded && totalReplies > 0) {
                   final desc = collectDescendants(rootId);
                   for (final r in desc) {
-                    display.add((comment: r, depth: 1, isParent: false, repliesCount: 0, expanded: false, toggle: null));
+                    display.add((
+                      comment: r,
+                      depth: 1,
+                      isParent: false,
+                      repliesCount: 0,
+                      expanded: false,
+                      toggle: null,
+                    ));
                   }
                 }
               }
 
               // Attempt to find highlight index once comments are built
               if (_highlightCommentId != null && !_didInitialScroll) {
-                final targetIndex = display.indexWhere((e) => e.comment['uuid']?.toString() == _highlightCommentId);
+                final targetIndex = display.indexWhere(
+                  (e) => e.comment.uuid == _highlightCommentId,
+                );
                 if (targetIndex >= 0) {
                   _didInitialScroll = true; // prevent repeated attempts
                   // Scroll after current frame
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (!_scrollController.hasClients) return;
-                    final offset = targetIndex * 112.0; // rough row height estimate
+                    final offset =
+                        targetIndex * 112.0; // rough row height estimate
                     _scrollController.animateTo(
-                      offset.clamp(0, _scrollController.position.maxScrollExtent),
+                      offset.clamp(
+                        0,
+                        _scrollController.position.maxScrollExtent,
+                      ),
                       duration: const Duration(milliseconds: 450),
                       curve: Curves.easeOutCubic,
                     );
@@ -175,39 +217,42 @@ class _CommentsPageState extends State<CommentsPage> {
                 }
               }
               return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: display.length,
-                  itemBuilder: (context, index) {
-                    final row = display[index];
-                    final isHighlight = row.comment['uuid']?.toString() == _highlightCommentId;
-                    return _CommentItem(
-                      comment: row.comment,
-                      onReply: () {
-                        controller.setReplyTo(row.comment);
-                        _highlightCommentId = row.comment['uuid']?.toString();
-                        // focus input
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          _commentFocusNode.requestFocus();
-                        });
-                        setState(() {});
-                      },
-                      isParent: row.isParent,
-                      depth: row.depth,
-                      repliesCount: row.repliesCount,
-                      expanded: row.expanded,
-                      onToggleReplies: row.toggle,
-                      highlight: isHighlight,
-                    );
-                  });
+                controller: _scrollController,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: display.length,
+                itemBuilder: (context, index) {
+                  final row = display[index];
+                  final isHighlight = row.comment.uuid == _highlightCommentId;
+                  return _CommentItem(
+                    comment: row.comment,
+                    onReply: () {
+                      controller.setReplyTo(row.comment);
+                      _highlightCommentId = row.comment.uuid;
+                      // focus input
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _commentFocusNode.requestFocus();
+                      });
+                      setState(() {});
+                    },
+                    isParent: row.isParent,
+                    depth: row.depth,
+                    repliesCount: row.repliesCount,
+                    expanded: row.expanded,
+                    onToggleReplies: row.toggle,
+                    highlight: isHighlight,
+                  );
+                },
+              );
             }),
           ),
-          Obx(() => controller.replyToComment.value != null
-              ? _ReplyBanner(
-                  message: controller.replyToComment.value!['message'] ?? '',
-                  onCancel: controller.clearReply,
-                )
-              : const SizedBox.shrink()),
+          Obx(
+            () => controller.replyToComment.value != null
+                ? _ReplyBanner(
+                    message: controller.replyToComment.value!.message,
+                    onCancel: controller.clearReply,
+                  )
+                : const SizedBox.shrink(),
+          ),
           _CommentInputBar(
             controller: controller,
             postUuid: uuid,
@@ -232,7 +277,7 @@ class _CommentItem extends StatelessWidget {
     this.onToggleReplies,
     this.highlight = false,
   });
-  final Map<String, dynamic> comment;
+  final Comment comment;
   final VoidCallback onReply;
   final int depth; // nesting level (0 parent, 1 reply)
   final bool isParent;
@@ -241,58 +286,32 @@ class _CommentItem extends StatelessWidget {
   final VoidCallback? onToggleReplies;
   final bool highlight;
 
-  String? _extractAvatarPath(Map<String, dynamic> c) {
-    try {
-      final user = c['user'];
-      if (user is Map) {
-        final avatar = user['avatar'];
-        if (avatar is Map) {
-          // Common backend shape: avatar: { path: { small: "/uploads/...", medium: "..." } }
-          final pathObj = avatar['path'];
-          if (pathObj is Map) {
-            final medium = pathObj['medium'] ?? pathObj['large'] ?? pathObj['small'] ?? pathObj['original'];
-            if (medium is String && medium.trim().isNotEmpty) return medium;
-          }
-          final mediumFlat = avatar['medium'] ?? avatar['large'] ?? avatar['small'];
-          if (mediumFlat is String && mediumFlat.trim().isNotEmpty) return mediumFlat;
-          if (avatar['path'] is String) return avatar['path'];
-        }
-        // Alternate explicit field
-        if (user['avatarPath'] is String && (user['avatarPath'] as String).trim().isNotEmpty) {
-          return user['avatarPath'];
-        }
-      }
-      if (c['avatar'] is String) return c['avatar'];
-      if (c['avatarPath'] is String) return c['avatarPath'];
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final createdAtRaw = comment['createdAt'];
+    final createdAtRaw = comment.createdAt;
     String timeText = '';
-    if (createdAtRaw is String) {
+    if (createdAtRaw.isNotEmpty) {
       try {
-        timeText = DateFormat('MM.dd.yyyy | HH:mm').format(DateTime.parse(createdAtRaw));
+        timeText = DateFormat(
+          'MM.dd.yyyy | HH:mm',
+        ).format(DateTime.parse(createdAtRaw));
       } catch (_) {}
     }
-  final isReply = (comment['replyTo'] != null) || (comment['parent'] != null);
-  final parentSender = comment['parent'] != null
-    ? (comment['parent']['sender']?.toString() ?? '')
-    : '';
-    final sender = comment['sender']?.toString() ?? 'user';
-    final message = comment['message']?.toString() ?? '';
-    final avatarPath = _extractAvatarPath(comment);
+    final isReply = (comment.replyTo != null);
+    final parentSender =
+        ''; // PostRepository could potentially resolve this or we add it to model
+    final sender = comment.userName ?? 'user';
+    final message = comment.message;
+    final avatarPath = comment.userAvatar;
     // Debug logging removed after verification of avatar path handling.
 
-  final indent = depth * 28.0;
+    final indent = depth * 28.0;
 
-    final baseColor = theme.colorScheme.surfaceVariant.withOpacity(0.28);
-    final highlightStart = theme.colorScheme.primary.withOpacity(0.35);
+    final baseColor = theme.colorScheme.surfaceContainerHighest.opacityCompat(
+      0.28,
+    );
+    final highlightStart = theme.colorScheme.primary.opacityCompat(0.35);
     return GestureDetector(
       onLongPress: onReply,
       child: TweenAnimationBuilder<Color?>(
@@ -300,21 +319,23 @@ class _CommentItem extends StatelessWidget {
           begin: highlight ? highlightStart : baseColor,
           end: baseColor,
         ),
-        duration: highlight ? const Duration(milliseconds: 1300) : Duration.zero,
+        duration: highlight
+            ? const Duration(milliseconds: 1300)
+            : Duration.zero,
         curve: Curves.easeOutCubic,
         builder: (context, color, child) => Container(
           margin: EdgeInsets.fromLTRB(12 + indent, 4, 12, 4),
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            constraints: const BoxConstraints(maxWidth: 900),
-            decoration: BoxDecoration(
-              color: color ?? baseColor,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: theme.colorScheme.outlineVariant.withOpacity(.35),
-                width: 0.7,
-              ),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+          constraints: const BoxConstraints(maxWidth: 900),
+          decoration: BoxDecoration(
+            color: color ?? baseColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.opacityCompat(.35),
+              width: 0.7,
             ),
-            child: child,
+          ),
+          child: child,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -341,8 +362,7 @@ class _CommentItem extends StatelessWidget {
                             fontStyle: FontStyle.normal,
                           ),
                         ),
-                      if (parentSender.isEmpty)
-                        const TextSpan(text: '...'),
+                      if (parentSender.isEmpty) const TextSpan(text: '...'),
                     ],
                   ),
                   maxLines: 1,
@@ -407,23 +427,35 @@ class _CommentItem extends StatelessWidget {
                   if (isParent && repliesCount > 0)
                     TextButton.icon(
                       style: TextButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary.withOpacity(.08),
+                        backgroundColor: theme.colorScheme.primary
+                            .opacityCompat(.08),
                         visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         foregroundColor: theme.colorScheme.primary,
                       ),
                       onPressed: onToggleReplies,
                       icon: Icon(
-                        expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                        expanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
                         size: 16,
                         color: theme.colorScheme.primary,
                       ),
                       label: Text(
-            expanded
-              ? 'comments_thread_hide'.trParams({'count': repliesCount.toString()})
-              : 'comments_thread_view'.trParams({'count': repliesCount.toString()}),
+                        expanded
+                            ? 'comments_thread_hide'.trParams({
+                                'count': repliesCount.toString(),
+                              })
+                            : 'comments_thread_view'.trParams({
+                                'count': repliesCount.toString(),
+                              }),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -435,12 +467,19 @@ class _CommentItem extends StatelessWidget {
                   TextButton.icon(
                     style: TextButton.styleFrom(
                       visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 0,
+                      ),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       foregroundColor: theme.colorScheme.primary,
                     ),
                     onPressed: onReply,
-                    icon: Icon(Icons.reply_outlined, size: 14, color: theme.colorScheme.primary),
+                    icon: Icon(
+                      Icons.reply_outlined,
+                      size: 14,
+                      color: theme.colorScheme.primary,
+                    ),
                     label: Text(
                       'Reply'.tr,
                       style: TextStyle(
@@ -471,10 +510,10 @@ class _ReplyBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(.6),
+        color: theme.colorScheme.surfaceContainerHighest.opacityCompat(.6),
         border: Border(
           top: BorderSide(
-            color: theme.colorScheme.outlineVariant.withOpacity(.4),
+            color: theme.colorScheme.outlineVariant.opacityCompat(.4),
             width: .7,
           ),
         ),
@@ -483,7 +522,10 @@ class _ReplyBanner extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              ('comments_replying_to_prefix'.tr + ' ') + (message.length > 40 ? message.substring(0, 40) + '…' : message),
+              ('${'comments_replying_to_prefix'.tr} ') +
+                  (message.length > 40
+                      ? '${message.substring(0, 40)}…'
+                      : message),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -509,7 +551,11 @@ class _ReplyBanner extends StatelessWidget {
 }
 
 class _CommentInputBar extends StatelessWidget {
-  const _CommentInputBar({required this.controller, required this.postUuid, this.focusNode});
+  const _CommentInputBar({
+    required this.controller,
+    required this.postUuid,
+    this.focusNode,
+  });
   final CommentsController controller;
   final String postUuid;
   final FocusNode? focusNode;
@@ -524,7 +570,7 @@ class _CommentInputBar extends StatelessWidget {
           color: theme.colorScheme.surface,
           border: Border(
             top: BorderSide(
-              color: theme.colorScheme.outlineVariant.withOpacity(.25),
+              color: theme.colorScheme.outlineVariant.opacityCompat(.25),
               width: .7,
             ),
           ),
@@ -543,12 +589,16 @@ class _CommentInputBar extends StatelessWidget {
               height: 1.3,
             ),
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 18,
+                vertical: 12,
+              ),
               filled: true,
-              fillColor: theme.colorScheme.surfaceVariant.withOpacity(.55),
+              fillColor: theme.colorScheme.surfaceContainerHighest
+                  .opacityCompat(.55),
               hintText: 'comments_add_placeholder'.tr,
               hintStyle: TextStyle(
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(.65),
+                color: theme.colorScheme.onSurfaceVariant.opacityCompat(.65),
                 fontSize: 14,
               ),
               suffixIcon: Padding(
@@ -569,25 +619,28 @@ class _CommentInputBar extends StatelessWidget {
                   ),
                 ),
               ),
-              suffixIconConstraints: const BoxConstraints(minHeight: 40, minWidth: 40),
+              suffixIconConstraints: const BoxConstraints(
+                minHeight: 40,
+                minWidth: 40,
+              ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(26),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withOpacity(.35),
+                  color: theme.colorScheme.outlineVariant.opacityCompat(.35),
                   width: 0.8,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(26),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.primary.withOpacity(.65),
+                  color: theme.colorScheme.primary.opacityCompat(.65),
                   width: 1.1,
                 ),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(26),
                 borderSide: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withOpacity(.35),
+                  color: theme.colorScheme.outlineVariant.opacityCompat(.35),
                   width: 0.8,
                 ),
               ),
@@ -606,7 +659,11 @@ class _InitialsAvatar extends StatelessWidget {
   final double radius;
 
   String _initials(String input) {
-    final parts = input.trim().split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+    final parts = input
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((e) => e.isNotEmpty)
+        .toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
     return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();

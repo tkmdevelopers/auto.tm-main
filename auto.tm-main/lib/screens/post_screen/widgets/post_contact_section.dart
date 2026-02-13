@@ -41,7 +41,8 @@ class PostContactSection extends StatelessWidget {
             isRequired: true,
             onFieldChanged: onFieldChanged,
             suffix: Obx(() {
-              final showChip = postController.isPhoneVerified.value &&
+              final showChip =
+                  postController.isPhoneVerified.value &&
                   !postController.needsOtp.value;
               if (!showChip) return const SizedBox.shrink();
               return Padding(
@@ -117,9 +118,7 @@ class PostContactSection extends StatelessWidget {
               decoration: BoxDecoration(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: theme.colorScheme.onSurface,
-                ),
+                border: Border.all(color: theme.colorScheme.onSurface),
               ),
             ),
             focusNode: postController.otpFocus,
@@ -157,8 +156,7 @@ class PostContactSection extends StatelessWidget {
                   'seconds': postController.countdown.value.toString(),
                 }),
                 style: TextStyle(
-                  color:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             );

@@ -31,10 +31,7 @@ Future<void> showBrandBottomSheet(
             padding: const EdgeInsets.all(16.0),
             child: Text(
               "Select Brand".tr,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           Padding(
@@ -48,9 +45,7 @@ Future<void> showBrandBottomSheet(
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: theme.colorScheme.onSurface.withValues(
-                  alpha: 0.05,
-                ),
+                fillColor: theme.colorScheme.onSurface.withValues(alpha: 0.05),
                 contentPadding: EdgeInsets.zero,
               ),
               onChanged: (value) {
@@ -136,10 +131,7 @@ Future<void> showModelBottomSheet(
             padding: const EdgeInsets.all(16.0),
             child: Text(
               "Select Model".tr,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           Padding(
@@ -153,9 +145,7 @@ Future<void> showModelBottomSheet(
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: theme.colorScheme.onSurface.withValues(
-                  alpha: 0.05,
-                ),
+                fillColor: theme.colorScheme.onSurface.withValues(alpha: 0.05),
                 contentPadding: EdgeInsets.zero,
               ),
               onChanged: (value) {
@@ -270,11 +260,10 @@ Future<void> showOptionsBottomSheet(
                     style: TextStyle(
                       color: isSelected
                           ? theme.colorScheme.onSurface
-                          : theme.colorScheme.onSurface.withValues(
-                              alpha: 0.7,
-                            ),
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal,
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                   ),
                   trailing: isSelected
@@ -318,12 +307,15 @@ Future<void> showEnginePowerBottomSheet(
   final theme = Theme.of(context);
   final sizes = <double>[];
   // Common engine displacements from 0.6L to 10.0L
-  for (double v = 0.6; v <= 2.0; v += 0.1)
+  for (double v = 0.6; v <= 2.0; v += 0.1) {
     sizes.add(double.parse(v.toStringAsFixed(1)));
-  for (double v = 2.0; v <= 6.0; v += 0.2)
+  }
+  for (double v = 2.0; v <= 6.0; v += 0.2) {
     sizes.add(double.parse(v.toStringAsFixed(1)));
-  for (double v = 6.5; v <= 10.0; v += 0.5)
+  }
+  for (double v = 6.5; v <= 10.0; v += 0.5) {
     sizes.add(double.parse(v.toStringAsFixed(1)));
+  }
   // Deduplicate (2.0 added twice) then sort
   final setSizes = sizes.toSet().toList()..sort();
   final selectedRaw = postController.enginePower.text;
@@ -353,8 +345,9 @@ Future<void> showEnginePowerBottomSheet(
               itemCount: setSizes.length,
               itemBuilder: (context, index) {
                 final v = setSizes[index];
-                final label =
-                    v.toStringAsFixed(1).replaceAll(RegExp(r'\.0'), '.0');
+                final label = v
+                    .toStringAsFixed(1)
+                    .replaceAll(RegExp(r'\.0'), '.0');
                 final isSelected =
                     selectedRaw == label ||
                     selectedRaw == label.replaceAll('.0', '');
@@ -363,8 +356,9 @@ Future<void> showEnginePowerBottomSheet(
                     '$label L',
                     style: TextStyle(
                       color: theme.colorScheme.onSurface,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
                     ),
                   ),
                   trailing: isSelected
@@ -437,8 +431,9 @@ Future<void> showYearBottomSheet(
                     year.toString(),
                     style: TextStyle(
                       color: theme.colorScheme.onSurface,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
                     ),
                   ),
                   trailing: isSelected
@@ -503,10 +498,7 @@ Future<void> showColorBottomSheet(
             padding: const EdgeInsets.all(16.0),
             child: Text(
               "Select Color".tr,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           const Divider(height: 1),
@@ -530,8 +522,9 @@ Future<void> showColorBottomSheet(
                     color.tr,
                     style: TextStyle(
                       color: theme.colorScheme.onSurface,
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                   ),
                   trailing: isSelected

@@ -34,16 +34,16 @@ class CacheReport {
   String toPrettyString() {
     String fmt(int b) => _formatBytes(b);
     return [
-      'VideoCompress: ' + fmt(videoCompressBytes),
-      'Temp media: ' + fmt(tempMediaBytes),
-      'Compressed current: ' + fmt(compressedVideoBytes),
+      'VideoCompress: ${fmt(videoCompressBytes)}',
+      'Temp media: ${fmt(tempMediaBytes)}',
+      'Compressed current: ${fmt(compressedVideoBytes)}',
       'Orphan compressed: $orphanCompressedCount',
       'Drafts: $draftCount',
       'Brand cache entries: $brandCacheEntries',
       'Model cache brands: $modelCacheBrands',
       'Stale brand/model entries: $staleBrandModelEntries',
       'Last active upload: ${lastActiveUploadTs?.toIso8601String() ?? '-'}',
-      if (warnings.isNotEmpty) 'Warnings:\n  - ' + warnings.join('\n  - '),
+      if (warnings.isNotEmpty) 'Warnings:\n  - ${warnings.join('\n  - ')}',
     ].join('\n');
   }
 }
@@ -113,8 +113,9 @@ class AppCacheCleaner {
     int compressedBytes = 0;
     if (currentCompressed != null) {
       try {
-        if (currentCompressed.existsSync())
+        if (currentCompressed.existsSync()) {
           compressedBytes = currentCompressed.lengthSync();
+        }
       } catch (_) {}
     }
 
@@ -123,8 +124,9 @@ class AppCacheCleaner {
     try {
       final raw = box.read(_draftKey);
       if (raw is List) draftCount = raw.length;
-      if (draftCount > maxDrafts)
+      if (draftCount > maxDrafts) {
         warnings.add('Drafts exceed limit: $draftCount');
+      }
     } catch (_) {}
 
     // Brand/model cache stats
@@ -151,8 +153,9 @@ class AppCacheCleaner {
             final tsStr = v['ts']?.toString();
             if (tsStr != null) {
               final ts = DateTime.tryParse(tsStr);
-              if (ts != null && now.difference(ts) > brandModelTtl)
+              if (ts != null && now.difference(ts) > brandModelTtl) {
                 staleEntries++;
+              }
             }
             modelBrandCount++;
           }

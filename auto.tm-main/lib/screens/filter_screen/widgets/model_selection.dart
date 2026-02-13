@@ -1,3 +1,5 @@
+import 'package:auto_tm/utils/color_extensions.dart';
+import 'package:auto_tm/screens/filter_screen/controller/brand_controller.dart';
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 import 'package:auto_tm/screens/filter_screen/widgets/filter_result_page.dart';
 import 'package:auto_tm/ui_components/colors.dart';
@@ -8,7 +10,8 @@ import 'package:get/get.dart';
 class ModelSelection extends StatefulWidget {
   final String brandUuid;
   final String brandName;
-  final String origin; // 'filter' (stay within FilterScreen flow) or 'results' (live update & return to results)
+  final String
+  origin; // 'filter' (stay within FilterScreen flow) or 'results' (live update & return to results)
 
   const ModelSelection({
     super.key,
@@ -98,7 +101,9 @@ class _ModelSelectionState extends State<ModelSelection> {
             ),
           ),
         ),
-        style: AppStyles.f14w4Th(context).copyWith(color: theme.colorScheme.onSurface),
+        style: AppStyles.f14w4Th(
+          context,
+        ).copyWith(color: theme.colorScheme.onSurface),
         cursorColor: theme.colorScheme.onSurface,
       ),
     );
@@ -131,18 +136,29 @@ class _ModelSelectionState extends State<ModelSelection> {
                   color: Colors.grey,
                 ),
                 onTap: () {
-                  controller.selectedBrandUuid.value = widget.brandUuid;
-                  controller.selectedBrandName.value = widget.brandName;
-                  controller.selectedModelName.value = '';
-                  controller.selectedModelUuid.value = '';
-                  if (widget.origin == 'results') { // only run search when coming from results screen
+                  final brandController = Get.find<BrandController>();
+                  controller.selectBrand(widget.brandUuid, widget.brandName);
+                  
+                  brandController.addToHistory(
+                    brandUuid: widget.brandUuid,
+                    brandName: widget.brandName,
+                    filterState: controller.captureFilterState(),
+                  );
+
+                  if (widget.origin == 'results') {
+                    // only run search when coming from results screen
                     controller.searchProducts();
                     Get.close(2); // back to results
-                  } else if (widget.origin == 'initial' || widget.origin == 'directHome') {
+                  } else if (widget.origin == 'initial' ||
+                      widget.origin == 'directHome') {
                     controller.searchProducts();
                     controller.hasViewedResults.value = true;
                     // Navigate straight to results replacing up to current route stack to avoid duplicate FilterScreen assumptions.
-                    Get.offAll(() => FilterResultPage(), transition: Transition.noTransition, duration: Duration.zero);
+                    Get.offAll(
+                      () => FilterResultPage(),
+                      transition: Transition.noTransition,
+                      duration: Duration.zero,
+                    );
                   } else {
                     // filter origin
                     Get.close(2);
@@ -155,12 +171,12 @@ class _ModelSelectionState extends State<ModelSelection> {
             final modelIndex = index - 1;
             final model = controller.filteredModels[modelIndex];
             final bool isSelected =
-                controller.selectedModelUuid.value == model.uuid;
+                controller.selectedModelUuids.contains(model.uuid);
 
             return ListTile(
               leading: Icon(
                 Icons.directions_car,
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.opacityCompat(0.6),
               ),
               title: Text(
                 model.name,
@@ -172,22 +188,34 @@ class _ModelSelectionState extends State<ModelSelection> {
                 isSelected
                     ? Icons.radio_button_checked
                     : Icons.radio_button_unchecked,
-                color: isSelected
-                    ? theme.colorScheme.onSurface
-                    : Colors.grey,
+                color: isSelected ? theme.colorScheme.onSurface : Colors.grey,
               ),
-                onTap: () {
-                controller.selectedBrandUuid.value = widget.brandUuid;
-                controller.selectedModelUuid.value = model.uuid;
-                controller.selectedBrandName.value = widget.brandName;
-                controller.selectedModelName.value = model.name;
-                if (widget.origin == 'results') { // live update results
+              onTap: () {
+                final brandController = Get.find<BrandController>();
+                controller.selectBrand(widget.brandUuid, widget.brandName);
+                controller.selectModel(model.uuid, model.name);
+                
+                brandController.addToHistory(
+                  brandUuid: widget.brandUuid,
+                  brandName: widget.brandName,
+                  modelUuid: model.uuid,
+                  modelName: model.name,
+                  filterState: controller.captureFilterState(),
+                );
+
+                if (widget.origin == 'results') {
+                  // live update results
                   controller.searchProducts();
                   Get.close(2);
-                } else if (widget.origin == 'initial' || widget.origin == 'directHome') {
+                } else if (widget.origin == 'initial' ||
+                    widget.origin == 'directHome') {
                   controller.searchProducts();
                   controller.hasViewedResults.value = true;
-                  Get.offAll(() => FilterResultPage(), transition: Transition.noTransition, duration: Duration.zero);
+                  Get.offAll(
+                    () => FilterResultPage(),
+                    transition: Transition.noTransition,
+                    duration: Duration.zero,
+                  );
                 } else {
                   // plain filter flow
                   Get.close(2);

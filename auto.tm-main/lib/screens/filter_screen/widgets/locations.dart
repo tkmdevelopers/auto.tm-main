@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 // import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 // import 'package:flutter/material.dart';
 // import 'package:get/get.dart';
@@ -102,9 +103,9 @@
 //                           child: Container(
 //                             padding: const EdgeInsets.all(12.0),
 //                             decoration: BoxDecoration(
-//                               color: Colors.black.withOpacity(0.2),
+//                               color: Colors.black.opacityCompat(0.2),
 //                               borderRadius: BorderRadius.circular(8.0),
-//                               border: Border.all(color: Colors.purple.withOpacity(0.3)),
+//                               border: Border.all(color: Colors.purple.opacityCompat(0.3)),
 //                             ),
 //                             child: Text(
 //                               'Selected: $selectedLoc',
@@ -133,15 +134,15 @@
 //                               duration: const Duration(milliseconds: 300),
 //                               curve: Curves.easeInOut,
 //                               decoration: BoxDecoration(
-//                                 color: Colors.white.withOpacity(0.05),
+//                                 color: Colors.white.opacityCompat(0.05),
 //                                 borderRadius: BorderRadius.circular(12.0),
 //                                 border: Border.all(
-//                                   color: isSelected? Colors.purple.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+//                                   color: isSelected? Colors.purple.opacityCompat(0.3) : Colors.white.opacityCompat(0.1),
 //                                   width: isSelected? 2: 1
 //                                 ),
 //                                 boxShadow: isSelected? [
 //                                   BoxShadow(
-//                                     color: Colors.purple.withOpacity(0.2),
+//                                     color: Colors.purple.opacityCompat(0.2),
 //                                     spreadRadius: 2,
 //                                     blurRadius: 10,
 //                                     offset: const Offset(0, 3), // changes position of shadow
@@ -178,9 +179,9 @@
 //                     shape: RoundedRectangleBorder(
 //                       borderRadius: BorderRadius.circular(30.0),
 //                     ),
-//                     backgroundColor: Colors.purple.shade500.withOpacity(0.9),
+//                     backgroundColor: Colors.purple.shade500.opacityCompat(0.9),
 //                     foregroundColor: Colors.white,
-//                     shadowColor: Colors.purple.shade500.withOpacity(0.3),
+//                     shadowColor: Colors.purple.shade500.opacityCompat(0.3),
 //                     elevation: 8,
 //                   ),
 //                   child: const Text(
@@ -214,7 +215,8 @@ class FilterLocationController extends GetxController {
   final RxList<String> allLocations = <String>[].obs;
   final RxList<String> filteredLocations = <String>[].obs;
   final searchText = ''.obs;
-  final selectedLocation = ''.obs; // store last tapped (mirrors filterController.location)
+  final selectedLocation =
+      ''.obs; // store last tapped (mirrors filterController.location)
 
   @override
   void onInit() {
@@ -227,7 +229,9 @@ class FilterLocationController extends GetxController {
       final jsonStr = await rootBundle.loadString('assets/json/city.json');
       final List<dynamic> data = json.decode(jsonStr) as List<dynamic>;
       final cities = data
-          .map((e) => e is Map && e['name'] != null ? e['name'].toString() : null)
+          .map(
+            (e) => e is Map && e['name'] != null ? e['name'].toString() : null,
+          )
           .whereType<String>()
           .toList();
       cities.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
@@ -248,17 +252,24 @@ class FilterLocationController extends GetxController {
       return;
     }
     final q = query.toLowerCase();
-    filteredLocations.assignAll(allLocations.where((c) => c.toLowerCase().contains(q)));
+    filteredLocations.assignAll(
+      allLocations.where((c) => c.toLowerCase().contains(q)),
+    );
   }
 
   void select(String loc) => selectedLocation.value = loc;
-  void resetSearch() { searchText.value = ''; filteredLocations.assignAll(allLocations); }
+  void resetSearch() {
+    searchText.value = '';
+    filteredLocations.assignAll(allLocations);
+  }
 }
 
 class SLocations extends StatelessWidget {
   SLocations({super.key});
 
-  final FilterLocationController locationController = Get.put(FilterLocationController());
+  final FilterLocationController locationController = Get.put(
+    FilterLocationController(),
+  );
   final FilterController filterController = Get.find<FilterController>();
 
   @override
@@ -270,7 +281,8 @@ class SLocations extends StatelessWidget {
     // Preselect currently chosen location if any
     if (filterController.location.value.isNotEmpty &&
         locationController.selectedLocation.isEmpty) {
-      locationController.selectedLocation.value = filterController.location.value;
+      locationController.selectedLocation.value =
+          filterController.location.value;
     }
 
     final searchField = isCupertino
@@ -296,7 +308,10 @@ class SLocations extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: onSurface),
+                    icon: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: onSurface,
+                    ),
                     onPressed: () {
                       _safePop(context);
                     },
@@ -323,10 +338,16 @@ class SLocations extends StatelessWidget {
             ),
             if (!isLocal)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 32,
+                ),
                 child: Text(
                   'City selection available only for Local region'.tr,
-                  style: TextStyle(color: onSurface.withOpacity(0.6), fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    color: onSurface.opacityCompat(0.6),
+                    fontStyle: FontStyle.italic,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               )
@@ -336,8 +357,10 @@ class SLocations extends StatelessWidget {
                   final locations = locationController.filteredLocations;
                   if (locations.isEmpty) {
                     return Center(
-                      child: Text('No locations found'.tr,
-                          style: TextStyle(color: onSurface.withOpacity(0.6))),
+                      child: Text(
+                        'No locations found'.tr,
+                        style: TextStyle(color: onSurface.opacityCompat(0.6)),
+                      ),
                     );
                   }
                   return ListView.builder(
@@ -345,7 +368,8 @@ class SLocations extends StatelessWidget {
                     itemCount: locations.length,
                     itemBuilder: (context, index) {
                       final city = locations[index];
-                      final isSelected = locationController.selectedLocation.value == city;
+                      final isSelected =
+                          locationController.selectedLocation.value == city;
                       return _LocationTile(
                         label: city,
                         isSelected: isSelected,
@@ -391,15 +415,23 @@ class _LocationTile extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
-  const _LocationTile({required this.label, required this.isSelected, required this.onTap});
+  const _LocationTile({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final onSurface = theme.colorScheme.onSurface;
     final primary = theme.colorScheme.primary;
-    final borderColor = isSelected ? primary : theme.colorScheme.outline.withOpacity(0.4);
-    final bg = isSelected ? primary.withOpacity(0.08) : theme.colorScheme.surfaceVariant.withOpacity(0.25);
+    final borderColor = isSelected
+        ? primary
+        : theme.colorScheme.outline.opacityCompat(0.4);
+    final bg = isSelected
+        ? primary.opacityCompat(0.08)
+        : theme.colorScheme.surfaceContainerHighest.opacityCompat(0.25);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Material(
@@ -407,31 +439,39 @@ class _LocationTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-            onTap: onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
-              ),
-              child: Row(
-                children: [
-                  Icon(isSelected ? Icons.radio_button_checked : Icons.radio_button_off, color: isSelected ? primary : onSurface.withOpacity(0.55), size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        color: onSurface,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                        letterSpacing: -0.2,
-                      ),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isSelected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: isSelected ? primary : onSurface.opacityCompat(0.55),
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: onSurface,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      letterSpacing: -0.2,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
         ),
       ),
     );
@@ -447,23 +487,32 @@ class _MaterialSearchBar extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.35),
+        color: theme.colorScheme.surfaceContainerHighest.opacityCompat(0.35),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
+        border: Border.all(color: theme.colorScheme.outline.opacityCompat(0.3)),
       ),
       child: TextField(
         onChanged: onChanged,
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
           hintText: 'Search'.tr,
-          prefixIcon: Icon(Icons.search, color: theme.colorScheme.onSurface.withOpacity(0.55)),
+          prefixIcon: Icon(
+            Icons.search,
+            color: theme.colorScheme.onSurface.opacityCompat(0.55),
+          ),
           suffixIcon: IconButton(
-            icon: Icon(Icons.close_rounded, color: theme.colorScheme.onSurface.withOpacity(0.5)),
+            icon: Icon(
+              Icons.close_rounded,
+              color: theme.colorScheme.onSurface.opacityCompat(0.5),
+            ),
             onPressed: onClear,
             tooltip: 'Clear'.tr,
           ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 4,
+            vertical: 14,
+          ),
         ),
       ),
     );
@@ -479,13 +528,16 @@ class _CupertinoSearchBar extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.25),
+        color: theme.colorScheme.surfaceContainerHighest.opacityCompat(0.25),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
           const SizedBox(width: 8),
-          Icon(Icons.search, color: theme.colorScheme.onSurface.withOpacity(0.55)),
+          Icon(
+            Icons.search,
+            color: theme.colorScheme.onSurface.opacityCompat(0.55),
+          ),
           const SizedBox(width: 4),
           Expanded(
             child: TextField(
@@ -500,7 +552,11 @@ class _CupertinoSearchBar extends StatelessWidget {
             ),
           ),
           IconButton(
-            icon: Icon(Icons.close_rounded, color: theme.colorScheme.onSurface.withOpacity(0.55), size: 20),
+            icon: Icon(
+              Icons.close_rounded,
+              color: theme.colorScheme.onSurface.opacityCompat(0.55),
+              size: 20,
+            ),
             onPressed: onClear,
             splashRadius: 18,
             tooltip: 'Clear'.tr,

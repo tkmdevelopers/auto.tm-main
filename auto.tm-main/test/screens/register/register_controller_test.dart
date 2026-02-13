@@ -41,12 +41,13 @@ class FakeAuthService extends GetxService implements AuthService {
 
   @override
   Future<OtpVerifyResult> verifyOtp(
-      String subscriberDigits, String code) async {
+    String subscriberDigits,
+    String code,
+  ) async {
     verifyCallCount++;
     lastVerifyPhone = subscriberDigits;
     lastVerifyCode = code;
-    final result =
-        nextVerifyResult ?? const OtpVerifyResult(success: false);
+    final result = nextVerifyResult ?? const OtpVerifyResult(success: false);
     if (result.success && result.accessToken != null) {
       currentSession.value = AuthSession(
         phone: subscriberDigits,
@@ -103,7 +104,9 @@ class FakeProfileController extends GetxController
   Future<void> fetchProfile({bool retry = false}) async {}
 
   @override
-  Future<void> waitForInitialLoad({Duration timeout = const Duration(seconds: 10)}) async {}
+  Future<void> waitForInitialLoad({
+    Duration timeout = const Duration(seconds: 10),
+  }) async {}
 
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -116,23 +119,23 @@ void main() {
   setUpAll(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/path_provider'),
-      (MethodCall methodCall) async {
-        if (methodCall.method == 'getApplicationDocumentsDirectory') {
-          return '/tmp/flutter_test';
-        }
-        return null;
-      },
-    );
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'getApplicationDocumentsDirectory') {
+              return '/tmp/flutter_test';
+            }
+            return null;
+          },
+        );
     await GetStorage.init();
   });
 
   tearDownAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/path_provider'),
-      null,
-    );
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          null,
+        );
   });
 
   late FakeAuthService fakeAuth;
@@ -243,21 +246,22 @@ void main() {
       expect(PhoneFormatter.isValidSubscriber('51234567'), false);
     });
 
-    test('should call sendOtp with valid phone (via registerNewUser)',
-        () async {
-      // registerNewUser calls requestOtp(navigateToOtp: true)
-      // which uses Get.toNamed (no-op in testMode) instead of Get.snackbar
-      controller.phoneController.text = '65001234';
-      fakeAuth.nextSendResult = const OtpSendResult(success: true);
+    test(
+      'should call sendOtp with valid phone (via registerNewUser)',
+      () async {
+        // registerNewUser calls requestOtp(navigateToOtp: true)
+        // which uses Get.toNamed (no-op in testMode) instead of Get.snackbar
+        controller.phoneController.text = '65001234';
+        fakeAuth.nextSendResult = const OtpSendResult(success: true);
 
-      await controller.registerNewUser();
+        await controller.registerNewUser();
 
-      expect(fakeAuth.sendCallCount, 1);
-      expect(fakeAuth.lastSendPhone, '65001234');
-    });
+        expect(fakeAuth.sendCallCount, 1);
+        expect(fakeAuth.lastSendPhone, '65001234');
+      },
+    );
 
-    test('should set isLoading to false after OTP request completes',
-        () async {
+    test('should set isLoading to false after OTP request completes', () async {
       controller.phoneController.text = '65001234';
       fakeAuth.nextSendResult = const OtpSendResult(success: true);
 
@@ -397,22 +401,24 @@ void main() {
   // ═════════════════════════════════════════════════════════════════════════
 
   group('RegisterPageController - verifyExternally', () {
-    test('should return true when session changes after verification',
-        () async {
-      controller.phoneController.text = '65001234';
-      controller.otpValue.value = '12345';
+    test(
+      'should return true when session changes after verification',
+      () async {
+        controller.phoneController.text = '65001234';
+        controller.otpValue.value = '12345';
 
-      fakeAuth.nextVerifyResult = const OtpVerifyResult(
-        success: true,
-        accessToken: 'new_token',
-        refreshToken: 'new_refresh',
-      );
+        fakeAuth.nextVerifyResult = const OtpVerifyResult(
+          success: true,
+          accessToken: 'new_token',
+          refreshToken: 'new_refresh',
+        );
 
-      final result = await controller.verifyExternally();
+        final result = await controller.verifyExternally();
 
-      expect(result, true);
-      expect(fakeAuth.currentSession.value?.accessToken, 'new_token');
-    });
+        expect(result, true);
+        expect(fakeAuth.currentSession.value?.accessToken, 'new_token');
+      },
+    );
 
     test('should return false when verification fails', () async {
       // Failed verification triggers Get.snackbar which needs overlay.

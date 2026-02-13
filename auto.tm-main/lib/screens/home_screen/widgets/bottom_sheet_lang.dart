@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/constants/constants.dart';
 import 'package:auto_tm/global_controllers/language_controller.dart';
 import 'package:auto_tm/global_controllers/theme_controller.dart';
@@ -136,7 +137,7 @@ class BottomSheetLang extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
         leading: Icon(
           Icons.brightness_6_outlined,
-          color: theme.colorScheme.onSurface.withOpacity(0.8),
+          color: theme.colorScheme.onSurface.opacityCompat(0.8),
         ),
         title: Text(
           'Dark mode'.tr,
@@ -149,7 +150,7 @@ class BottomSheetLang extends StatelessWidget {
             onChanged: (value) {
               themeController.toggleTheme(value);
             },
-            activeColor: AppColors.primaryColor,
+            activeTrackColor: AppColors.primaryColor,
           ),
         ),
       ),

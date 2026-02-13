@@ -1,18 +1,22 @@
+import 'package:auto_tm/domain/repositories/auth_repository.dart';
 import 'package:get/get.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
 import 'package:auto_tm/services/network/api_client.dart';
 import 'package:auto_tm/services/token_service/token_store.dart';
-import 'package:flutter/foundation.dart';
 import 'auth_models.dart';
 import 'phone_formatter.dart';
 
 /// Central authentication service (GetxService).
 ///
-/// Uses [ApiClient] (Dio) for HTTP and [TokenStore] (flutter_secure_storage)
-/// for persisting tokens. OTP send/verify are now POST requests with JSON body.
+/// Manages [AuthSession] reactive state.
+/// Uses [AuthRepository] for data operations.
 class AuthService extends GetxService {
   /// Reactive session — null when logged out.
   final Rx<AuthSession?> currentSession = Rx<AuthSession?>(null);
+
+  final AuthRepository _repository;
+
+  AuthService() : _repository = Get.find<AuthRepository>();
 
   static AuthService get to => Get.find<AuthService>();
 
@@ -44,25 +48,7 @@ class AuthService extends GetxService {
       );
     }
     final full = PhoneFormatter.buildFullDigits(subscriberDigits);
-    try {
-      final resp = await ApiClient.to.dio.post(
-        'otp/send',
-        data: {'phone': full},
-      );
-      final body = resp.data is Map<String, dynamic>
-          ? resp.data as Map<String, dynamic>
-          : <String, dynamic>{};
-      if (kDebugMode) print('[auth] sendOtp status=${resp.statusCode}');
-      final success = _isOtpSendSuccess(body, resp.statusCode ?? 0);
-      return OtpSendResult(
-        success: success,
-        message: body['message']?.toString(),
-        otpId: body['otpId']?.toString(),
-        raw: body,
-      );
-    } catch (e) {
-      return OtpSendResult(success: false, message: 'Exception: $e');
-    }
+    return _repository.sendOtp(full);
   }
 
   Future<OtpVerifyResult> verifyOtp(
@@ -82,49 +68,26 @@ class AuthService extends GetxService {
       );
     }
     final full = PhoneFormatter.buildFullDigits(subscriberDigits);
-    try {
-      final resp = await ApiClient.to.dio.post(
-        'otp/verify',
-        data: {'phone': full, 'otp': code},
+
+    final result = await _repository.verifyOtp(full, code);
+
+    if (result.success &&
+        result.accessToken != null &&
+        result.refreshToken != null) {
+      final session = AuthSession(
+        phone: full,
+        accessToken: result.accessToken!,
+        refreshToken: result.refreshToken,
       );
-      final body = resp.data is Map<String, dynamic>
-          ? resp.data as Map<String, dynamic>
-          : <String, dynamic>{};
-      if (kDebugMode) print('[auth] verifyOtp status=${resp.statusCode}');
-      final success = _isOtpVerifySuccess(body, resp.statusCode ?? 0);
-      if (success) {
-        final access =
-            body['accessToken']?.toString() ?? body['token']?.toString();
-        final refresh = body['refreshToken']?.toString();
-        if (access != null && refresh != null) {
-          final session = AuthSession(
-            phone: full,
-            accessToken: access,
-            refreshToken: refresh,
-          );
-          currentSession.value = session;
-          await TokenStore.to.saveTokens(
-            accessToken: access,
-            refreshToken: refresh,
-            phone: full,
-          );
-        }
-        return OtpVerifyResult(
-          success: true,
-          accessToken: access,
-          refreshToken: refresh,
-          raw: body,
-          message: body['message']?.toString(),
-        );
-      }
-      return OtpVerifyResult(
-        success: false,
-        raw: body,
-        message: body['message']?.toString(),
+      currentSession.value = session;
+      await TokenStore.to.saveTokens(
+        accessToken: result.accessToken!,
+        refreshToken: result.refreshToken!,
+        phone: full,
       );
-    } catch (e) {
-      return OtpVerifyResult(success: false, message: 'Exception: $e');
     }
+
+    return result;
   }
 
   // ── Token Refresh ─────────────────────────────────────────────
@@ -152,12 +115,7 @@ class AuthService extends GetxService {
   // ── Logout ────────────────────────────────────────────────────
 
   Future<void> logout() async {
-    // Tell the backend to invalidate the refresh token
-    try {
-      await ApiClient.to.dio.post('auth/logout');
-    } catch (_) {
-      // Best-effort; even if it fails, clear local state.
-    }
+    await _repository.logout();
 
     currentSession.value = null;
     await TokenStore.to.clearAll();
@@ -171,46 +129,11 @@ class AuthService extends GetxService {
         pc.profile.value = null;
         pc.name.value = '';
         pc.phone.value = '';
-        pc.location.value = ProfileController.defaultLocation;
+        pc.location.value = 'Aşgabat';
         pc.nameController.clear();
-        pc.locationController.text = ProfileController.defaultLocation;
+        pc.locationController.text = 'Aşgabat';
         pc.hasLoadedProfile.value = false;
       } catch (_) {}
     }
-  }
-
-  // ── Helpers ───────────────────────────────────────────────────
-
-  bool _isOtpSendSuccess(Map body, int status) {
-    if (status == 200 || status == 201) {
-      if (body['result'] == true || body['response'] == true) return true;
-      if (body['success'] == true) return true;
-      if ((body['status'] is String) &&
-          body['status'].toString().toLowerCase() == 'ok') {
-        return true;
-      }
-      if (body.containsKey('otpId') ||
-          body.containsKey('otp') ||
-          body.containsKey('code')) {
-        return true;
-      }
-      if (body.isNotEmpty) return true;
-    }
-    return false;
-  }
-
-  bool _isOtpVerifySuccess(Map body, int status) {
-    if (status == 200 || status == 201) {
-      if (body['result'] == true || body['response'] == true) return true;
-      if (body['verified'] == true || body['success'] == true) return true;
-      if ((body['status'] is String) &&
-          body['status'].toString().toLowerCase() == 'ok') {
-        return true;
-      }
-      if (body.containsKey('token') || body.containsKey('accessToken')) {
-        return true;
-      }
-    }
-    return false;
   }
 }

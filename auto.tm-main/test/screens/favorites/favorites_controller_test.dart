@@ -19,23 +19,23 @@ void main() {
   setUpAll(() async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/path_provider'),
-      (MethodCall methodCall) async {
-        if (methodCall.method == 'getApplicationDocumentsDirectory') {
-          return '/tmp/flutter_test';
-        }
-        return null;
-      },
-    );
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'getApplicationDocumentsDirectory') {
+              return '/tmp/flutter_test';
+            }
+            return null;
+          },
+        );
     await GetStorage.init();
   });
 
   tearDownAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/path_provider'),
-      null,
-    );
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          null,
+        );
   });
 
   late TestSetup testSetup;
@@ -280,49 +280,50 @@ void main() {
     test('should fetch products for favorite uuids', () async {
       controller.favorites.addAll(['post-1', 'post-2']);
 
-      when(testSetup.mockDio.post(
-        'posts/list',
-        data: anyNamed('data'),
-      )).thenAnswer((_) async => Response(
-            requestOptions: RequestOptions(path: 'posts/list'),
-            statusCode: 200,
-            data: [
-              {
-                'uuid': 'post-1',
-                'brand': {'name': 'Toyota'},
-                'model': {'name': 'Camry'},
-                'price': 25000,
-                'year': 2022,
-                'milleage': 10000,
-                'engineType': 'gasoline',
-                'enginePower': 200,
-                'transmission': 'automatic',
-                'condition': 'new',
-                'currency': 'USD',
-                'description': '',
-                'location': 'Ashgabat',
-                'vin': '',
-                'createdAt': '2026-01-01T00:00:00Z',
-              },
-              {
-                'uuid': 'post-2',
-                'brand': {'name': 'BMW'},
-                'model': {'name': 'X5'},
-                'price': 45000,
-                'year': 2023,
-                'milleage': 5000,
-                'engineType': 'diesel',
-                'enginePower': 300,
-                'transmission': 'automatic',
-                'condition': 'new',
-                'currency': 'EUR',
-                'description': '',
-                'location': 'Mary',
-                'vin': '',
-                'createdAt': '2026-01-01T00:00:00Z',
-              },
-            ],
-          ));
+      when(
+        testSetup.mockDio.post('posts/list', data: anyNamed('data')),
+      ).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: 'posts/list'),
+          statusCode: 200,
+          data: [
+            {
+              'uuid': 'post-1',
+              'brand': {'name': 'Toyota'},
+              'model': {'name': 'Camry'},
+              'price': 25000,
+              'year': 2022,
+              'milleage': 10000,
+              'engineType': 'gasoline',
+              'enginePower': 200,
+              'transmission': 'automatic',
+              'condition': 'new',
+              'currency': 'USD',
+              'description': '',
+              'location': 'Ashgabat',
+              'vin': '',
+              'createdAt': '2026-01-01T00:00:00Z',
+            },
+            {
+              'uuid': 'post-2',
+              'brand': {'name': 'BMW'},
+              'model': {'name': 'X5'},
+              'price': 45000,
+              'year': 2023,
+              'milleage': 5000,
+              'engineType': 'diesel',
+              'enginePower': 300,
+              'transmission': 'automatic',
+              'condition': 'new',
+              'currency': 'EUR',
+              'description': '',
+              'location': 'Mary',
+              'vin': '',
+              'createdAt': '2026-01-01T00:00:00Z',
+            },
+          ],
+        ),
+      );
 
       await controller.fetchFavoriteProducts();
 
@@ -334,13 +335,14 @@ void main() {
     test('should handle API error gracefully', () async {
       controller.favorites.addAll(['post-1']);
 
-      when(testSetup.mockDio.post(
-        'posts/list',
-        data: anyNamed('data'),
-      )).thenThrow(DioException(
-        requestOptions: RequestOptions(path: 'posts/list'),
-        type: DioExceptionType.connectionTimeout,
-      ));
+      when(
+        testSetup.mockDio.post('posts/list', data: anyNamed('data')),
+      ).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: 'posts/list'),
+          type: DioExceptionType.connectionTimeout,
+        ),
+      );
 
       // Should not throw
       await controller.fetchFavoriteProducts();

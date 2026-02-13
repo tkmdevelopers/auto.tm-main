@@ -43,10 +43,7 @@ class SLoginTextField extends StatelessWidget {
               focusNode: focusNode,
               obscureText: isObscure,
               keyboardType: TextInputType.number,
-              style: TextStyle(
-                color: theme.colorScheme.surface,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: theme.colorScheme.surface, fontSize: 16),
               decoration: InputDecoration(
                 filled: true,
                 fillColor: theme.colorScheme.onSurface,
@@ -55,7 +52,12 @@ class SLoginTextField extends StatelessWidget {
                   color: AppColors.textTertiaryColor,
                   fontSize: 16,
                 ),
-                border: InputBorder.none, errorBorder: InputBorder.none, focusedBorder:InputBorder.none ,disabledBorder: InputBorder.none, enabledBorder: InputBorder.none,// we already have container border
+                border: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                enabledBorder:
+                    InputBorder.none, // we already have container border
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 16),
               ),

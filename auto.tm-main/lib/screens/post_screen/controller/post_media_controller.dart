@@ -184,7 +184,7 @@ class PostMediaController extends GetxController {
     usedCompressedVideo.value = false;
 
     try {
-      _videoCompressSub?.unsubscribe?.call();
+      _videoCompressSub?.unsubscribe.call();
     } catch (_) {
       // Subscription cleanup failed
     }
@@ -217,7 +217,7 @@ class PostMediaController extends GetxController {
       await _initializeVideoPlayer(original);
     } finally {
       try {
-        _videoCompressSub?.unsubscribe?.call();
+        _videoCompressSub?.unsubscribe.call();
       } catch (_) {
         // Subscription cleanup failed
       }
@@ -245,7 +245,7 @@ class PostMediaController extends GetxController {
       VideoCompress.cancelCompression();
     }
     try {
-      _videoCompressSub?.unsubscribe?.call();
+      _videoCompressSub?.unsubscribe.call();
     } catch (_) {
       // Subscription cleanup failed
     }
@@ -284,8 +284,8 @@ class PostMediaController extends GetxController {
 
   File? get videoFileForUpload =>
       usedCompressedVideo.value && compressedVideoFile.value != null
-          ? compressedVideoFile.value
-          : selectedVideo.value;
+      ? compressedVideoFile.value
+      : selectedVideo.value;
 }
 
 /// Image signature for dirty tracking without storing full bytes in comparison.
@@ -295,9 +295,9 @@ class _ImageSig {
   final int lastByte;
 
   _ImageSig(Uint8List bytes)
-      : length = bytes.length,
-        firstByte = bytes.isNotEmpty ? bytes.first : 0,
-        lastByte = bytes.isNotEmpty ? bytes.last : 0;
+    : length = bytes.length,
+      firstByte = bytes.isNotEmpty ? bytes.first : 0,
+      lastByte = bytes.isNotEmpty ? bytes.last : 0;
 
   @override
   bool operator ==(Object other) =>

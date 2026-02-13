@@ -1,10 +1,10 @@
 class PostFilter {
-  final String? brandFilter;
-  final String? modelFilter;
+  final dynamic brandFilter; // String or List<String>
+  final dynamic modelFilter; // String or List<String>
   final String? categoryFilter;
   final String? region;
   final String? location;
-  final String? color;
+  final dynamic color; // String or List<String>
   final bool? credit;
   final bool? exchange;
   final String? transmission;
@@ -19,6 +19,7 @@ class PostFilter {
   final List<String>? subFilter;
   final String? sortBy;
   final String? sortAs;
+  final bool? countOnly;
 
   PostFilter({
     this.brandFilter,
@@ -41,6 +42,7 @@ class PostFilter {
     this.subFilter,
     this.sortBy,
     this.sortAs,
+    this.countOnly,
   });
 
   Map<String, dynamic> toQueryParams() {
@@ -65,6 +67,7 @@ class PostFilter {
       if (subFilter != null) 'subFilter': subFilter,
       if (sortBy != null) 'sortBy': sortBy,
       if (sortAs != null) 'sortAs': sortAs,
+      if (countOnly != null) 'countOnly': countOnly,
     };
   }
 }

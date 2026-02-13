@@ -4,7 +4,7 @@ class AppImages {
   static const String appLogoSvg = "assets/auth_screen/app_logo.svg";
   static const String appLogoLittle = "assets/logo_little.svg";
   static const String loginOtpImageSvg = "assets/images/otp/OTP.svg";
-  
+
   static const String splashLogoGif = "assets/splash_screen/logo.gif";
   static const String splashLogoJson = "assets/splash_screen/logo.json";
 
@@ -13,7 +13,7 @@ class AppImages {
 
   static const String favouriteF = "assets/icons/heartF.svg";
   static const String favouriteO = "assets/icons/heartO.svg";
-  
+
   static const String postF = "assets/icons/postF.svg";
   static const String postO = "assets/icons/postO.svg";
 
@@ -41,11 +41,9 @@ class AppImages {
   static const String exchange = "assets/icons/exchange_icon.svg";
   static const String credit = "assets/icons/credit_icon.svg";
   static const String instagram = "assets/icons/instagram_icon.svg";
-  static const String sort= "assets/icons/sort_icon.svg";
+  static const String sort = "assets/icons/sort_icon.svg";
 
   static const String premium = "assets/home_screen/premium.png";
-
-
 
   static const String globe = "assets/icons/home_page/globe.svg";
   static const String bell = "assets/icons/home_page/bell.svg";
@@ -58,9 +56,10 @@ class AppImages {
 
   static const String defaultImageSvg = "assets/default_image.svg";
   static const String defaultImagePng = "assets/default_image.png";
-  
+
   static const String trashIcon = "assets/icons/cart_page/trash_icon.svg";
   static const String locationIcon = "assets/icons/cart_page/location_icon.svg";
 
-  static const String filterIcon = "assets/icons/categories_page/filter_icon.svg";
+  static const String filterIcon =
+      "assets/icons/categories_page/filter_icon.svg";
 }

@@ -1,55 +1,66 @@
-import 'package:auto_tm/services/brand_history_service.dart';
+import 'package:auto_tm/domain/models/brand_history_item.dart';
+import 'package:auto_tm/domain/repositories/brand_repository.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 
 class BrandController extends GetxController {
-  final box = GetStorage();
-  final lastBrands = <String>[].obs;
-  var brands = <Map<String, dynamic>>[].obs;
+  final brandHistory = <BrandHistoryItem>[].obs;
   var isLoading = false.obs;
-  
-  BrandHistoryService get _brandHistoryService => Get.find<BrandHistoryService>();
 
-  List<String> loadHistory() {
-    return box.read<List<String>>('brand_history') ?? [];
-  }
+  BrandRepository get _brandRepository => Get.find<BrandRepository>();
 
   Future<void> loadStoredHistory() async {
-    List<String>? storedHistory =
-        box.read<List>('brand_history')?.cast<String>();
-    if (storedHistory != null) {
-      lastBrands.assignAll(storedHistory);
-    }
+    final storedData = _brandRepository.getLocalHistory();
+    final items = storedData
+        .map((e) => BrandHistoryItem.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+    brandHistory.assignAll(items);
   }
 
-// Save Favorites to GetStorage
   void saveHistory() {
-    box.write('brand_history', lastBrands.toList());
+    final data = brandHistory.map((e) => e.toJson()).toList();
+    _brandRepository.saveLocalHistory(data);
   }
 
-  Future<void> fetchBrandHistory() async {
-    isLoading.value = true;
-    if (lastBrands.isEmpty) {
-      brands.clear();
-      isLoading.value = false;
-      return;
+  void addToHistory({
+    required String brandUuid,
+    required String brandName,
+    String? brandLogo,
+    String? modelUuid,
+    String? modelName,
+    Map<String, dynamic>? filterState,
+  }) {
+    final newItem = BrandHistoryItem(
+      brandUuid: brandUuid,
+      brandName: brandName,
+      brandLogo: brandLogo,
+      modelUuid: modelUuid,
+      modelName: modelName,
+      filterState: filterState,
+    );
+
+    // 1. Remove exact duplicates (Brand + Model match)
+    brandHistory.removeWhere((item) =>
+        item.brandUuid == brandUuid && item.modelUuid == modelUuid);
+
+    // 2. If we are adding a Brand + Model, remove any existing "Brand Only" entry 
+    // for this brand to prevent "BMW" and "BMW 320" from co-existing.
+    if (modelUuid != null) {
+      brandHistory.removeWhere((item) => 
+        item.brandUuid == brandUuid && item.modelUuid == null);
+    } 
+    // 3. If we are adding "Brand Only", check if we should remove specific models?
+    // Usually, keeping specific models is better, but let's at least ensure 
+    // the generic one doesn't push specific ones out if we want to keep history clean.
+    // For now, we allow generic to be added, but it will be replaced next time a model is picked.
+
+    // Insert at front
+    brandHistory.insert(0, newItem);
+
+    // Limit to 6 items
+    if (brandHistory.length > 6) {
+      brandHistory.removeLast();
     }
 
-    try {
-      final result = await _brandHistoryService.fetchBrandsByUuids(lastBrands.toList());
-      brands.value = result;
-    } catch (e) {
-      // Error already logged in service
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  void addToHistory(String uuid) {
-    if (!lastBrands.contains(uuid)) {
-      // lastBrands.remove(uuid);
-      lastBrands.add(uuid);
-    }
     saveHistory();
   }
 
@@ -61,6 +72,5 @@ class BrandController extends GetxController {
 
   Future<void> refreshData() async {
     await loadStoredHistory();
-    await fetchBrandHistory();
   }
 }

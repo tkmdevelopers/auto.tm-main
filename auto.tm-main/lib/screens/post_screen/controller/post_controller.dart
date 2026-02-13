@@ -3,7 +3,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:auto_tm/domain/validators/post_validator.dart';
 import 'package:auto_tm/utils/navigation_utils.dart';
 
@@ -14,19 +13,19 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:auto_tm/services/post_service.dart';
-import 'package:auto_tm/services/brand_model_service.dart';
-import 'phone_verification_controller.dart';
-
-import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:video_compress/video_compress.dart';
+import 'package:auto_tm/domain/repositories/brand_repository.dart';
+import 'package:auto_tm/domain/repositories/post_repository.dart';
 import 'package:video_player/video_player.dart';
+import 'package:video_compress/video_compress.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
-
-import 'upload_manager.dart';
-import 'package:auto_tm/models/post_dtos.dart';
-import 'package:auto_tm/domain/models/post.dart' as domain;
+import 'package:auto_tm/screens/post_screen/controller/phone_verification_controller.dart';
+import 'package:auto_tm/screens/post_screen/controller/upload_manager.dart'; // Ensure this is present
+import 'package:image_picker/image_picker.dart'; // Ensure ImagePicker is imported
+import 'package:permission_handler/permission_handler.dart'; // Ensure Permission is imported
+import 'package:auto_tm/domain/models/post.dart' as domain; // Fix name 'Post' isn't a type
+import 'package:auto_tm/domain/models/brand.dart'; // Fix name 'Brand' isn't a type
+import 'package:auto_tm/domain/models/car_model.dart'; // Fix name 'CarModel' isn't a type
+import 'package:auto_tm/utils/failure.dart'; // Fix Failure not found if it is a custom class
 
 /// Lightweight image signature for dirty tracking
 class _ImageSig {
@@ -50,7 +49,13 @@ class _ImageSig {
 
 /// Post form controller managing media, form state, upload coordination with UploadManager
 class PostController extends GetxController {
+  final PostRepository _postRepository;
+  final BrandRepository _brandRepository;
   final box = GetStorage();
+
+  PostController()
+    : _postRepository = Get.find<PostRepository>(),
+      _brandRepository = Get.find<BrandRepository>();
 
   // Form fields
   final TextEditingController price = TextEditingController();
@@ -101,7 +106,7 @@ class PostController extends GetxController {
   final RxBool isCompressingVideo = false.obs;
   final RxDouble videoCompressionProgress = 0.0.obs;
   VideoPlayerController? videoPlayerController;
-  var _videoCompressSub;
+  dynamic _videoCompressSub;
 
   // Image signature cache for dirty tracking
   List<_ImageSig> _imageSigCache = [];
@@ -129,17 +134,14 @@ class PostController extends GetxController {
   dio.CancelToken? _activeCancelToken;
   String? _activePostUuid;
 
-  // Brand/model data – delegated to BrandModelService
-  late final BrandModelService _brandModelSvc;
-  RxList<BrandDto> get brands => _brandModelSvc.brands;
-  RxList<ModelDto> get models => _brandModelSvc.models;
-  RxInt get modelNameResolutionTick => _brandModelSvc.modelNameResolutionTick;
-  RxBool get isLoadingB => _brandModelSvc.isLoadingBrands;
-  RxBool get isLoadingM => _brandModelSvc.isLoadingModels;
-  RxBool get brandsFromCache => _brandModelSvc.brandsFromCache;
-  RxBool get modelsFromCache => _brandModelSvc.modelsFromCache;
-  RxString get brandSearchQuery => _brandModelSvc.brandSearchQuery;
-  RxString get searchModel => _brandModelSvc.modelSearchQuery;
+  // Brand/model data – delegated to BrandRepository
+  RxList<Brand> get brands => _brandRepository.brands;
+  RxList<CarModel> get models => _brandRepository.models;
+  RxInt get modelNameResolutionTick => _brandRepository.nameResolutionTick;
+  RxBool get isLoadingB => _brandRepository.isLoadingBrands;
+  RxBool get isLoadingM => _brandRepository.isLoadingModels;
+  RxString get brandSearchQuery => _brandRepository.brandSearchQuery;
+  RxString get searchModel => _brandRepository.modelSearchQuery;
 
   // Form persistence and dirty tracking
   final RxBool isFormSaved = false.obs;
@@ -155,13 +157,14 @@ class PostController extends GetxController {
   final RxString selectedYear = ''.obs;
   // Posts management
   final RxList<domain.Post> posts = <domain.Post>[].obs;
+  final RxnString lastUploadedPostUuid = RxnString();
   final RxBool isLoadingP = false.obs;
   final RxBool showShimmer = false.obs;
   Timer? _shimmerDelayTimer;
 
-  // Computed getters for filtered lists – delegated to BrandModelService
-  List<BrandDto> get filteredBrands => _brandModelSvc.filteredBrands;
-  List<ModelDto> get filteredModels => _brandModelSvc.filteredModels;
+  // Computed getters for filtered lists – delegated to BrandRepository
+  List<Brand> get filteredBrands => _brandRepository.filteredBrands;
+  List<CarModel> get filteredModels => _brandRepository.filteredModels;
 
   @override
   void onInit() {
@@ -169,8 +172,6 @@ class PostController extends GetxController {
     // Initialize phone verification controller
     _phoneCtrl = Get.put(PhoneVerificationController());
     _phoneCtrl.onFieldChanged = markFieldChanged;
-    // Initialize brand/model service
-    _brandModelSvc = BrandModelService.to;
     _loadSavedForm();
     _rebuildImageSigCache();
     recoverOrCleanupStaleUpload();
@@ -373,7 +374,7 @@ class PostController extends GetxController {
         },
       };
 
-      final uuid = await PostService.to.createPostDetails(postData);
+      final uuid = await _postRepository.createPost(postData);
       if (uuid == null) {
         uploadError.value = 'Unknown error'.tr;
         return null;
@@ -411,8 +412,7 @@ class PostController extends GetxController {
     });
 
     try {
-      // fetchMyPosts now returns List<domain.Post> via PostService refactor
-      final myPosts = await PostService.to.fetchMyPosts();
+      final myPosts = await _postRepository.getMyPosts();
       posts.assignAll(myPosts);
     } on Failure catch (e) {
       debugPrint('Fetch my posts error: $e');
@@ -430,7 +430,7 @@ class PostController extends GetxController {
   /// Delete a specific post
   Future<void> deleteMyPost(String uuid) async {
     try {
-      await PostService.to.deleteMyPost(uuid);
+      await _postRepository.deletePost(uuid);
       posts.removeWhere((post) => post.uuid == uuid);
       Get.snackbar('Success', 'Post deleted successfully'.tr);
     } on Failure catch (e) {
@@ -459,8 +459,9 @@ class PostController extends GetxController {
     try {
       if (selectedVideo.value == null &&
           snap.videoFile == null &&
-          snap.compressedVideoFile == null)
+          snap.compressedVideoFile == null) {
         return true;
+      }
 
       return await _uploadVideoPart(postUuid, snap, onBytes: onBytes);
     } catch (e) {
@@ -511,10 +512,9 @@ class PostController extends GetxController {
       _activeCancelToken = dio.CancelToken();
       int lastSent = 0;
 
-      final ok = await PostService.to.uploadVideo(
+      final ok = await _postRepository.uploadVideo(
         postUuid,
         file,
-        snap.usedCompressedVideo,
         cancelToken: _activeCancelToken,
         onSendProgress: (sent, total) {
           final delta = sent - lastSent;
@@ -551,7 +551,7 @@ class PostController extends GetxController {
       _activeCancelToken = dio.CancelToken();
       int lastSent = 0;
 
-      final ok = await PostService.to.uploadPhoto(
+      final ok = await _postRepository.uploadPhoto(
         postUuid,
         bytes,
         index,
@@ -609,7 +609,7 @@ class PostController extends GetxController {
 
   Future<void> _deleteCreatedPostCascade(String postUuid) async {
     try {
-      await PostService.to.deleteCreatedPostCascade(postUuid);
+      await _postRepository.deletePostCascade(postUuid);
     } catch (e) {
       debugPrint('Cancel cleanup exception: $e');
     }
@@ -738,24 +738,24 @@ class PostController extends GetxController {
 
   // Brand/model fetching – delegated to BrandModelService
   void fetchBrands({bool forceRefresh = false}) =>
-      _brandModelSvc.fetchBrands(forceRefresh: forceRefresh);
+      _brandRepository.fetchBrands(forceRefresh: forceRefresh);
   void fetchModels(
     String brandUuid, {
     bool forceRefresh = false,
     bool showLoading = true,
-  }) => _brandModelSvc.fetchModels(
+  }) => _brandRepository.fetchModels(
     brandUuid,
     forceRefresh: forceRefresh,
     showLoading: showLoading,
   );
   String resolveBrandName(String idOrName) =>
-      _brandModelSvc.resolveBrandName(idOrName);
+      _brandRepository.resolveBrandName(idOrName);
   String resolveModelName(String idOrName) =>
-      _brandModelSvc.resolveModelName(idOrName);
+      _brandRepository.resolveModelName(idOrName);
   String resolveModelWithBrand(String modelId, String brandId) =>
-      _brandModelSvc.resolveModelWithBrand(modelId, brandId);
+      _brandRepository.resolveModelWithBrand(modelId, brandId);
   Future<void> ensureBrandModelCachesLoaded() =>
-      _brandModelSvc.ensureCachesLoaded();
+      _brandRepository.ensureCachesLoaded();
 
   // Permission handling
   Future<void> requestGalleryPermission(BuildContext context) async {
@@ -1344,7 +1344,7 @@ extension _VideoCompressionHelpers on PostController {
 extension PostControllerImageHelpers on PostController {
   String buildPostImageUrl(String raw) {
     if (raw.isEmpty) return '';
-    final trimmedBase = ApiKey.ip.endsWith('/') ? ApiKey.ip : '${ApiKey.ip}';
+    final trimmedBase = ApiKey.ip.endsWith('/') ? ApiKey.ip : ApiKey.ip;
     if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
     var path = raw.trim();
     // Common patterns: "/uploads/..", "uploads/...", may include leading domain accidentally

@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/global_widgets/refresh_indicator.dart';
 import 'package:auto_tm/screens/blog_screen/controller/blog_controller.dart';
 import 'package:auto_tm/screens/blog_screen/widgets/blog_detais_screen.dart';
@@ -71,7 +72,7 @@ class BlogScreen extends StatelessWidget {
           }
           return ListView.separated(
             padding: EdgeInsets.all(16),
-            separatorBuilder: (_, __) {
+            separatorBuilder: (_, _) {
               return SizedBox(height: 16);
             },
             itemCount: controller.blogs.length,
@@ -101,7 +102,7 @@ class BlogScreen extends StatelessWidget {
                             width: 12,
                             height: 12,
                             colorFilter: ColorFilter.mode(
-                              theme.colorScheme.onSurface.withOpacity(0.7),
+                              theme.colorScheme.onSurface.opacityCompat(0.7),
                               BlendMode.srcIn,
                             ),
                           ),

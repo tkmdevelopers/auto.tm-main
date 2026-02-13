@@ -9,5 +9,4 @@ class HexColor extends Color {
     buffer.write(hexString.replaceFirst('#', ''));
     return Color(int.parse(buffer.toString(), radix: 16));
   }
-  
 }

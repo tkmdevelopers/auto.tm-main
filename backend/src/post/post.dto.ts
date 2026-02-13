@@ -23,10 +23,10 @@ export class FindAllPosts {
   model: string;
 
   @ApiProperty({ required: false })
-  brandFilter: string;
+  brandFilter: string | string[];
 
   @ApiProperty({ required: false })
-  modelFilter: string;
+  modelFilter: string | string[];
 
   @ApiProperty({
     required: false,
@@ -104,7 +104,10 @@ export class FindAllPosts {
   subFilter: string | string[];
 
   @ApiProperty({ required: false })
-  color: string;
+  color: string | string[];
+
+  @ApiProperty({ required: false })
+  countOnly: string;
 }
 export class listPost {
   @ApiProperty()

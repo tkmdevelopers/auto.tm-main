@@ -1,14 +1,14 @@
 // blog_editor_controller.dart
 import 'dart:io';
-import 'package:auto_tm/services/blog_service.dart'; // Added BlogService import
+import 'package:auto_tm/domain/repositories/common_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
 class BlogEditorController extends GetxController {
-  final BlogService _blogService; // Injected BlogService
+  final CommonRepository _commonRepository;
 
-  BlogEditorController(this._blogService);
+  BlogEditorController(this._commonRepository);
   final TextEditingController textController = TextEditingController();
   final picker = ImagePicker();
   final images = <String>[].obs;
@@ -34,14 +34,14 @@ class BlogEditorController extends GetxController {
   }
 
   Future<String?> uploadImage(File file) async {
-    return await _blogService.uploadImage(file);
+    return await _commonRepository.uploadBlogImage(file);
   }
 
   Future<void> postBlog() async {
     final content = textController.text.trim();
     if (content.isEmpty) return;
 
-    await _blogService.postBlog(content);
+    await _commonRepository.postBlog(content);
     Get.back();
     Get.snackbar('Success', 'Blog posted');
   }

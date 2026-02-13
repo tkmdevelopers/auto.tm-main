@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:path_provider/path_provider.dart';
@@ -69,7 +70,6 @@ import 'package:path_provider/path_provider.dart';
 //   }
 // }
 
-
 class DownloadController extends GetxController {
   var progress = 0.obs;
   var isDownloading = false.obs;
@@ -102,11 +102,11 @@ class DownloadController extends GetxController {
   /// Lazy initialize FlutterDownloader only when needed
   Future<void> _ensureInitialized() async {
     if (isInitialized.value) return;
-    
+
     try {
       await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
       isInitialized.value = true;
-      
+
       IsolateNameServer.registerPortWithName(
         _port.sendPort,
         'downloader_send_port',
@@ -121,10 +121,12 @@ class DownloadController extends GetxController {
         if (taskId.value == id) {
           if (status == DownloadTaskStatus.failed) {
             final task = await FlutterDownloader.loadTasksWithRawQuery(
-              query: "SELECT * FROM task WHERE task_id='$id'"
+              query: "SELECT * FROM task WHERE task_id='$id'",
             );
             if (task != null && task.isNotEmpty) {
-              final file = File("${task.first.savedDir}/${task.first.filename}");
+              final file = File(
+                "${task.first.savedDir}/${task.first.filename}",
+              );
               if (await file.exists()) {
                 status = DownloadTaskStatus.complete;
               }
@@ -138,29 +140,29 @@ class DownloadController extends GetxController {
       FlutterDownloader.registerCallback(DownloadController.downloadCallback);
     } catch (e) {
       // FlutterDownloader failed to initialize - download feature will be unavailable
-      print('[DownloadController] FlutterDownloader initialization failed: $e');
+      debugPrint(
+        '[DownloadController] FlutterDownloader initialization failed: $e',
+      );
       isInitialized.value = false;
     }
   }
 
-  @override
-  void onInit() {
-    super.onInit();
-    // Don't initialize FlutterDownloader on startup - wait until user actually needs it
-  }
-
   @pragma('vm:entry-point')
   static void downloadCallback(String id, int status, int progress) {
-    final SendPort? send = IsolateNameServer.lookupPortByName('downloader_send_port');
+    final SendPort? send = IsolateNameServer.lookupPortByName(
+      'downloader_send_port',
+    );
     send?.send([id, status, progress]);
   }
 
   Future<void> startDownload(String url, String fileName) async {
     // Initialize FlutterDownloader only when user actually wants to download
     await _ensureInitialized();
-    
+
     if (!isInitialized.value) {
-      throw Exception('Download feature is not available. FlutterDownloader failed to initialize.');
+      throw Exception(
+        'Download feature is not available. FlutterDownloader failed to initialize.',
+      );
     }
 
     final directory = await getExternalStorageDirectory();

@@ -20,7 +20,9 @@ class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
 
   final HomeController controller = Get.find<HomeController>();
-  final FavoritesController favoritesController = Get.put(FavoritesController());
+  final FavoritesController favoritesController = Get.put(
+    FavoritesController(),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -164,56 +166,42 @@ class HomeScreen extends StatelessWidget {
     return Obx(() {
       final favoriteIds = favoritesController.favorites.toSet();
       return SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            if (index == 0) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    _HomeHeader(theme: theme, controller: controller),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              );
-            }
-            final postIndex = index - 1;
-
-            if (postIndex >= controller.posts.length) {
-              return Obx(
-                () => controller.isPaginating.value
-                    ? const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16.0),
-                        child: PostItemShimmer(),
-                      )
-                    : const SizedBox.shrink(),
-              );
-            }
-
-            final post = controller.posts[postIndex];
-            return RepaintBoundary(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: PostItem(
-                  uuid: post.uuid,
-                  brand: post.brand,
-                  model: post.model,
-                  price: post.price,
-                  photoPath: post.photoPath,
-                  year: post.year,
-                  milleage: post.milleage,
-                  currency: post.currency,
-                  createdAt: post.createdAt,
-                  subscription: post.subscription,
-                  location: post.location,
-                  region: post.region,
-                  isFav: favoriteIds.contains(post.uuid),
-                ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          if (index == 0) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  _HomeHeader(theme: theme, controller: controller),
+                  const SizedBox(height: 16),
+                ],
               ),
             );
-          },
-          childCount: 1 + controller.posts.length + 1,
-        ),
+          }
+          final postIndex = index - 1;
+
+          if (postIndex >= controller.posts.length) {
+            return Obx(
+              () => controller.isPaginating.value
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                      child: PostItemShimmer(),
+                    )
+                  : const SizedBox.shrink(),
+            );
+          }
+
+          final post = controller.posts[postIndex];
+          return RepaintBoundary(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: PostItem(
+                post: post,
+                isFav: favoriteIds.contains(post.uuid),
+              ),
+            ),
+          );
+        }, childCount: 1 + controller.posts.length + 1),
       );
     });
   }
@@ -291,7 +279,7 @@ class _FilterBar extends StatelessWidget {
                       ),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: theme.colorScheme.onSurface.withOpacity(0.2),
+                        color: theme.colorScheme.onSurface.opacityCompat(0.2),
                       ),
                     ),
                     child: SvgPicture.asset(
@@ -349,7 +337,7 @@ class _FilterBar extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           InkWell(
-           onTap: () => Get.to(() => BrandSelection(origin: 'directHome')),
+            onTap: () => Get.to(() => BrandSelection(origin: 'directHome')),
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(8),
@@ -424,7 +412,7 @@ class _PostsHeader extends StatelessWidget {
             ),
             child: Obx(
               () => Text(
-                '${controller.posts.length} ${'common_items'.tr}',
+                '${controller.totalPostsCount.value > 0 ? controller.totalPostsCount.value : controller.posts.length} ${'common_items'.tr}',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -440,10 +428,7 @@ class _PostsHeader extends StatelessWidget {
 }
 
 class _ErrorRetry extends StatelessWidget {
-  const _ErrorRetry({
-    required this.theme,
-    required this.controller,
-  });
+  const _ErrorRetry({required this.theme, required this.controller});
   final ThemeData theme;
   final HomeController controller;
 
@@ -523,7 +508,7 @@ class _EmptyPosts extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: theme.shadowColor.withOpacity(
+                  color: theme.shadowColor.opacityCompat(
                     0.1,
                   ), // shadowColor not deprecated; keep as-is
                   blurRadius: 15,

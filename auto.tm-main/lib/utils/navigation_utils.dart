@@ -26,10 +26,11 @@ class NavigationUtils {
         final root = Navigator.of(context, rootNavigator: true);
         if (root.canPop()) {
           root.pop<T>(result);
-          if (_debug)
+          if (_debug) {
             debugPrint(
               '[NavigationUtils.close] overlay popped via rootNavigator',
             );
+          }
           return;
         }
       } catch (_) {
@@ -38,15 +39,17 @@ class NavigationUtils {
           if (Get.key.currentState?.canPop() ?? false) {
             // Guard snackbar path
             if (Get.isSnackbarOpen == true) {
-              if (_debug)
+              if (_debug) {
                 debugPrint(
                   '[NavigationUtils.close] fallback Get.back with snackbar',
                 );
+              }
               Get.back<T>(result: result);
             } else {
               Get.back<T>(result: result);
-              if (_debug)
+              if (_debug) {
                 debugPrint('[NavigationUtils.close] fallback Get.back overlay');
+              }
             }
             return;
           }
@@ -78,8 +81,9 @@ class NavigationUtils {
     try {
       if (Get.key.currentState?.canPop() ?? false) {
         if (Get.isSnackbarOpen == true) {
-          if (_debug)
+          if (_debug) {
             debugPrint('[NavigationUtils.close] Get.back with snackbar open');
+          }
           Get.back<T>(result: result);
         } else {
           try {
@@ -147,5 +151,5 @@ class NavigationUtils {
   }
 
   static final Map<String, DateTime> _lastTap = {};
-  static bool _debug = false; // toggle for verbose navigation logs
+  static final bool _debug = false; // toggle for verbose navigation logs
 }

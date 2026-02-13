@@ -1,5 +1,5 @@
 import 'package:auto_tm/domain/models/post.dart';
-import 'package:auto_tm/services/post_service.dart';
+import 'package:auto_tm/domain/repositories/post_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
@@ -11,11 +11,15 @@ enum HomeStatus { initial, loading, success, error, empty }
 
 class HomeController extends GetxController {
   final ScrollController scrollController = ScrollController();
+  final PostRepository _postRepository;
+
+  HomeController() : _postRepository = Get.find<PostRepository>();
 
   /// Threshold in pixels before maxScrollExtent to trigger pagination (load earlier).
   static const double _paginationThreshold = 200;
 
   final posts = <Post>[].obs;
+  final totalPostsCount = 0.obs;
   final status = HomeStatus.initial.obs;
   final isPaginating = false.obs;
   final hasMore = true.obs;
@@ -30,7 +34,9 @@ class HomeController extends GetxController {
   }
 
   void _onScroll() {
-    if (!scrollController.hasClients || isPaginating.value || !hasMore.value) return;
+    if (!scrollController.hasClients || isPaginating.value || !hasMore.value) {
+      return;
+    }
     final pos = scrollController.position;
     if (pos.pixels >= pos.maxScrollExtent - _paginationThreshold) {
       fetchPosts(isPagination: true);
@@ -58,7 +64,11 @@ class HomeController extends GetxController {
     status.value = HomeStatus.loading;
     errorMessage.value = '';
     try {
-      await fetchPosts();
+      // Parallel fetch for posts and count
+      await Future.wait([
+        fetchPosts(),
+        _fetchCount(),
+      ]);
     } catch (e) {
       debugPrint('Error fetching initial data: $e');
       status.value = HomeStatus.error;
@@ -67,6 +77,13 @@ class HomeController extends GetxController {
     } finally {
       FlutterNativeSplash.remove();
     }
+  }
+
+  Future<void> _fetchCount() async {
+    try {
+      final count = await _postRepository.getPostsCount();
+      totalPostsCount.value = count;
+    } catch (_) {}
   }
 
   void _showErrorSnackbar() {
@@ -84,7 +101,7 @@ class HomeController extends GetxController {
     }
 
     try {
-      final newPosts = await PostService.to.fetchFeedPosts(
+      final newPosts = await _postRepository.getFeedPosts(
         offset: offset,
         limit: kHomePageSize,
       );
@@ -125,7 +142,7 @@ class HomeController extends GetxController {
     await fetchInitialData();
   }
 
-  /// Pull-to-refresh: reset and reload. 
+  /// Pull-to-refresh: reset and reload.
   Future<void> refreshData() async {
     hasMore.value = true;
     offset = 0;

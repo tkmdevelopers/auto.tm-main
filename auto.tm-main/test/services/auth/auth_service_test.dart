@@ -41,14 +41,13 @@ void main() {
 
     test('sendOtp should call API and return success', () async {
       // Arrange
-      when(mockDio.post(
-        'otp/send',
-        data: anyNamed('data'),
-      )).thenAnswer((_) async => Response(
-            requestOptions: RequestOptions(path: 'otp/send'),
-            statusCode: 200,
-            data: {'status': 'ok', 'message': 'Sent'},
-          ));
+      when(mockDio.post('otp/send', data: anyNamed('data'))).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: 'otp/send'),
+          statusCode: 200,
+          data: {'status': 'ok', 'message': 'Sent'},
+        ),
+      );
 
       // Act
       final result = await authService.sendOtp(subscriber);
@@ -64,22 +63,22 @@ void main() {
       const accessToken = 'access_123';
       const refreshToken = 'refresh_456';
 
-      when(mockDio.post(
-        'otp/verify',
-        data: anyNamed('data'),
-      )).thenAnswer((_) async => Response(
-            requestOptions: RequestOptions(path: 'otp/verify'),
-            statusCode: 200,
-            data: {
-              'status': 'ok',
-              'accessToken': accessToken,
-              'refreshToken': refreshToken
-            },
-          ));
+      when(mockDio.post('otp/verify', data: anyNamed('data'))).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: 'otp/verify'),
+          statusCode: 200,
+          data: {
+            'status': 'ok',
+            'accessToken': accessToken,
+            'refreshToken': refreshToken,
+          },
+        ),
+      );
 
       // Mock storage writes
-      when(mockStorage.write(key: anyNamed('key'), value: anyNamed('value')))
-          .thenAnswer((_) async => {});
+      when(
+        mockStorage.write(key: anyNamed('key'), value: anyNamed('value')),
+      ).thenAnswer((_) async => {});
 
       // Act
       final result = await authService.verifyOtp(subscriber, code);
@@ -87,26 +86,33 @@ void main() {
       // Assert
       expect(result.success, true);
       expect(result.accessToken, accessToken);
-      
+
       // Verify API call
-      verify(mockDio.post('otp/verify', data: {
-        'phone': fullPhone,
-        'otp': code,
-      })).called(1);
+      verify(
+        mockDio.post('otp/verify', data: {'phone': fullPhone, 'otp': code}),
+      ).called(1);
 
       // Verify Token Save (using the real TokenStore logic which calls mockStorage)
-      verify(mockStorage.write(key: 'ACCESS_TOKEN', value: accessToken)).called(1);
-      verify(mockStorage.write(key: 'REFRESH_TOKEN', value: refreshToken)).called(1);
+      verify(
+        mockStorage.write(key: 'ACCESS_TOKEN', value: accessToken),
+      ).called(1);
+      verify(
+        mockStorage.write(key: 'REFRESH_TOKEN', value: refreshToken),
+      ).called(1);
     });
 
     test('logout should clear storage', () async {
       // Arrange
-      when(mockDio.post('auth/logout')).thenAnswer((_) async => Response(
-            requestOptions: RequestOptions(path: 'auth/logout'),
-            statusCode: 200,
-          ));
-      
-      when(mockStorage.delete(key: anyNamed('key'))).thenAnswer((_) async => {});
+      when(mockDio.post('auth/logout')).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: 'auth/logout'),
+          statusCode: 200,
+        ),
+      );
+
+      when(
+        mockStorage.delete(key: anyNamed('key')),
+      ).thenAnswer((_) async => {});
 
       // Act
       await authService.logout();

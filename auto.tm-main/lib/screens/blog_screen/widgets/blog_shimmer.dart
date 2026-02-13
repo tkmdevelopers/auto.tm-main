@@ -1,16 +1,16 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
 class BlogItemShimmer extends StatelessWidget {
   const BlogItemShimmer({super.key});
 
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final surface = theme.colorScheme.surface;
-    final baseShade = theme.colorScheme.onSurface.withOpacity(0.08);
-    final highlightShade = theme.colorScheme.onSurface.withOpacity(0.18);
+    final baseShade = theme.colorScheme.onSurface.opacityCompat(0.08);
+    final highlightShade = theme.colorScheme.onSurface.opacityCompat(0.18);
     return Container(
       height: 270,
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -47,7 +47,7 @@ class BlogItemShimmer extends StatelessWidget {
                     ),
                   ),
                 ),
-                SizedBox(width: 16,),
+                SizedBox(width: 16),
                 Expanded(
                   flex: 1,
                   child: Padding(
@@ -90,7 +90,7 @@ class BlogItemShimmer extends StatelessWidget {
                             color: baseShade,
                           ),
                         ),
-                        SizedBox(height: 4,),
+                        SizedBox(height: 4),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
@@ -99,7 +99,7 @@ class BlogItemShimmer extends StatelessWidget {
                             color: baseShade,
                           ),
                         ),
-                        SizedBox(height: 4,),
+                        SizedBox(height: 4),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Container(

@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 import 'package:auto_tm/screens/filter_screen/widgets/filter_result_page.dart';
 import 'package:auto_tm/screens/search_screen/controller/search_controller.dart';
@@ -35,11 +36,18 @@ class SearchScreen extends StatelessWidget {
           children: [
             // Top Search Bar
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8.0,
+                vertical: 12.0,
+              ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: theme.colorScheme.primary, size: 20),
+                    icon: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: theme.colorScheme.primary,
+                      size: 20,
+                    ),
                     onPressed: () => Get.back(),
                     splashRadius: 22,
                   ),
@@ -52,7 +60,10 @@ class SearchScreen extends StatelessWidget {
                         controller.debouncedSearch(text);
                       },
                       suffixIcon: IconButton(
-                        icon: Icon(Icons.close_rounded, color: theme.colorScheme.onSurface.withOpacity(0.5)),
+                        icon: Icon(
+                          Icons.close_rounded,
+                          color: theme.colorScheme.onSurface.opacityCompat(0.5),
+                        ),
                         onPressed: () {
                           controller.searchTextController.clear();
                           controller.hints.clear();
@@ -68,9 +79,12 @@ class SearchScreen extends StatelessWidget {
             // Results / Shimmer
             Expanded(
               child: Obx(() {
-                final showInitialHint = controller.searchTextController.text.isEmpty;
+                final showInitialHint =
+                    controller.searchTextController.text.isEmpty;
                 final isLoading = controller.isLoading.value;
-                final building = controller.indexBuilding.value && !controller.indexReady.value;
+                final building =
+                    controller.indexBuilding.value &&
+                    !controller.indexReady.value;
 
                 if (showInitialHint) {
                   return Center(
@@ -86,7 +100,15 @@ class SearchScreen extends StatelessWidget {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                           const SizedBox(height: 6),
-                          Text('search_optimizing'.tr, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withOpacity(0.6))),
+                          Text(
+                            'search_optimizing'.tr,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurface.opacityCompat(
+                                0.6,
+                              ),
+                            ),
+                          ),
                         ],
                       ],
                     ),
@@ -99,7 +121,9 @@ class SearchScreen extends StatelessWidget {
 
                 return ListView.builder(
                   controller: scrollController,
-                  itemCount: controller.hints.length + (controller.hasMore.value ? 1 : 0),
+                  itemCount:
+                      controller.hints.length +
+                      (controller.hasMore.value ? 1 : 0),
                   itemBuilder: (context, index) {
                     if (index == controller.hints.length) {
                       return buildFullScreenShimmer(context);
@@ -113,10 +137,8 @@ class SearchScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: InkWell(
                         onTap: () {
-                          filterController.selectedBrandName.value = hint.brandLabel;
-                          filterController.selectedBrandUuid.value = hint.brandUuid;
-                          filterController.selectedModelName.value = hint.modelLabel;
-                          filterController.selectedModelUuid.value = hint.modelUuid;
+                          filterController.selectBrand(hint.brandUuid, hint.brandLabel);
+                          filterController.selectModel(hint.modelUuid, hint.modelLabel);
                           filterController.searchProducts();
                           Get.to(() => FilterResultPage());
                         },
@@ -125,7 +147,9 @@ class SearchScreen extends StatelessWidget {
                           children: [
                             SizedBox(height: 8),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                               child: Text(
                                 model,
                                 style: TextStyle(
@@ -139,19 +163,25 @@ class SearchScreen extends StatelessWidget {
                             ),
                             SizedBox(height: 4),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
                               child: Text(
                                 brand,
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: theme.colorScheme.onSurface.withOpacity(0.55),
+                                  color: theme.colorScheme.onSurface
+                                      .opacityCompat(0.55),
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             SizedBox(height: 8),
-                            Divider(height: 0.5, color: AppColors.textTertiaryColor),
+                            Divider(
+                              height: 0.5,
+                              color: AppColors.textTertiaryColor,
+                            ),
                           ],
                         ),
                       ),

@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'dart:convert';
 
 import 'package:auto_tm/screens/profile_screen/controller/profile_controller.dart';
@@ -101,13 +102,13 @@ class SLocationSelectionProfile extends StatelessWidget {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 border: Border.all(
-                  color: theme.colorScheme.outline.withOpacity(0.15),
+                  color: theme.colorScheme.outline.opacityCompat(0.15),
                   width: 0.8,
                 ),
                 borderRadius: BorderRadius.circular(14.0),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.opacityCompat(0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 3),
                   ),
@@ -123,11 +124,11 @@ class SLocationSelectionProfile extends StatelessWidget {
                 decoration: InputDecoration(
                   prefixIcon: Icon(
                     Icons.search,
-                    color: theme.colorScheme.onSurface.withOpacity(0.55),
+                    color: theme.colorScheme.onSurface.opacityCompat(0.55),
                   ),
                   hintText: "Search".tr,
                   hintStyle: TextStyle(
-                    color: theme.colorScheme.onSurface.withOpacity(0.45),
+                    color: theme.colorScheme.onSurface.opacityCompat(0.45),
                     fontSize: 14,
                   ),
                   border: InputBorder.none,
@@ -159,27 +160,32 @@ class SLocationSelectionProfile extends StatelessWidget {
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             decoration: BoxDecoration(
-                color: isSelected
-                  ? theme.colorScheme.surface.withOpacity(0.08)
-                  : theme.colorScheme.surface,
+                              color: isSelected
+                                  ? theme.colorScheme.surface.opacityCompat(
+                                      0.08,
+                                    )
+                                  : theme.colorScheme.surface,
                               borderRadius: BorderRadius.circular(14.0),
                               border: Border.all(
                                 color: isSelected
                                     ? theme.colorScheme.primary
-                                    : theme.colorScheme.outline.withOpacity(0.15),
+                                    : theme.colorScheme.outline.opacityCompat(
+                                        0.15,
+                                      ),
                                 width: isSelected ? 1.4 : 0.9,
                               ),
                               boxShadow: isSelected
                                   ? [
                                       BoxShadow(
-                                        color: theme.colorScheme.primary.withOpacity(0.12),
+                                        color: theme.colorScheme.primary
+                                            .opacityCompat(0.12),
                                         blurRadius: 10,
                                         offset: const Offset(0, 4),
                                       ),
                                     ]
                                   : [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.03),
+                                        color: Colors.black.opacityCompat(0.03),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2),
                                       ),
@@ -190,7 +196,9 @@ class SLocationSelectionProfile extends StatelessWidget {
                                 location,
                                 style: TextStyle(
                                   color: theme.colorScheme.onSurface,
-                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
                                   fontSize: 14,
                                 ),
                               ),

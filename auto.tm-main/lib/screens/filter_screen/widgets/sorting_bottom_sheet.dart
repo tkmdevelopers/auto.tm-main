@@ -1,3 +1,4 @@
+import 'package:auto_tm/utils/color_extensions.dart';
 import 'package:auto_tm/screens/filter_screen/controller/filter_controller.dart';
 import 'package:auto_tm/ui_components/colors.dart';
 import 'package:flutter/material.dart';
@@ -15,19 +16,25 @@ void showSortOptionsBottomSheet(
   // 'value' - это объединенный ключ для API, 'displayKey' - для перевода.
   final List<Map<String, String>> sortOptions = [
     // {'value': 'relevant_desc', 'displayKey': 'Relevance'},
-    {'value': 'createdAt_desc', 'displayKey': 'Date of placement'}, // Дате размещения (по убыванию)
+    {
+      'value': 'createdAt_desc',
+      'displayKey': 'Date of placement',
+    }, // Дате размещения (по убыванию)
     {'value': 'price_asc', 'displayKey': 'Price: lowest'}, // Возрастанию цены
     {'value': 'price_desc', 'displayKey': 'Price: highest'}, // Убыванию цены
     {'value': 'year_desc', 'displayKey': 'Year: newest'}, // Году: новее
     {'value': 'year_asc', 'displayKey': 'Year: oldest'}, // Году: старше
-    {'value': 'milleage_asc', 'displayKey': 'Mileage'}, // Пробегу (предполагаем, что по возрастанию для "меньше пробег")
+    {
+      'value': 'milleage_asc',
+      'displayKey': 'Mileage',
+    }, // Пробегу (предполагаем, что по возрастанию для "меньше пробег")
     // {'value': 'name_asc', 'displayKey': 'By name'}, // По названию
     // {'value': 'unique_desc', 'displayKey': 'Uniqueness'}, // Уникальности (если есть такое поле)
     // {'value': 'cost_estimate_desc', 'displayKey': 'Cost estimate'}, // Оценке стоимости (если есть такое поле)
     // {'value': 'owners_first_desc', 'displayKey': 'Owners first'}, // Сначала от собственников (если есть такое поле)
   ];
 
-  void _safeSheetPop() {
+  void safeSheetPop() {
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
       return;
@@ -43,7 +50,7 @@ void showSortOptionsBottomSheet(
       child: Material(
         color: theme.colorScheme.surface,
         elevation: 12,
-        shadowColor: Colors.black.withOpacity(0.3),
+        shadowColor: Colors.black.opacityCompat(0.3),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
@@ -58,13 +65,16 @@ void showSortOptionsBottomSheet(
               width: 42,
               height: 5,
               decoration: BoxDecoration(
-                color: AppColors.textTertiaryColor.withOpacity(0.5),
+                color: AppColors.textTertiaryColor.opacityCompat(0.5),
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
             const SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 4.0,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -82,7 +92,7 @@ void showSortOptionsBottomSheet(
                       color: AppColors.textTertiaryColor,
                       size: 20,
                     ),
-                    onPressed: _safeSheetPop,
+                    onPressed: safeSheetPop,
                   ),
                 ],
               ),
@@ -92,12 +102,12 @@ void showSortOptionsBottomSheet(
                 shrinkWrap: true,
                 physics: const ClampingScrollPhysics(),
                 itemCount: sortOptions.length,
-                separatorBuilder: (_, __) => Padding(
+                separatorBuilder: (_, _) => Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Divider(
                     height: 1,
                     thickness: 0.5,
-                    color: AppColors.textTertiaryColor.withOpacity(0.6),
+                    color: AppColors.textTertiaryColor.opacityCompat(0.6),
                   ),
                 ),
                 itemBuilder: (context, index) {
@@ -110,7 +120,7 @@ void showSortOptionsBottomSheet(
                     return InkWell(
                       onTap: () {
                         searchController.updateSortOption(apiValue);
-                        _safeSheetPop();
+                        safeSheetPop();
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -118,7 +128,7 @@ void showSortOptionsBottomSheet(
                           vertical: 12,
                         ),
                         color: selected
-                            ? theme.colorScheme.onSurface.withOpacity(0.05)
+                            ? theme.colorScheme.onSurface.opacityCompat(0.05)
                             : Colors.transparent,
                         child: Row(
                           children: [
@@ -127,20 +137,21 @@ void showSortOptionsBottomSheet(
                                 displayKey.tr,
                                 style: TextStyle(
                                   fontSize: 16,
-                                  fontWeight:
-                                      selected ? FontWeight.w600 : FontWeight.w400,
+                                  fontWeight: selected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
                                   color: theme.colorScheme.onSurface,
                                 ),
                               ),
                             ),
                             Radio<String>(
                               value: apiValue,
-                              groupValue: searchController
-                                  .selectedSortOption.value,
+                              groupValue:
+                                  searchController.selectedSortOption.value,
                               onChanged: (String? newValue) {
                                 if (newValue != null) {
                                   searchController.updateSortOption(newValue);
-                                  _safeSheetPop();
+                                  safeSheetPop();
                                 }
                               },
                               activeColor: theme.colorScheme.onSurface,
@@ -160,7 +171,7 @@ void showSortOptionsBottomSheet(
       ),
     ),
     backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withOpacity(0.35),
+    barrierColor: Colors.black.opacityCompat(0.35),
     isScrollControlled: true,
   );
 }

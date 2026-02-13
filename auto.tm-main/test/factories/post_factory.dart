@@ -27,14 +27,8 @@ class PostFactory {
       'currency': currency ?? 'USD',
       'createdAt': createdAt ?? DateTime.now().toIso8601String(),
       'status': status ?? true,
-      'brands': {
-        'uuid': brandId ?? 'brand_123',
-        'name': brand ?? 'Toyota',
-      },
-      'models': {
-        'uuid': modelId ?? 'model_456',
-        'name': model ?? 'Camry',
-      },
+      'brands': {'uuid': brandId ?? 'brand_123', 'name': brand ?? 'Toyota'},
+      'models': {'uuid': modelId ?? 'model_456', 'name': model ?? 'Camry'},
       'photo': [
         {
           'path': {
@@ -42,8 +36,8 @@ class PostFactory {
             'medium': 'uploads/post_123/medium.jpg',
             'large': 'uploads/post_123/large.jpg',
             'originalPath': photoPath ?? 'uploads/post_123/photo_1.jpg',
-          }
-        }
+          },
+        },
       ],
     };
   }
@@ -63,13 +57,7 @@ class PostFactory {
   }
 
   /// Create a post for "my posts" endpoint (user's own posts)
-  static Map<String, dynamic> makeMyPostJson({
-    String? uuid,
-    bool? status,
-  }) {
-    return makeJson(
-      uuid: uuid,
-      status: status,
-    );
+  static Map<String, dynamic> makeMyPostJson({String? uuid, bool? status}) {
+    return makeJson(uuid: uuid, status: status);
   }
 }

@@ -8,8 +8,10 @@ class STextField extends StatelessWidget {
     required this.controller,
     this.focusNode,
     this.hintText,
-    this.onSubmitted, this.type,
-    this.textAlign, this.onChanged,
+    this.onSubmitted,
+    this.type,
+    this.textAlign,
+    this.onChanged,
   });
 
   final bool isObscure;
@@ -23,7 +25,7 @@ class STextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-        final theme = Theme.of(context);
+    final theme = Theme.of(context);
 
     return TextField(
       onSubmitted: onSubmitted,
@@ -32,29 +34,21 @@ class STextField extends StatelessWidget {
       decoration: InputDecoration(
         contentPadding: const EdgeInsets.all(16),
         enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(
-            color: AppColors.textFieldBorderColor,
-          ),
+          borderSide: BorderSide(color: AppColors.textFieldBorderColor),
           borderRadius: BorderRadius.circular(12),
         ),
         errorBorder: OutlineInputBorder(
-          borderSide: BorderSide(
-            color: AppColors.secondaryColor,
-          ),
+          borderSide: BorderSide(color: AppColors.secondaryColor),
           borderRadius: BorderRadius.circular(12),
         ),
         focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(
-            color: theme.colorScheme.onSurface,
-          ),
+          borderSide: BorderSide(color: theme.colorScheme.onSurface),
           borderRadius: BorderRadius.circular(12),
         ),
         fillColor: theme.colorScheme.surface,
         filled: true,
         hintText: hintText,
-        hintStyle: const TextStyle(
-          color: AppColors.textTertiaryColor,
-        ),
+        hintStyle: const TextStyle(color: AppColors.textTertiaryColor),
       ),
       obscureText: isObscure,
       controller: controller,
